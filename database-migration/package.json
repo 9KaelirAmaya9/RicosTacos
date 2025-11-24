@@ -1,0 +1,24 @@
+{
+  "name": "supabase-to-postgresql-migration",
+  "version": "1.0.0",
+  "description": "Export data from Supabase and import to PostgreSQL",
+  "type": "module",
+  "scripts": {
+    "export": "node export-supabase-data.js",
+    "import": "node import-to-postgres.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "supabase",
+    "postgresql",
+    "migration",
+    "data-export"
+  ],
+  "author": "",
+  "license": "MIT"
+}

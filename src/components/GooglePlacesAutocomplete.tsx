@@ -120,6 +120,20 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
 
   // Load Google Maps API dynamically
   useEffect(() => {
+    // Suppress Google Maps internal debug messages
+    const originalConsoleLog = console.log;
+    console.log = (...args: any[]) => {
+      // Filter out Google Maps internal messages
+      const message = args[0];
+      if (typeof message === 'string' && (
+        message.includes('bind_telephone_numbers') ||
+        message.includes('telephone_number_')
+      )) {
+        return; // Suppress this message
+      }
+      originalConsoleLog.apply(console, args);
+    };
+
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     
     if (!apiKey) {

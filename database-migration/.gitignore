@@ -1,0 +1,16 @@
+# Ignore exported data (contains sensitive information)
+exported-data/
+
+# Ignore environment file with credentials
+.env
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
