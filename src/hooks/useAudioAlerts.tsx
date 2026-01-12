@@ -49,39 +49,35 @@ export function useAudioAlerts(options: UseAudioAlertsOptions = {}) {
         ctx.resume();
       }
 
-      // Create a pleasant notification sound
-      const oscillator1 = ctx.createOscillator();
-      const oscillator2 = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      oscillator1.connect(gainNode);
-      oscillator2.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      oscillator1.type = 'sine';
-      oscillator2.type = 'sine';
+      // Create a LOUD, PERSISTENT alarm sound for kitchen staff (4-7 seconds)
+      // Alternating frequency pattern to keep attention
+      const totalDuration = 5.5; // seconds - middle of 4-7 range
+      const patternDuration = 0.3;
+      const patterns = Math.floor(totalDuration / patternDuration);
       
-      // Pleasant ascending chime
-      oscillator1.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-      oscillator1.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
-      oscillator1.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2); // G5
-      
-      oscillator2.frequency.setValueAtTime(392.00, ctx.currentTime); // G4
-      oscillator2.frequency.setValueAtTime(523.25, ctx.currentTime + 0.1); // C5
-      oscillator2.frequency.setValueAtTime(659.25, ctx.currentTime + 0.2); // E5
+      for (let i = 0; i < patterns; i++) {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
 
-      gainNode.gain.setValueAtTime(audioVolume * 0.3, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
 
-      oscillator1.start(ctx.currentTime);
-      oscillator2.start(ctx.currentTime);
-      oscillator1.stop(ctx.currentTime + 0.5);
-      oscillator2.stop(ctx.currentTime + 0.5);
+        oscillator.type = 'square'; // Square wave = more harsh/attention-grabbing than sine
+        
+        // Alternate between 1000Hz and 1200Hz for more attention-grabbing effect
+        const frequency = i % 2 === 0 ? 1000 : 1200;
+        oscillator.frequency.setValueAtTime(frequency, ctx.currentTime + i * patternDuration);
 
-      // Also try to use browser notification sound as backup
-      if ('Notification' in window && Notification.permission === 'granted') {
-        // Browser notification can provide additional alert
+        // LOUD volume (80% of max)
+        gainNode.gain.setValueAtTime(0.8, ctx.currentTime + i * patternDuration);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * patternDuration + patternDuration);
+
+        oscillator.start(ctx.currentTime + i * patternDuration);
+        oscillator.stop(ctx.currentTime + i * patternDuration + patternDuration);
       }
+
+      // Log for debugging
+      console.log('🔊 NEW ORDER ALERT PLAYED - LOUD FOR 5.5 SECONDS');
     } catch (err) {
       console.error('Failed to play audio alert:', err);
     }
