@@ -46,9 +46,10 @@ const Index = () => {
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden" aria-label="Hero">
         <div className="absolute inset-0">
-          <img 
-            src={heroImage} 
-            alt="Authentic Mexican street tacos with fresh cilantro, onions, and lime on traditional corn tortillas at Ricos Tacos Brooklyn" 
+          <img
+            src={heroImage}
+            alt="Authentic Mexican street tacos with fresh cilantro, onions, and lime on traditional corn tortillas at Ricos Tacos Brooklyn"
+            loading="lazy"
             className="w-full h-full object-cover"
             fetchPriority="high"
           />
