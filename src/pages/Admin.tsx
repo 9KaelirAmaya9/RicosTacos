@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,12 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  RefreshCw
+  RefreshCw,
+  Volume2,
+  VolumeX
 } from "lucide-react";
+import { useAudioAlerts } from "@/hooks/useAudioAlerts";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { 
   TodayOrdersMetric, 
   TodayRevenueMetric, 
@@ -33,6 +37,11 @@ const Admin = () => {
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [userEmail, setUserEmail] = useState<string>("");
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  
+  // Audio alerts for new orders
+  const { audioEnabled, setAudioEnabled, playNewOrderAlert, initAudioContext } = useAudioAlerts();
+  const previousOrderCountRef = useRef<number>(0);
+  const isFirstLoadRef = useRef(true);
 
   const checkAuthStatus = useCallback(async () => {
     try {
@@ -82,6 +91,18 @@ const Admin = () => {
         items: Array.isArray(order.items) ? order.items : [],
       })) as Order[];
       setRecentOrders(recentData);
+      
+      // Play sound alert if total orders increased (new order detected)
+      const currentTotal = allOrdersResult.count || 0;
+      if (!isFirstLoadRef.current && currentTotal > previousOrderCountRef.current) {
+        playNewOrderAlert();
+        toast.success("🔔 New order received!", {
+          duration: 3000,
+        });
+      }
+      previousOrderCountRef.current = currentTotal;
+      isFirstLoadRef.current = false;
+      
       setError(null);
     } catch (error: any) {
       console.error("Failed to load metrics:", error);
@@ -124,7 +145,20 @@ const Admin = () => {
             <h1 className="text-4xl font-bold text-foreground">Admin Dashboard</h1>
             <p className="text-muted-foreground mt-2">Welcome back! Here's your overview</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <LanguageSwitch />
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => {
+                initAudioContext();
+                setAudioEnabled(!audioEnabled);
+                toast.success(audioEnabled ? "🔇 Audio alerts disabled" : "🔊 Audio alerts enabled");
+              }}
+              title={audioEnabled ? "Disable audio alerts" : "Enable audio alerts"}
+            >
+              {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </Button>
             <Button variant="outline" size="icon" onClick={loadMetrics}>
               <RefreshCw className="h-4 w-4" />
             </Button>

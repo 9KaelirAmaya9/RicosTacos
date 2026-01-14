@@ -805,12 +805,43 @@ const Cart = () => {
                                 formatted_address: place.formatted_address
                               });
                               setCustomerInfo({ ...customerInfo, address: place.formatted_address });
+                              
+                              // Validate delivery address immediately when selected
+                              console.log("🔍 Cart: Validating delivery address immediately on selection");
+                              validateDeliveryAddressGoogle(
+                                place.place_id,
+                                place.formatted_address
+                              ).then((deliveryValidation) => {
+                                console.log("✅ Cart: Delivery validation completed on selection");
+                                
+                                if (deliveryValidation && !deliveryValidation.isValid && 
+                                    !deliveryValidation.message?.includes("timeout")) {
+                                  if (deliveryValidation.suggestPickup) {
+                                    toast.error(deliveryValidation.message || "Delivery not available to this location. Pickup is always available!", {
+                                      duration: 6000,
+                                      action: {
+                                        label: "Switch to Pickup",
+                                        onClick: () => setOrderType("pickup")
+                                      }
+                                    });
+                                  }
+                                } else if (deliveryValidation && deliveryValidation.isValid) {
+                                  if (deliveryValidation.estimatedMinutes) {
+                                    toast.success(`✅ Delivery available - Estimated: ${deliveryValidation.estimatedMinutes} min`, {
+                                      duration: 4000
+                                    });
+                                  }
+                                }
+                              }).catch((error) => {
+                                console.warn("⚠️ Delivery validation failed (non-blocking):", error);
+                                // Don't show error for validation timeouts during selection
+                              });
                             }}
                             placeholder="Start typing your address..."
                             required
                           />
                           <p className="text-xs text-muted-foreground mt-1">
-                            We deliver within a 20-minute drive from our restaurant. Select an address from the suggestions for accurate delivery validation.
+                            💡 We deliver within 20 minutes. Validation runs when you select an address from the suggestions.
                           </p>
                         </div>
                       )}

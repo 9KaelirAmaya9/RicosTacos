@@ -27,44 +27,40 @@ const OrderSuccess = () => {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const orderNumber = searchParams.get("order_number");
 
+  // Load order data from sessionStorage (set by SecurePaymentModal)
   useEffect(() => {
-    const fetchOrderDetails = async () => {
-      if (!orderNumber) {
-        setLoading(false);
-        return;
-      }
-
+    const storedOrder = sessionStorage.getItem(`order_${orderNumber}`);
+    if (storedOrder) {
       try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("order_number", orderNumber)
-          .single();
-
-        if (error) throw error;
-        setOrderDetails(data);
-      } catch (error) {
-        console.error("Error fetching order:", error);
-      } finally {
-        setLoading(false);
+        const orderData = JSON.parse(storedOrder);
+        setOrderDetails(orderData);
+        console.log("OrderSuccess: Loaded order from session storage:", orderNumber);
+      } catch (e) {
+        console.warn("OrderSuccess: Failed to parse stored order:", e);
       }
-    };
-
-    fetchOrderDetails();
+    } else {
+      console.log("OrderSuccess: No stored order found for:", orderNumber);
+    }
   }, [orderNumber]);
 
-  if (loading) {
+  if (!orderNumber) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
         <Navigation />
         <div className="pt-32 pb-16">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
-              <p className="text-muted-foreground">Loading order details...</p>
+              <h1 className="font-serif text-4xl font-bold mb-4">Order Complete</h1>
+              <p className="text-muted-foreground mb-8">Payment successful! Your order has been received.</p>
+              <Link to="/">
+                <Button size="lg" className="gap-2">
+                  <Home className="h-5 w-5" />
+                  Back to Home
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -72,21 +68,54 @@ const OrderSuccess = () => {
     );
   }
 
-  if (!orderNumber || !orderDetails) {
+  // If no stored order, show minimal success page with order number
+  if (!orderDetails) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
         <Navigation />
         <div className="pt-32 pb-16">
           <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center">
-              <h1 className="font-serif text-4xl font-bold mb-4">Order Not Found</h1>
-              <p className="text-muted-foreground mb-8">We couldn't find this order. Please check your order number.</p>
-              <Link to="/">
-                <Button size="lg" className="gap-2">
-                  <Home className="h-5 w-5" />
-                  Back to Home
-                </Button>
-              </Link>
+            <div className="max-w-3xl mx-auto">
+              <div className="text-center mb-12">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6">
+                  <CheckCircle2 className="h-12 w-12 text-primary" />
+                </div>
+                <h1 className="font-serif text-4xl sm:text-5xl font-bold mb-4">
+                  ¡Gracias! <span className="text-primary">Order Confirmed</span>
+                </h1>
+                <p className="text-xl text-muted-foreground mb-8">
+                  Your payment was successful
+                </p>
+              </div>
+
+              <Card className="p-8 mb-8 text-center bg-primary/5 border-primary/20">
+                <p className="text-sm text-muted-foreground mb-2">Order Number</p>
+                <p className="font-mono text-3xl font-bold text-primary">{orderNumber}</p>
+              </Card>
+
+              <Card className="p-6 mb-8 bg-muted/50">
+                <h3 className="font-semibold mb-4">Order Received</h3>
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>✓ Your order has been successfully placed</p>
+                  <p>✓ Our kitchen is preparing your food</p>
+                  <p>✓ You will receive updates about your order</p>
+                  <p className="pt-2">Need help? Call us at (718) 633-4816</p>
+                </div>
+              </Card>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link to="/" className="flex-1">
+                  <Button variant="outline" size="lg" className="w-full gap-2">
+                    <Home className="h-5 w-5" />
+                    Back to Home
+                  </Button>
+                </Link>
+                <Link to="/order" className="flex-1">
+                  <Button size="lg" className="w-full gap-2">
+                    Order Again
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

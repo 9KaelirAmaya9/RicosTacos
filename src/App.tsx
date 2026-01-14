@@ -34,6 +34,7 @@ import MenuCatalog from "./pages/MenuCatalog";
 import DatabaseVerification from "./pages/DatabaseVerification";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminMenu from "./pages/AdminMenu";
+import AdminReset from "./pages/AdminReset";
 import Bootstrap from "./pages/Bootstrap";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
@@ -87,6 +88,7 @@ const App = () => (
                   <Route path="/admin/roles" element={<ProtectedRoute requiredRole="admin"><AdminRoles /></ProtectedRoute>} />
                   <Route path="/admin/passwords" element={<ProtectedRoute requiredRole="admin"><AdminPasswordManagement /></ProtectedRoute>} />
                   <Route path="/admin/verify" element={<ProtectedRoute requiredRole="admin"><DatabaseVerification /></ProtectedRoute>} />
+                  <Route path="/admin/reset" element={<ProtectedRoute requiredRole="admin"><AdminReset /></ProtectedRoute>} />
                   <Route path="/kitchen" element={<ProtectedRoute requiredRole="kitchen"><Kitchen /></ProtectedRoute>} />
                   <Route path="/order-success" element={<OrderSuccess />} />
                   <Route path="/500" element={<ServerError />} />

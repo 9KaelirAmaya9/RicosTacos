@@ -38,54 +38,63 @@ export function useAudioAlerts(options: UseAudioAlertsOptions = {}) {
   }, [initAudioContext]);
 
   const playNewOrderAlert = useCallback(() => {
-    if (!audioEnabled || !hasInteractedRef.current) return;
+    if (!audioEnabled || !hasInteractedRef.current) {
+      console.log('❌ Audio alert skipped - enabled:', audioEnabled, 'interacted:', hasInteractedRef.current);
+      return;
+    }
 
     try {
       const ctx = audioContextRef.current;
-      if (!ctx) return;
+      if (!ctx) {
+        console.error('❌ No audio context available');
+        return;
+      }
+
+      console.log('🔊 Starting audio alert - context state:', ctx.state);
 
       // Resume context if suspended
       if (ctx.state === 'suspended') {
-        ctx.resume();
+        ctx.resume().catch(e => console.error('Failed to resume audio context:', e));
       }
 
-      // Create a pleasant notification sound
-      const oscillator1 = ctx.createOscillator();
-      const oscillator2 = ctx.createOscillator();
-      const gainNode = ctx.createGain();
+      // Create a master gain node for overall control
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.7, ctx.currentTime); // 70% volume overall
+      masterGain.connect(ctx.destination);
 
-      oscillator1.connect(gainNode);
-      oscillator2.connect(gainNode);
-      gainNode.connect(ctx.destination);
+      // Create LOUD, PERSISTENT alarm (5.5 seconds total)
+      const totalDuration = 5.5;
+      const beepDuration = 0.2; // 200ms beeps
+      const beepInterval = 0.3; // 300ms interval
+      let currentTime = ctx.currentTime;
 
-      oscillator1.type = 'sine';
-      oscillator2.type = 'sine';
-      
-      // Pleasant ascending chime
-      oscillator1.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-      oscillator1.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
-      oscillator1.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2); // G5
-      
-      oscillator2.frequency.setValueAtTime(392.00, ctx.currentTime); // G4
-      oscillator2.frequency.setValueAtTime(523.25, ctx.currentTime + 0.1); // C5
-      oscillator2.frequency.setValueAtTime(659.25, ctx.currentTime + 0.2); // E5
+      while (currentTime < ctx.currentTime + totalDuration) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
 
-      gainNode.gain.setValueAtTime(audioVolume * 0.3, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(masterGain);
 
-      oscillator1.start(ctx.currentTime);
-      oscillator2.start(ctx.currentTime);
-      oscillator1.stop(ctx.currentTime + 0.5);
-      oscillator2.stop(ctx.currentTime + 0.5);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(1000, currentTime); // 1000Hz
 
-      // Also try to use browser notification sound as backup
-      if ('Notification' in window && Notification.permission === 'granted') {
-        // Browser notification can provide additional alert
+        // Envelope: attack, sustain, release
+        gain.gain.setValueAtTime(0, currentTime); // Start silent
+        gain.gain.linearRampToValueAtTime(1.0, currentTime + 0.05); // Quick attack
+        gain.gain.setValueAtTime(1.0, currentTime + beepDuration - 0.05); // Sustain
+        gain.gain.linearRampToValueAtTime(0, currentTime + beepDuration); // Quick release
+
+        osc.start(currentTime);
+        osc.stop(currentTime + beepDuration);
+
+        currentTime += beepInterval;
       }
+
+      console.log('✅ Audio alert created successfully - 5.5 seconds of beeps');
     } catch (err) {
-      console.error('Failed to play audio alert:', err);
+      console.error('❌ Failed to play audio alert:', err);
     }
-  }, [audioEnabled, audioVolume]);
+  }, [audioEnabled]);
 
   const playStatusChangeAlert = useCallback(() => {
     if (!audioEnabled || !hasInteractedRef.current) return;

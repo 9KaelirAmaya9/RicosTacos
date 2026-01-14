@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Search, Printer, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { Loader2, Search, Printer, RefreshCw, Wifi, WifiOff, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printReceipt } from "@/utils/printReceipt";
 import { cn } from "@/lib/utils";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { useAudioAlerts } from "@/hooks/useAudioAlerts";
 import type { Order, OrderStatus } from "@/hooks/useOrders";
 
 const statusColors: Record<string, string> = {
@@ -29,6 +31,11 @@ export default function AdminOrders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  
+  // Audio alerts for new orders
+  const { audioEnabled, setAudioEnabled, playNewOrderAlert, initAudioContext } = useAudioAlerts();
+  const previousOrderCountRef = useRef<number>(0);
+  const isFirstLoadRef = useRef(true);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -55,6 +62,17 @@ export default function AdminOrders() {
         ...order,
         items: Array.isArray(order.items) ? order.items : [],
       })) as Order[];
+      
+      // Play sound alert if order count increased (new order detected)
+      if (!isFirstLoadRef.current && ordersData.length > previousOrderCountRef.current) {
+        playNewOrderAlert();
+        toast.success("🔔 New order received!", {
+          duration: 3000,
+        });
+      }
+      previousOrderCountRef.current = ordersData.length;
+      isFirstLoadRef.current = false;
+      
       setOrders(ordersData);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -119,6 +137,19 @@ export default function AdminOrders() {
             <p className="text-muted-foreground">{filteredOrders.length} orders</p>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageSwitch />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                initAudioContext();
+                setAudioEnabled(!audioEnabled);
+                toast.success(audioEnabled ? "🔇 Audio alerts disabled" : "🔊 Audio alerts enabled");
+              }}
+              title={audioEnabled ? "Disable audio alerts" : "Enable audio alerts"}
+            >
+              {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </Button>
             <div className={cn(
               'flex items-center gap-1 px-2 py-1 rounded text-xs',
               isOnline ? 'bg-serape-green/10 text-serape-green' : 'bg-destructive/10 text-destructive'

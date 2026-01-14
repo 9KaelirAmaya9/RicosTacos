@@ -130,6 +130,26 @@ function PaymentForm({
       });
 
       if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
+        // Save order details to sessionStorage before navigating
+        const orderData = {
+          order_number: orderNumber,
+          customer_name: customerInfo.name,
+          customer_email: customerInfo.email,
+          customer_phone: customerInfo.phone,
+          order_type: orderType,
+          delivery_address: orderType === 'delivery' ? customerInfo.address : null,
+          items: cart,
+          subtotal: cartTotal,
+          tax: cartTotal * 0.08875,
+          total: total,
+          notes: customerInfo.notes || null,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        };
+        
+        console.log('💾 Saving order to sessionStorage:', orderNumber);
+        sessionStorage.setItem(`order_${orderNumber}`, JSON.stringify(orderData));
+
         // Order status is already 'pending' - no need to update
         // The webhook will handle notifications when payment succeeds
 
