@@ -1,9 +1,9 @@
+/* Import mobile optimizations - MUST be at top before @tailwind */
+@import './styles/mobile-optimizations.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import mobile optimizations */
-@import './styles/mobile-optimizations.css';
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.

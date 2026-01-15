@@ -49,9 +49,8 @@ const Index = () => {
           <img
             src={heroImage}
             alt="Authentic Mexican street tacos with fresh cilantro, onions, and lime on traditional corn tortillas at Ricos Tacos Brooklyn"
-            loading="lazy"
+            loading="eager"
             className="w-full h-full object-cover"
-            fetchPriority="high"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
         </div>
