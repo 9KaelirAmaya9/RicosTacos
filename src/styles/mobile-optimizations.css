@@ -199,16 +199,20 @@
 
 /* ===== OPTIMIZED ANIMATIONS ===== */
 
-/* Smooth transitions without blocking */
+/* Smooth transitions without blocking - REMOVED UNIVERSAL SELECTOR */
 @media (max-width: 768px) {
-  * {
-    transition-property: color, background-color, border-color;
-    transition-duration: 200ms;
-    transition-timing-function: ease-in-out;
-  }
-
-  /* No complex animations on mobile */
-  [class*="animate-"] {
+  /* Only disable expensive animations, not functional ones */
+  .animate-pulse,
+  .animate-spin,
+  .animate-bounce {
     animation: none !important;
+  }
+  
+  /* Keep essential animations for modals/dialogs */
+  [role="dialog"],
+  [role="alertdialog"],
+  .dialog-content,
+  .modal-content {
+    animation: fadeIn 150ms ease-out !important;
   }
 }
