@@ -548,7 +548,12 @@ const Cart = () => {
         
         setCurrentOrderNumber(orderNumber);
         setCheckoutClientSecret(piData.clientSecret as string);
-        setCheckoutPublishableKey(piData.publishableKey as string);
+        // Use client-side env variable for publishable key (never from server)
+        const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+        if (!publishableKey) {
+          throw new Error('Stripe publishable key not configured. Please add VITE_STRIPE_PUBLISHABLE_KEY to your environment variables.');
+        }
+        setCheckoutPublishableKey(publishableKey);
         setShowCheckout(true);
         setIsProcessing(false);
         return;
