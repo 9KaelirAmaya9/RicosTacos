@@ -27,15 +27,23 @@ const OrderSuccess = () => {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const orderNumber = searchParams.get("order_number");
 
   // Load order data from sessionStorage (set by SecurePaymentModal)
   // If not found, fetch from database as fallback
   useEffect(() => {
-    if (!orderNumber) return;
+    if (!orderNumber) {
+      setLoading(false);
+      return;
+    }
 
     const loadOrderData = async () => {
+      setLoading(true);
+      setError(null);
+
       // First, try sessionStorage (fastest)
       const storedOrder = sessionStorage.getItem(`order_${orderNumber}`);
       if (storedOrder) {
@@ -43,6 +51,7 @@ const OrderSuccess = () => {
           const orderData = JSON.parse(storedOrder);
           setOrderDetails(orderData);
           console.log("✅ OrderSuccess: Loaded order from sessionStorage:", orderNumber);
+          setLoading(false);
           return;
         } catch (e) {
           console.warn("⚠️ OrderSuccess: Failed to parse stored order:", e);
@@ -52,14 +61,16 @@ const OrderSuccess = () => {
       // Fallback: Fetch from database if sessionStorage is empty
       console.log("🔍 OrderSuccess: SessionStorage empty, fetching from database...");
       try {
-        const { data, error } = await supabase
+        const { data, error: dbError } = await supabase
           .from('orders')
           .select('*')
           .eq('order_number', orderNumber)
           .single();
 
-        if (error) {
-          console.error("❌ OrderSuccess: Database fetch error:", error);
+        if (dbError) {
+          console.error("❌ OrderSuccess: Database fetch error:", dbError);
+          setError(`Database error: ${dbError.message}`);
+          setLoading(false);
           return;
         }
 
@@ -70,30 +81,32 @@ const OrderSuccess = () => {
           sessionStorage.setItem(`order_${orderNumber}`, JSON.stringify(data));
         } else {
           console.warn("⚠️ OrderSuccess: Order not found in database:", orderNumber);
+          setError("Order not found in database");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("❌ OrderSuccess: Error fetching order:", err);
+        setError(`Failed to load order: ${err.message || 'Unknown error'}`);
+      } finally {
+        setLoading(false);
       }
     };
 
     loadOrderData();
   }, [orderNumber]);
 
-  if (!orderNumber) {
+  // Loading state
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
         <Navigation />
         <div className="pt-32 pb-16">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
-              <h1 className="font-serif text-4xl font-bold mb-4">Order Complete</h1>
-              <p className="text-muted-foreground mb-8">Payment successful! Your order has been received.</p>
-              <Link to="/">
-                <Button size="lg" className="gap-2">
-                  <Home className="h-5 w-5" />
-                  Back to Home
-                </Button>
-              </Link>
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6 animate-pulse">
+                <CheckCircle2 className="h-12 w-12 text-primary" />
+              </div>
+              <h1 className="font-serif text-4xl font-bold mb-4">Loading Order Details...</h1>
+              <p className="text-muted-foreground">Please wait while we retrieve your order information.</p>
             </div>
           </div>
         </div>
@@ -101,7 +114,51 @@ const OrderSuccess = () => {
     );
   }
 
-  // If no stored order, show minimal success page with order number
+  // Error state - show error details for debugging
+  if (error || (!orderNumber && !loading)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+        <Navigation />
+        <div className="pt-32 pb-16">
+          <div className="container mx-auto px-4">
+            <div className="max-w-3xl mx-auto">
+              <Card className="p-8 border-destructive/50">
+                <h1 className="font-serif text-4xl font-bold mb-4 text-destructive">Order Not Found</h1>
+                <p className="text-muted-foreground mb-4">
+                  {error || "No order number provided."}
+                </p>
+                {orderNumber && (
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Order Number: <code className="bg-muted px-2 py-1 rounded">{orderNumber}</code>
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground mb-8">
+                  Please check your email for order confirmation or contact support at (718) 633-4816.
+                </p>
+                <div className="flex gap-4">
+                  <Link to="/" className="flex-1">
+                    <Button variant="outline" size="lg" className="w-full gap-2">
+                      <Home className="h-5 w-5" />
+                      Back to Home
+                    </Button>
+                  </Link>
+                  <Button
+                    size="lg"
+                    className="flex-1"
+                    onClick={() => window.location.reload()}
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Success state with minimal info (fallback)
   if (!orderDetails) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
