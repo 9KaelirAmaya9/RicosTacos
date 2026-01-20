@@ -31,19 +31,52 @@ const OrderSuccess = () => {
   const orderNumber = searchParams.get("order_number");
 
   // Load order data from sessionStorage (set by SecurePaymentModal)
+  // If not found, fetch from database as fallback
   useEffect(() => {
-    const storedOrder = sessionStorage.getItem(`order_${orderNumber}`);
-    if (storedOrder) {
-      try {
-        const orderData = JSON.parse(storedOrder);
-        setOrderDetails(orderData);
-        console.log("OrderSuccess: Loaded order from session storage:", orderNumber);
-      } catch (e) {
-        console.warn("OrderSuccess: Failed to parse stored order:", e);
+    if (!orderNumber) return;
+
+    const loadOrderData = async () => {
+      // First, try sessionStorage (fastest)
+      const storedOrder = sessionStorage.getItem(`order_${orderNumber}`);
+      if (storedOrder) {
+        try {
+          const orderData = JSON.parse(storedOrder);
+          setOrderDetails(orderData);
+          console.log("✅ OrderSuccess: Loaded order from sessionStorage:", orderNumber);
+          return;
+        } catch (e) {
+          console.warn("⚠️ OrderSuccess: Failed to parse stored order:", e);
+        }
       }
-    } else {
-      console.log("OrderSuccess: No stored order found for:", orderNumber);
-    }
+
+      // Fallback: Fetch from database if sessionStorage is empty
+      console.log("🔍 OrderSuccess: SessionStorage empty, fetching from database...");
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('order_number', orderNumber)
+          .single();
+
+        if (error) {
+          console.error("❌ OrderSuccess: Database fetch error:", error);
+          return;
+        }
+
+        if (data) {
+          console.log("✅ OrderSuccess: Loaded order from database:", orderNumber);
+          setOrderDetails(data as OrderDetails);
+          // Save to sessionStorage for next time
+          sessionStorage.setItem(`order_${orderNumber}`, JSON.stringify(data));
+        } else {
+          console.warn("⚠️ OrderSuccess: Order not found in database:", orderNumber);
+        }
+      } catch (err) {
+        console.error("❌ OrderSuccess: Error fetching order:", err);
+      }
+    };
+
+    loadOrderData();
   }, [orderNumber]);
 
   if (!orderNumber) {
