@@ -19,35 +19,68 @@ const KitchenLogin = () => {
 
     const redirectIfAuthorized = async (userId: string) => {
       try {
-        const { data: roles, error } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId);
+        // Use RPC instead of direct query to avoid RLS recursion/deadlocks
+        const { data: isKitchen, error: kitchenError } = await supabase.rpc('has_role', {
+          _user_id: userId,
+          _role: 'kitchen'
+        });
+
         if (!mounted) return;
-        if (error) return;
-        const ok = roles?.some((r) => r.role === "kitchen" || r.role === "admin");
-        if (ok) navigate("/kitchen", { replace: true });
-      } catch (_) {
-        // noop
+
+        if (isKitchen) {
+          navigate("/kitchen", { replace: true });
+          return;
+        }
+
+        // Also check if admin (admins can access kitchen)
+        const { data: isAdmin, error: adminError } = await supabase.rpc('has_role', {
+          _user_id: userId,
+          _role: 'admin'
+        });
+
+        if (!mounted) return;
+
+        if (isAdmin) {
+          navigate("/kitchen", { replace: true });
+        }
+      } catch (e) {
+        console.error("Auth check failed:", e);
       }
     };
+
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        if (session?.user) {
+          setLoading(true);
+          // Add timeout to prevent infinite loading
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000));
+
+          try {
+            await Promise.race([
+              redirectIfAuthorized(session.user.id),
+              timeoutPromise
+            ]);
+          } catch (e) {
+            console.error("Auth check timed out or failed");
+          } finally {
+            if (mounted) setLoading(false);
+          }
+        }
+      } catch (e) {
+        console.error("Session check failed:", e);
+      }
+    };
+
+    checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       if (session?.user) {
         setLoading(true);
-        setTimeout(() => {
-          redirectIfAuthorized(session.user.id)
-            .finally(() => mounted && setLoading(false));
-        }, 0);
-      }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      if (session?.user) {
-        setLoading(true);
-        redirectIfAuthorized(session.user.id).finally(() => mounted && setLoading(false));
+        checkSession();
       }
     });
 
@@ -59,7 +92,7 @@ const KitchenLogin = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast.error("Please enter both email and password");
       return;
@@ -80,7 +113,7 @@ const KitchenLogin = () => {
       }
 
       toast.success("Login successful! Redirecting to kitchen...");
-      
+
       // Defer navigation and let ProtectedRoute handle authorization
       setTimeout(() => {
         navigate("/kitchen", { replace: true });

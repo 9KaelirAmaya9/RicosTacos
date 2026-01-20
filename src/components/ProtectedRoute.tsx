@@ -30,7 +30,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
 
-        
+
         if (!mounted) return;
 
         console.log(`Session check took ${Date.now() - startTime}ms`);
@@ -67,7 +67,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         // Check role with optimized query
         const roleCheckStart = Date.now();
         let userHasRole = false;
-        
+
         try {
           // Single optimized query with timeout
           const rolePromise = supabase
@@ -84,8 +84,6 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
             rolePromise,
             roleTimeoutPromise
           ]) as any;
-
-          if (!mounted) return;
 
           console.log(`Role check took ${Date.now() - roleCheckStart}ms`);
 
@@ -105,7 +103,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
               try {
                 console.log("Attempting admin bootstrap...");
                 const { data: granted, error: bootstrapError } = await supabase.rpc('bootstrap_admin');
-                
+
                 if (bootstrapError) {
                   console.error("Bootstrap error:", bootstrapError);
                 } else if (granted === true) {
@@ -123,7 +121,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
           console.error("Role check exception:", e.message || e);
           userHasRole = false;
         }
-        
+
         if (mounted) {
           setHasRole(userHasRole);
           setIsLoading(false);
@@ -131,6 +129,10 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
       } catch (e: any) {
         console.error("Auth/Role check error:", e.message || e);
         if (mounted) {
+          // If we timed out or errored, we might want to fail safe or just show access denied
+          // For now, let's assume if it fails, they aren't authenticated/authorized to be safe
+          // But if it was just a timeout, maybe we should let them try again? 
+          // For now, fail closed.
           setIsAuthenticated(false);
           setHasRole(false);
           setIsLoading(false);
@@ -147,7 +149,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       console.log("Auth state changed:", event);
-      
+
       // Debounce rapid auth changes
       setTimeout(() => {
         if (mounted) {

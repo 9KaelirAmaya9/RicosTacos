@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Search, Printer, RefreshCw } from "lucide-react";
+import { Loader2, Search, Printer, RefreshCw, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printReceipt } from "@/utils/printReceipt";
@@ -21,6 +21,7 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const navigate = useNavigate();
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -94,13 +95,13 @@ export default function AdminOrders() {
   const updateOrderStatus = useCallback(async (orderId: string, newStatus: string) => {
     try {
       // Optimistically update local state first
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
           order.id === orderId ? { ...order, status: newStatus } : order
         )
       );
-      setFilteredOrders(prevFiltered => 
-        prevFiltered.map(order => 
+      setFilteredOrders(prevFiltered =>
+        prevFiltered.map(order =>
           order.id === orderId ? { ...order, status: newStatus } : order
         )
       );
@@ -111,7 +112,7 @@ export default function AdminOrders() {
         .eq("id", orderId);
 
       if (error) throw error;
-      
+
       toast.success("Order status updated");
     } catch (error) {
       console.error("Error updating order:", error);
@@ -148,14 +149,23 @@ export default function AdminOrders() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Order Tracking</h1>
-          <Button onClick={fetchOrders} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/admin")}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Admin Dashboard
           </Button>
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold">Order Tracking</h1>
+            <Button onClick={fetchOrders} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <Card className="mb-6">
@@ -252,7 +262,7 @@ export default function AdminOrders() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            const items = Array.isArray(order.items) 
+                            const items = Array.isArray(order.items)
                               ? order.items as Array<{ name: string; quantity: number; price: number }>
                               : [];
                             printReceipt({

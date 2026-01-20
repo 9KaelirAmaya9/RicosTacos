@@ -29,6 +29,7 @@ import OrderSuccess from "./pages/OrderSuccess";
 import NotFound from "./pages/NotFound";
 import ServerError from "./pages/ServerError";
 import MenuCatalog from "./pages/MenuCatalog";
+import DebugAuth from "./pages/DebugAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Configure React Query with optimized defaults
@@ -74,6 +75,7 @@ const App = () => (
                 <Route path="/kitchen" element={<ProtectedRoute requiredRole="kitchen"><Kitchen /></ProtectedRoute>} />
                 <Route path="/order-success" element={<OrderSuccess />} />
                 <Route path="/500" element={<ServerError />} />
+                <Route path="/debug-auth" element={<DebugAuth />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
