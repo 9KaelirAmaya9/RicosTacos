@@ -65,11 +65,12 @@ const OrderSuccess = () => {
           .from('orders')
           .select('*')
           .eq('order_number', orderNumber)
-          .single();
+          .maybeSingle();
 
         if (dbError) {
           console.error("❌ OrderSuccess: Database fetch error:", dbError);
-          setError(`Database error: ${dbError.message}`);
+          console.error("Full error object:", JSON.stringify(dbError, null, 2));
+          setError(`Database error: ${dbError.message} (Code: ${dbError.code || 'unknown'})`);
           setLoading(false);
           return;
         }
@@ -81,10 +82,11 @@ const OrderSuccess = () => {
           sessionStorage.setItem(`order_${orderNumber}`, JSON.stringify(data));
         } else {
           console.warn("⚠️ OrderSuccess: Order not found in database:", orderNumber);
-          setError("Order not found in database");
+          setError("Order not found in database. The order may not have been saved successfully.");
         }
       } catch (err: any) {
         console.error("❌ OrderSuccess: Error fetching order:", err);
+        console.error("Full error:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
         setError(`Failed to load order: ${err.message || 'Unknown error'}`);
       } finally {
         setLoading(false);
