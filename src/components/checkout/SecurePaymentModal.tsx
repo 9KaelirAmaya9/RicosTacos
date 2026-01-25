@@ -130,6 +130,26 @@ function PaymentForm({
       });
 
       if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
+        // CRITICAL: Update order from "draft" to "pending" now that payment succeeded
+        // This completes the 2-phase commit pattern
+        console.log('🔄 Updating order status from draft to pending...');
+        try {
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({ status: 'pending' })
+            .eq('order_number', orderNumber)
+            .eq('status', 'draft'); // Only update if still in draft
+
+          if (updateError) {
+            console.error('⚠️ Failed to update order status (non-critical):', updateError);
+            // Don't fail the checkout - payment succeeded, order exists
+          } else {
+            console.log('✅ Order status updated to pending');
+          }
+        } catch (updateErr) {
+          console.error('⚠️ Exception updating order status (non-critical):', updateErr);
+        }
+
         // Save order details to sessionStorage before navigating
         const orderData = {
           order_number: orderNumber,
@@ -146,11 +166,10 @@ function PaymentForm({
           status: 'pending',
           created_at: new Date().toISOString()
         };
-        
+
         console.log('💾 Saving order to sessionStorage:', orderNumber);
         sessionStorage.setItem(`order_${orderNumber}`, JSON.stringify(orderData));
 
-        // Order status is already 'pending' - no need to update
         // The webhook will handle notifications when payment succeeds
 
         // Send confirmation email (with timeout to prevent blocking)

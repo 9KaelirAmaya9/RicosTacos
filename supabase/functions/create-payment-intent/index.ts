@@ -40,7 +40,7 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const { items, orderType, customerInfo, orderNumber, couponCode, discountAmount } = await req.json();
+    const { items, orderType, customerInfo, orderNumber, couponCode, discountAmount, idempotencyKey } = await req.json();
 
     // Validate input parameters (allows guest checkout)
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -97,7 +97,8 @@ serve(async (req) => {
 
     if (amount <= 0) throw new Error("Calculated amount must be greater than 0");
 
-    const paymentIntent = await stripe.paymentIntents.create({
+    // Prepare payment intent options
+    const paymentIntentOptions: any = {
       amount,
       currency: "usd",
       automatic_payment_methods: {
@@ -115,7 +116,19 @@ serve(async (req) => {
         discount_amount: discountAmount ? String(discountAmount) : "",
       },
       description: `Order ${orderNumber}`,
-    });
+    };
+
+    // Add idempotency key if provided to prevent duplicate charges on retries
+    const requestOptions: any = {};
+    if (idempotencyKey && typeof idempotencyKey === 'string') {
+      requestOptions.idempotencyKey = idempotencyKey;
+      console.log('Using idempotency key:', idempotencyKey);
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(
+      paymentIntentOptions,
+      requestOptions
+    );
 
     const publishableKey = Deno.env.get("STRIPE_PUBLISHABLE_KEY") || undefined;
 

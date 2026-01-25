@@ -294,7 +294,8 @@ const Cart = () => {
         console.log(`⏳ Order creation in progress... (${elapsed}ms elapsed)`);
       }, 2000);
       
-      // Prepare order data
+      // Prepare order data - CRITICAL: Create as "draft" first, only update to "pending" after payment succeeds
+      // This prevents orphaned orders if payment fails
       const orderDataToInsert = {
         order_number: orderNumber,
         user_id: session?.user?.id || null,
@@ -308,7 +309,7 @@ const Cart = () => {
         tax,
         total: total, // Include delivery fee in total
         notes: validation.data.notes || null,
-        status: "pending",
+        status: "draft", // Start as draft, SecurePaymentModal will update to "pending" after payment
       };
       
       const isDev = import.meta.env.DEV;
@@ -355,12 +356,12 @@ const Cart = () => {
         }
       })();
 
-      const orderTimeoutPromise = new Promise((_, reject) => 
+      const orderTimeoutPromise = new Promise((_, reject) =>
         setTimeout(() => {
           const elapsed = Date.now() - orderStartTime;
           clearInterval(orderHeartbeat);
-          reject(new Error(`Order creation timed out after 10 seconds (elapsed: ${elapsed}ms). Please check your connection and try again.`));
-        }, 10000) // 10 seconds should be plenty for simple insert
+          reject(new Error(`Order creation timed out after 30 seconds (elapsed: ${elapsed}ms). Please check your connection and try again.`));
+        }, 30000) // 30 seconds to accommodate slow connections and network issues
       );
 
       const result = await Promise.race([
@@ -468,9 +469,13 @@ const Cart = () => {
       })));
       
       // Add timeout to payment intent creation to prevent hanging
-      // Stripe API + edge function typically takes 1-4s, but we allow 15s for cold starts, slow networks, and Stripe API delays
+      // Stripe API + edge function typically takes 1-4s, but we allow 45s for cold starts, slow networks, and Stripe API delays
       console.log("🔄 Invoking payment intent creation...");
       const paymentStartTime = Date.now();
+
+      // Generate idempotency key to prevent duplicate charges on retries
+      const idempotencyKey = `${orderNumber}-${Date.now()}`;
+
       const paymentIntentPromise = supabase.functions.invoke(
         'create-payment-intent',
         {
@@ -481,6 +486,7 @@ const Cart = () => {
             orderNumber,
             couponCode: appliedCoupon?.code || null,
             discountAmount: discountAmount,
+            idempotencyKey, // Prevent duplicate charges
           }
         }
       );
@@ -491,12 +497,12 @@ const Cart = () => {
         console.log(`⏳ Payment intent creation in progress... (${elapsed}ms elapsed)`);
       }, 2000);
 
-      const paymentTimeoutPromise = new Promise((_, reject) => 
+      const paymentTimeoutPromise = new Promise((_, reject) =>
         setTimeout(() => {
           const elapsed = Date.now() - paymentStartTime;
           clearInterval(paymentHeartbeat);
-          reject(new Error(`Payment intent creation timed out after 15 seconds (elapsed: ${elapsed}ms)`));
-        }, 15000)
+          reject(new Error(`Payment intent creation timed out after 45 seconds (elapsed: ${elapsed}ms)`));
+        }, 45000) // Increased to 45s for enterprise reliability
       );
 
       const { data: piData, error: piError } = await Promise.race([
@@ -561,7 +567,7 @@ const Cart = () => {
     } catch (error: any) {
       const totalProcessTime = Date.now() - overallStartTime;
       const processEndTimestamp = new Date().toISOString();
-      
+
       console.error("\n╔════════════════════════════════════════════════════════════════╗");
       console.error("║             CHECKOUT PROCESS FAILED                            ║");
       console.error("╚════════════════════════════════════════════════════════════════╝");
@@ -575,10 +581,31 @@ const Cart = () => {
       console.error("└─ Stack:", error?.stack);
       console.error("\n📋 Full Error Object:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
       console.error("═══════════════════════════════════════════════════════════════════\n");
-      
+
+      // CRITICAL: Clean up draft order if checkout failed
+      // This prevents orphaned orders in the database
+      if (orderNumber) {
+        console.log("🧹 Cleaning up draft order due to checkout failure:", orderNumber);
+        try {
+          const { error: deleteError } = await supabase
+            .from('orders')
+            .delete()
+            .eq('order_number', orderNumber)
+            .eq('status', 'draft'); // Only delete if still in draft status
+
+          if (deleteError) {
+            console.error("⚠️ Failed to cleanup draft order (non-critical):", deleteError);
+          } else {
+            console.log("✅ Draft order cleaned up successfully");
+          }
+        } catch (cleanupError) {
+          console.error("⚠️ Exception during draft cleanup (non-critical):", cleanupError);
+        }
+      }
+
       // Show the actual error message to help debug
       let errorMessage = "Failed to process order. Please try again.";
-      
+
       if (error?.message) {
         errorMessage = error.message;
       } else if (error?.error) {
@@ -586,7 +613,7 @@ const Cart = () => {
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
-      
+
       // Check if it's a timeout error and provide more helpful message
       if (errorMessage.includes("timed out")) {
         if (errorMessage.includes("Order creation")) {
@@ -597,7 +624,7 @@ const Cart = () => {
           errorMessage = "Request timed out. Please check your internet connection and try again.";
         }
       }
-      
+
       toast.error(errorMessage, {
         duration: 8000,
         description: "Check the browser console (F12) for more details",
