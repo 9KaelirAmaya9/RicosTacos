@@ -47,10 +47,11 @@ const SignIn = () => {
       if (error) throw error;
       
       toast.success("Signed in successfully!");
-      navigate("/dashboard");
+      // Navigation happens automatically via onAuthStateChange in useEffect
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in");
     } finally {
+      // Always reset loading state after auth attempt completes
       setIsLoading(false);
     }
   };
