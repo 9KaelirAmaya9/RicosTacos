@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { Clock, Package, ChefHat, Printer } from "lucide-react";
 import { printReceipt } from "@/utils/printReceipt";
 import { NotificationSettings } from "@/components/NotificationSettings";
-import { useOrderAlert } from "@/hooks/useOrderAlert";
 
 interface Order {
   id: string;
@@ -28,8 +27,6 @@ interface Order {
 const Kitchen = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const previousOrderIdsRef = useRef<Set<string>>(new Set());
-  const { playAlert } = useOrderAlert();
 
   const fetchOrders = useCallback(async () => {
     const { data, error } = await supabase
@@ -100,28 +97,6 @@ const Kitchen = () => {
       toast.error('Failed to print receipt');
     }
   };
-
-  // Detect new orders and play alert sound
-  useEffect(() => {
-    if (loading) return; // Skip during initial load
-
-    const currentOrderIds = new Set(orders.map(order => order.id));
-    const previousOrderIds = previousOrderIdsRef.current;
-
-    // Find new orders (in current but not in previous)
-    const newOrders = orders.filter(order => !previousOrderIds.has(order.id));
-
-    if (newOrders.length > 0) {
-      console.log('🔔 New order detected! Playing alert...', newOrders);
-      playAlert();
-      toast.success(`${newOrders.length} new order${newOrders.length > 1 ? 's' : ''} received!`, {
-        duration: 5000,
-      });
-    }
-
-    // Update the ref with current order IDs
-    previousOrderIdsRef.current = currentOrderIds;
-  }, [orders, loading, playAlert]);
 
   useEffect(() => {
     fetchOrders();
