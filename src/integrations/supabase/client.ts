@@ -28,6 +28,30 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Create a custom fetch with timeout to prevent hanging requests
+const fetchWithTimeout = (timeout = 8000) => {
+  return async (url: RequestInfo, init?: RequestInit) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+      const response = await fetch(url, {
+        ...init,
+        signal: controller.signal,
+      });
+      clearTimeout(id);
+      return response;
+    } catch (error) {
+      clearTimeout(id);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('Request timed out after', timeout, 'ms:', url);
+        throw new Error(`Request timeout - please check your connection and try again`);
+      }
+      throw error;
+    }
+  };
+};
+
 export const supabase = createClient<Database>(
   SUPABASE_URL || '', 
   SUPABASE_PUBLISHABLE_KEY || '', 
@@ -36,6 +60,16 @@ export const supabase = createClient<Database>(
       storage: localStorage,
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: false, // Prevent auth hanging on URL checks
+    },
+    global: {
+      fetch: fetchWithTimeout(8000), // 8 second timeout for all requests
+      headers: {
+        'X-Client-Info': 'ricos-tacos-web'
+      }
+    },
+    db: {
+      schema: 'public'
     }
   }
 );
