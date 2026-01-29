@@ -1,8 +1,0 @@
-now it back to this: {
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
-}
