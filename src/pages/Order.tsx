@@ -100,7 +100,6 @@ const Order = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 relative">
-      <ConfettiBackground />
       <Navigation />
       
       <div className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
