@@ -263,13 +263,16 @@ const Order = () => {
                                      <div
                                       ref={cardRef}
                                       className={cn(
-                                        "w-full max-w-xs transition-all duration-500 cursor-pointer",
+                                        "w-full max-w-xs transition-all duration-500",
                                         cardVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
                                       )}
                                       style={{ transitionDelay: `${index * 50}ms` }}
-                                      onClick={handleCardClick}
                                     >
-                                      <Card className="overflow-hidden hover:shadow-elegant transition-all duration-300 group flex flex-col border-2 border-transparent hover:border-primary/10 bg-card h-full pointer-events-auto">
+                                      <Card 
+                                        className="overflow-hidden hover:shadow-elegant transition-all duration-300 group flex flex-col border-2 border-transparent hover:border-primary/10 bg-card h-full cursor-pointer select-none"
+                                        onClick={handleCardClick}
+                                        style={{ touchAction: 'manipulation' }}
+                                      >
                                         {item.image && (
                                           <div className="relative h-40 md:h-36 overflow-hidden flex-shrink-0">
                                             <img 
