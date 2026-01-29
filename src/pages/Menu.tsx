@@ -131,14 +131,14 @@ const Menu = () => {
                      {categoryItems.map((item) => (
                        <Card key={item.id} className="overflow-hidden hover:shadow-elegant transition-all duration-300 group border-2 border-transparent hover:border-serape-red/30 bg-card relative before:absolute before:inset-0 before:opacity-0 hover:before:opacity-100 before:bg-gradient-to-br before:from-serape-cyan/5 before:via-serape-pink/5 before:to-serape-yellow/5 before:transition-opacity before:duration-500 before:pointer-events-none">
                          {item.image && (
-                           <div className="relative h-48 overflow-hidden">
-                             <img 
-                               src={item.image} 
+                           <div className="relative h-48 overflow-hidden pointer-events-none">
+                             <img
+                               src={item.image}
                                alt={item.name}
                                loading="lazy"
                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                              />
-                             <div className="absolute inset-0 bg-gradient-to-t from-serape-red/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                             <div className="absolute inset-0 bg-gradient-to-t from-serape-red/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                              {/* AI Generated watermark */}
                              <div className="absolute bottom-2 right-2 text-[8px] text-white/30 font-mono tracking-tight backdrop-blur-[2px] px-1.5 py-0.5 rounded bg-black/10">
                                AI
@@ -161,10 +161,15 @@ const Menu = () => {
                              <span className="text-2xl font-semibold bg-gradient-to-r from-serape-red via-serape-pink to-serape-purple bg-clip-text text-transparent drop-shadow-sm">
                                ${item.price.toFixed(2)}
                              </span>
-                             <Button 
-                               size="sm" 
-                               onClick={() => handleAddToCart(item)}
-                               className="gap-2 bg-gradient-to-r from-serape-red to-serape-pink hover:from-serape-pink hover:to-serape-purple shadow-elegant"
+                             <Button
+                               type="button"
+                               size="sm"
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleAddToCart(item);
+                               }}
+                               className="gap-2 bg-gradient-to-r from-serape-red to-serape-pink hover:from-serape-pink hover:to-serape-purple shadow-elegant relative z-20"
+                               style={{ touchAction: 'manipulation' }}
                              >
                                <Plus className="h-4 w-4" />
                                {t("menu.add")}
