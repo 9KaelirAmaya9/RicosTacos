@@ -321,7 +321,9 @@ const Order = () => {
                                             <Button 
                                               size="sm" 
                                               onClick={(e) => {
+                                                e.preventDefault();
                                                 e.stopPropagation();
+                                                console.log('Add to cart clicked:', item.id, item.name);
                                                 handleAddToCart({ 
                                                   id: item.id, 
                                                   name: getMenuItemName(item.id, language, item.name), 
@@ -329,7 +331,8 @@ const Order = () => {
                                                   image: item.image 
                                                 });
                                               }}
-                                              className="w-full gap-2"
+                                              className="w-full gap-2 relative z-10"
+                                              type="button"
                                             >
                                               <Plus className="h-4 w-4" />
                                               {t("order.addToCart")}
