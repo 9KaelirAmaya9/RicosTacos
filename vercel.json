@@ -1,4 +1,4 @@
-{
+now it back to this: {
   "rewrites": [
     {
       "source": "/(.*)",

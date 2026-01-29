@@ -18,13 +18,13 @@ export const FloatingCartButton = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3 pointer-events-none">
       {/* Expanded Cart Preview */}
       <div className={cn(
         "transition-all duration-300 origin-bottom-right",
-        isExpanded ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4 pointer-events-none"
+        isExpanded ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-95 translate-y-4 pointer-events-none"
       )}>
-        <Card className="w-80 max-h-[500px] flex flex-col shadow-elegant">
+        <Card className="w-80 max-h-[500px] flex flex-col shadow-elegant pointer-events-auto">
           <div className="p-4 border-b border-border flex items-center justify-between">
             <h3 className="font-serif text-lg font-semibold">{t("order.yourOrder")}</h3>
             <Button
@@ -101,7 +101,7 @@ export const FloatingCartButton = () => {
         onClick={() => setIsExpanded(!isExpanded)}
         size="lg"
         className={cn(
-          "rounded-full h-16 w-16 p-0 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground relative transition-all duration-200",
+          "rounded-full h-16 w-16 p-0 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground relative transition-all duration-200 pointer-events-auto",
           isExpanded && "bg-primary/80"
         )}
       >

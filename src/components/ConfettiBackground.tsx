@@ -35,16 +35,17 @@ export const ConfettiBackground = () => {
   }, []);
 
   return (
-    <div className="confetti-bg">
+    <div className="confetti-bg pointer-events-none">
       {confetti.map((piece) => (
         <div
           key={piece.id}
-          className="confetti-piece"
+          className="confetti-piece pointer-events-none"
           style={{
             left: `${piece.left}%`,
             animationDelay: `${piece.delay}s`,
             animationDuration: `${piece.duration}s`,
             backgroundColor: piece.color,
+            pointerEvents: 'none',
           }}
         />
       ))}

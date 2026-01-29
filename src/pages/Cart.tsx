@@ -748,6 +748,7 @@ const Cart = () => {
                           onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
                           placeholder="Your full name"
                           required
+                          autoComplete="name"
                           className={customerInfo.name.length > 0 && customerInfo.name.length < 2 ? "border-destructive" : ""}
                         />
                         {customerInfo.name.length > 0 && customerInfo.name.length < 2 && (
@@ -764,6 +765,8 @@ const Cart = () => {
                           onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
                           placeholder="(555) 123-4567"
                           required
+                          autoComplete="tel"
+                          inputMode="tel"
                           className={customerInfo.phone.length > 0 && customerInfo.phone.length < 10 ? "border-destructive" : ""}
                         />
                         {customerInfo.phone.length > 0 && customerInfo.phone.length < 10 && (
@@ -780,6 +783,8 @@ const Cart = () => {
                           onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
                           placeholder="your@email.com (for order confirmation)"
                           required
+                          autoComplete="email"
+                          inputMode="email"
                           className={customerInfo.email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim()) ? "border-destructive" : ""}
                         />
                         {customerInfo.email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim()) && (

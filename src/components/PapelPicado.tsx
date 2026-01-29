@@ -1,7 +1,7 @@
 export const PapelPicado = () => {
   return (
-    <div className="relative w-full h-12 my-8 overflow-hidden" aria-hidden="true">
-      <div className="absolute inset-0 flex justify-center items-start">
+    <div className="relative w-full h-12 my-8 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div className="absolute inset-0 flex justify-center items-start pointer-events-none">
         {/* Hanging banner string */}
         <div className="absolute top-0 w-full h-0.5 bg-gradient-to-r from-transparent via-muted-foreground/30 to-transparent"></div>
         

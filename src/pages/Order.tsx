@@ -126,7 +126,7 @@ const Order = () => {
         <div className="flex gap-4 px-4">
           {/* Left Filter Sidebar - Sticky & Scrollable */}
           <aside 
-            className="sticky top-20 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-4 shadow-lg hidden lg:block overflow-y-auto"
+            className="sticky top-20 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-4 shadow-lg hidden lg:block overflow-y-auto z-10"
             style={{ 
               width: 'calc(10% + 2rem)', 
               minWidth: '200px',
@@ -196,10 +196,7 @@ const Order = () => {
           </aside>
 
           {/* Center Menu Grid */}
-          <main 
-            className="flex-1 mx-auto"
-            style={{ maxWidth: 'calc(80% - 4rem)' }}
-          >
+          <main className="flex-1 mx-auto w-full lg:max-w-[calc(80%-4rem)]">
             <div className="space-y-16">
               {Object.entries(groupedItems).map(([topCategory, subcategories]) => (
                 <div key={topCategory}>
@@ -248,28 +245,36 @@ const Order = () => {
                                     rootMargin: "-50px"
                                   });
                                   
+                                  const handleCardClick = (e: React.MouseEvent) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSelectedMenuItem({
+                                      id: item.id,
+                                      name: getMenuItemName(item.id, language, item.name),
+                                      description: item.description ? getMenuItemDescription(item.id, language, item.description) : undefined,
+                                      price: item.price,
+                                      image: item.image,
+                                      bestSeller: item.bestSeller,
+                                      subcategory: item.subcategory
+                                    });
+                                    setMenuItemModalOpen(true);
+                                  };
+                                  
                                   return (
                                      <div
                                       ref={cardRef}
                                       className={cn(
-                                        "w-full max-w-xs transition-all duration-500 cursor-pointer",
+                                        "w-full max-w-xs transition-all duration-500 cursor-pointer touch-manipulation",
                                         cardVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
                                       )}
-                                      style={{ transitionDelay: `${index * 50}ms` }}
-                                      onClick={() => {
-                                        setSelectedMenuItem({
-                                          id: item.id,
-                                          name: getMenuItemName(item.id, language, item.name),
-                                          description: item.description ? getMenuItemDescription(item.id, language, item.description) : undefined,
-                                          price: item.price,
-                                          image: item.image,
-                                          bestSeller: item.bestSeller,
-                                          subcategory: item.subcategory
-                                        });
-                                        setMenuItemModalOpen(true);
+                                      style={{ transitionDelay: `${index * 50}ms`, touchAction: 'manipulation' }}
+                                      onClick={handleCardClick}
+                                      onTouchEnd={(e) => {
+                                        e.preventDefault();
+                                        handleCardClick(e as any);
                                       }}
                                     >
-                                      <Card className="overflow-hidden hover:shadow-elegant transition-all duration-300 group flex flex-col border-2 border-transparent hover:border-primary/10 bg-card h-full">
+                                      <Card className="overflow-hidden hover:shadow-elegant transition-all duration-300 group flex flex-col border-2 border-transparent hover:border-primary/10 bg-card h-full pointer-events-auto">
                                         {item.image && (
                                           <div className="relative h-40 md:h-36 overflow-hidden flex-shrink-0">
                                             <img 
