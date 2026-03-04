@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Search, Printer, RefreshCw, ArrowLeft } from "lucide-react";
+import { useOrderAlarm } from "@/hooks/useOrderAlarm";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printReceipt } from "@/utils/printReceipt";
@@ -22,6 +23,7 @@ export default function AdminOrders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
+  const { playAlarm } = useOrderAlarm();
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -60,8 +62,10 @@ export default function AdminOrders() {
           table: "orders",
         },
         (payload) => {
-          // Only refetch if it's an insert or update that affects our filters
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          if (payload.eventType === 'INSERT') {
+            playAlarm();
+            fetchOrders();
+          } else if (payload.eventType === 'UPDATE') {
             fetchOrders();
           }
         }

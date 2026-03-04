@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Clock, Package, ChefHat, Printer } from "lucide-react";
 import { printReceipt } from "@/utils/printReceipt";
 import { NotificationSettings } from "@/components/NotificationSettings";
+import { useOrderAlarm } from "@/hooks/useOrderAlarm";
 
 interface Order {
   id: string;
@@ -27,6 +28,7 @@ interface Order {
 const Kitchen = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const { playAlarm } = useOrderAlarm();
 
   const fetchOrders = useCallback(async () => {
     const { data, error } = await supabase
@@ -113,8 +115,10 @@ const Kitchen = () => {
           filter: `status=in.(pending,preparing,paid)`,
         },
         (payload) => {
-          // Only refetch on insert or update that affects our filter
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          if (payload.eventType === 'INSERT') {
+            playAlarm();
+            fetchOrders();
+          } else if (payload.eventType === 'UPDATE') {
             fetchOrders();
           }
         }
