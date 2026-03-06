@@ -14,6 +14,49 @@ interface PushNotificationRequest {
   targetRoles?: string[]; // e.g., ['admin', 'kitchen']
 }
 
+// Web Push requires proper VAPID authentication and payload encryption.
+// For this to work, you need to set these environment variables in Supabase:
+// - VAPID_PUBLIC_KEY: Your VAPID public key (same as used in frontend)
+// - VAPID_PRIVATE_KEY: Your VAPID private key
+// - VAPID_SUBJECT: mailto:your-email@example.com
+
+async function sendWebPush(
+  subscription: { endpoint: string; p256dh: string; auth: string },
+  payload: string,
+  vapidPublicKey: string,
+  vapidPrivateKey: string,
+  vapidSubject: string
+): Promise<boolean> {
+  try {
+    // Import web-push compatible encryption
+    const { default: webpush } = await import('https://esm.sh/web-push@3.6.7');
+
+    webpush.setVapidDetails(
+      vapidSubject,
+      vapidPublicKey,
+      vapidPrivateKey
+    );
+
+    const pushSubscription = {
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: subscription.p256dh,
+        auth: subscription.auth,
+      },
+    };
+
+    await webpush.sendNotification(pushSubscription, payload);
+    return true;
+  } catch (error: any) {
+    console.error('Web push error:', error);
+    // Check if subscription is expired/invalid
+    if (error.statusCode === 404 || error.statusCode === 410) {
+      throw { expired: true, error };
+    }
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -25,13 +68,30 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Get VAPID keys from environment
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@ricostacos.com';
+
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      console.warn('VAPID keys not configured - push notifications will not work');
+      console.warn('Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Supabase secrets');
+      return new Response(
+        JSON.stringify({
+          message: 'Push notifications not configured - VAPID keys missing',
+          sent: 0
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { title, body, icon, data, targetRoles }: PushNotificationRequest = await req.json();
 
     console.log('Sending push notification:', { title, targetRoles });
 
     // Get users with target roles
     let targetUserIds: string[] = [];
-    
+
     if (targetRoles && targetRoles.length > 0) {
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
@@ -73,63 +133,49 @@ serve(async (req) => {
 
     console.log(`Sending to ${subscriptions.length} subscriptions`);
 
+    const payload = JSON.stringify({
+      title,
+      body,
+      icon: icon || '/logo.png',
+      data: data || {},
+    });
+
     // Send push notifications
     const notifications = subscriptions.map(async (sub) => {
       try {
-        const pushSubscription = {
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: sub.p256dh,
-            auth: sub.auth,
-          },
-        };
-
-        // Use Web Push Protocol
-        const response = await fetch(sub.endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'TTL': '86400', // 24 hours
-          },
-          body: JSON.stringify({
-            title,
-            body,
-            icon: icon || '/logo.png',
-            data: data || {},
-          }),
-        });
-
-        if (!response.ok) {
-          console.error(`Failed to send to ${sub.endpoint}:`, response.status);
-          // If subscription is invalid, remove it
-          if (response.status === 404 || response.status === 410) {
-            await supabase
-              .from('push_subscriptions')
-              .delete()
-              .eq('id', sub.id);
-            console.log('Removed invalid subscription');
-          }
+        const success = await sendWebPush(
+          { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+          payload,
+          vapidPublicKey,
+          vapidPrivateKey,
+          vapidSubject
+        );
+        return { success, subId: sub.id };
+      } catch (error: any) {
+        if (error.expired) {
+          // Remove expired subscription
+          await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('id', sub.id);
+          console.log('Removed expired subscription:', sub.id);
         }
-
-        return response.ok;
-      } catch (error) {
-        console.error('Error sending notification:', error);
-        return false;
+        return { success: false, subId: sub.id };
       }
     });
 
     const results = await Promise.all(notifications);
-    const successCount = results.filter(r => r).length;
+    const successCount = results.filter(r => r.success).length;
 
     console.log(`Successfully sent ${successCount}/${subscriptions.length} notifications`);
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         message: 'Push notifications sent',
         sent: successCount,
         total: subscriptions.length
       }),
-      { 
+      {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
@@ -138,7 +184,7 @@ serve(async (req) => {
     console.error('Error in send-push-notification function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
+      {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }

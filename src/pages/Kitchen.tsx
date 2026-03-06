@@ -125,10 +125,22 @@ const Kitchen = () => {
       )
       .subscribe();
 
+    // Listen for service worker push notification messages
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'NEW_ORDER_ALARM') {
+        console.log('Received push notification for new order:', event.data);
+        playAlarm();
+        fetchOrders();
+      }
+    };
+
+    navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage);
+
     return () => {
       supabase.removeChannel(channel).catch(console.error);
+      navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
     };
-  }, [fetchOrders]);
+  }, [fetchOrders, playAlarm]);
 
   const getStatusColor = (status: string) => {
     return status === "pending" ? "bg-yellow-500" : "bg-blue-500";

@@ -80,6 +80,25 @@ serve(async (req) => {
           } catch (notifError) {
             console.error('Failed to send notification:', notifError);
           }
+
+          // Send push notification to kitchen/admin staff
+          try {
+            await supabase.functions.invoke('send-push-notification', {
+              body: {
+                title: '🔔 New Order!',
+                body: `Order ${order.order_number} - ${order.customer_name} (${order.order_type}) - $${order.total}`,
+                data: {
+                  type: 'new_order',
+                  orderId: order.id,
+                  orderNumber: order.order_number
+                },
+                targetRoles: ['admin', 'kitchen']
+              }
+            });
+            console.log('Push notification sent for order:', orderNumber);
+          } catch (pushError) {
+            console.error('Failed to send push notification:', pushError);
+          }
         }
       }
     }
@@ -128,6 +147,25 @@ serve(async (req) => {
           console.log('Notification sent for order:', orderNumber);
         } catch (notifError) {
           console.error('Failed to send notification:', notifError);
+        }
+
+        // Send push notification to kitchen/admin staff
+        try {
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              title: '🔔 New Order!',
+              body: `Order ${order.order_number} - ${order.customer_name} (${order.order_type}) - $${order.total}`,
+              data: {
+                type: 'new_order',
+                orderId: order.id,
+                orderNumber: order.order_number
+              },
+              targetRoles: ['admin', 'kitchen']
+            }
+          });
+          console.log('Push notification sent for order:', orderNumber);
+        } catch (pushError) {
+          console.error('Failed to send push notification:', pushError);
         }
       }
 
