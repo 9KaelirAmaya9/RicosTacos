@@ -28,6 +28,7 @@ interface Order {
 const Kitchen = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const { startAlarm, stopAlarm } = useOrderAlarm();
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const alarmMinimumUntilRef = useRef<number>(0);
@@ -164,6 +165,40 @@ const Kitchen = () => {
     }
   };
 
+  // Initialize audio on first user interaction
+  useEffect(() => {
+    const initAudio = async () => {
+      if (!audioEnabled) {
+        try {
+          // Try to resume AudioContext on any user interaction
+          const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+          const ctx = new AudioCtx();
+          if (ctx.state === 'suspended') {
+            await ctx.resume();
+          }
+          await ctx.close();
+          setAudioEnabled(true);
+          console.log('✅ Audio initialized successfully');
+        } catch (error) {
+          console.warn('⚠️ Audio initialization failed:', error);
+        }
+      }
+    };
+
+    // Try to initialize audio on any click/touch
+    const handleInteraction = () => {
+      void initAudio();
+    };
+
+    document.addEventListener('click', handleInteraction, { once: true });
+    document.addEventListener('touchstart', handleInteraction, { once: true });
+
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+    };
+  }, [audioEnabled]);
+
   useEffect(() => {
     fetchOrders();
 
@@ -240,6 +275,20 @@ const Kitchen = () => {
         </div>
 
         <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
+          {!audioEnabled && (
+            <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+              <CardContent className="p-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="text-4xl">🔊</div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Audio Alerts Disabled</h3>
+                    <p className="text-sm text-muted-foreground">Click anywhere on the page to enable order notification sounds</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
           <NotificationSettings />
 
           {orders.length === 0 ? (
