@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Ensure commit message follows conventional commit format
+# Examples: feat: add feature, fix: bug fix, docs: update readme
+npx --no -- commitlint --edit ${1}

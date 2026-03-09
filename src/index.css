@@ -1,0 +1,402 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Vibrant Mexican serape color palette */
+    --background: 0 0% 100%;
+    --foreground: 20 14% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 20%;
+
+    /* Bold red primary from menu border */
+    --primary: 358 78% 51%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Warm yellow secondary */
+    --secondary: 43 98% 54%;
+    --secondary-foreground: 20 14% 20%;
+
+    /* Soft muted tones */
+    --muted: 43 20% 94%;
+    --muted-foreground: 20 8% 45%;
+
+    /* Orange accent from border */
+    --accent: 24 91% 57%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 358 78% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 43 20% 88%;
+    --input: 43 20% 88%;
+    --ring: 358 78% 51%;
+
+    --radius: 0.75rem;
+
+    /* Full serape color palette from menu border */
+    --serape-red: 358 78% 51%;
+    --serape-red-light: 358 78% 65%;
+    --serape-red-dark: 358 78% 40%;
+    
+    --serape-orange: 24 91% 57%;
+    --serape-orange-light: 24 91% 70%;
+    --serape-orange-dark: 24 91% 45%;
+    
+    --serape-yellow: 43 98% 54%;
+    --serape-yellow-light: 43 98% 70%;
+    --serape-yellow-dark: 43 98% 45%;
+    
+    --serape-green: 111 45% 51%;
+    --serape-green-light: 111 45% 65%;
+    --serape-green-dark: 111 45% 40%;
+    
+    --serape-blue: 203 100% 37%;
+    --serape-blue-light: 203 100% 50%;
+    --serape-blue-dark: 203 100% 28%;
+    
+    --serape-purple: 302 56% 37%;
+    --serape-purple-light: 302 56% 50%;
+    --serape-purple-dark: 302 56% 28%;
+    
+    --serape-pink: 330 75% 55%;
+    --serape-pink-light: 330 75% 70%;
+    --serape-pink-dark: 330 75% 45%;
+    
+    --serape-cyan: 188 100% 42%;
+    --serape-cyan-light: 188 100% 55%;
+    --serape-cyan-dark: 188 100% 32%;
+    
+    /* Gradient using all serape colors */
+    --gradient-serape: linear-gradient(90deg, 
+      hsl(358 78% 51%), 
+      hsl(24 91% 57%), 
+      hsl(43 98% 54%), 
+      hsl(111 45% 51%), 
+      hsl(203 100% 37%), 
+      hsl(302 56% 37%), 
+      hsl(330 75% 55%)
+    );
+    
+    /* Shadow with glow effect */
+    --shadow-glow: 0 0 20px hsl(var(--serape-yellow) / 0.3), 0 0 40px hsl(var(--serape-orange) / 0.2);
+    
+  /* Typography */
+  --font-serif: 'Bebas Neue', sans-serif;
+  --font-sans: 'Inter', sans-serif;
+
+    /* Professional shadows with depth */
+    --shadow-elegant: 0 20px 50px -12px hsl(0 0% 0% / 0.12);
+    --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.06);
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.04);
+    
+    /* Smooth transitions */
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Serape gradient for accents */
+  --gradient-serape-full: linear-gradient(
+    90deg,
+    #00BCD4 0%,
+    #E31E24 10%,
+    #FF1493 20%,
+    #92278F 30%,
+    #0071BC 40%,
+    #57B947 50%,
+    #FDB913 60%,
+    #F68D2E 70%,
+    #E31E24 80%,
+    #00BCD4 90%,
+    #FF1493 100%
+  );
+    
+    /* Subtle textures and patterns */
+    --texture-paper: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E");
+    
+    --pattern-tile: url("data:image/svg+xml,%3Csvg width='80' height='80' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='tile' x='0' y='0' width='80' height='80' patternUnits='userSpaceOnUse'%3E%3Cpath d='M40 0 L50 20 L70 20 L55 32 L60 52 L40 40 L20 52 L25 32 L10 20 L30 20 Z' fill='none' stroke='%23F68D2E' stroke-width='0.5' opacity='0.08'/%3E%3Ccircle cx='40' cy='40' r='4' fill='%23E31E24' opacity='0.06'/%3E%3Crect x='0' y='0' width='2' height='2' fill='%2357B947' opacity='0.04'/%3E%3Crect x='78' y='0' width='2' height='2' fill='%2357B947' opacity='0.04'/%3E%3Crect x='0' y='78' width='2' height='2' fill='%2357B947' opacity='0.04'/%3E%3Crect x='78' y='78' width='2' height='2' fill='%2357B947' opacity='0.04'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='80' height='80' fill='url(%23tile)'/%3E%3C/svg%3E");
+
+    --sidebar-background: 42 52% 98%;
+    --sidebar-foreground: 20 14% 20%;
+    --sidebar-primary: 0 84% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 42 30% 94%;
+    --sidebar-accent-foreground: 20 14% 20%;
+    --sidebar-border: 42 20% 88%;
+    --sidebar-ring: 0 84% 50%;
+  }
+
+  .dark {
+    --background: 20 18% 10%;
+    --foreground: 0 0% 96%;
+
+    --card: 20 15% 13%;
+    --card-foreground: 0 0% 96%;
+
+    --popover: 20 15% 13%;
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 358 78% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 43 90% 45%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 20 12% 18%;
+    --muted-foreground: 0 0% 65%;
+
+    --accent: 24 85% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 358 78% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 20 12% 20%;
+    --input: 20 12% 20%;
+    --ring: 0 84% 55%;
+
+    --sidebar-background: 20 15% 8%;
+    --sidebar-foreground: 42 52% 92%;
+    --sidebar-primary: 0 84% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 20 12% 15%;
+    --sidebar-accent-foreground: 42 52% 92%;
+    --sidebar-border: 20 12% 15%;
+    --sidebar-ring: 0 84% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    background-color: #fafaf8;
+    background-image: 
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.02) 2px, rgba(0,0,0,.02) 4px),
+      repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,.02) 2px, rgba(0,0,0,.02) 4px);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Color flash animation for serape stripes */
+  @keyframes color-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+      filter: brightness(1.2);
+    }
+  }
+
+  .animate-color-pulse {
+    animation: color-pulse 3s ease-in-out infinite;
+  }
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes float-ingredient {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(var(--serape-red) / 0.3),
+                0 0 40px hsl(var(--serape-yellow) / 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 30px hsl(var(--serape-red) / 0.5),
+                0 0 60px hsl(var(--serape-yellow) / 0.3),
+                0 0 80px hsl(var(--serape-pink) / 0.2);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes serape-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes stripe-shimmer {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes float-shape {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(30px, -30px) rotate(120deg);
+  }
+  66% {
+    transform: translate(-20px, 20px) rotate(240deg);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+  .confetti-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+  }
+
+  .confetti-piece {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    animation: confetti-fall linear infinite;
+    opacity: 0.7;
+  }
+
+  .festive-pattern {
+    background-image: 
+      linear-gradient(45deg, hsl(var(--serape-cyan) / 0.03) 25%, transparent 25%),
+      linear-gradient(-45deg, hsl(var(--serape-pink) / 0.03) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, hsl(var(--serape-yellow) / 0.03) 75%),
+      linear-gradient(-45deg, transparent 75%, hsl(var(--serape-orange) / 0.03) 75%);
+    background-size: 60px 60px;
+    background-position: 0 0, 0 30px, 30px -30px, -30px 0px;
+  }
+
+  .scroll-animate {
+    opacity: 0;
+    animation: fade-in-up 0.8s ease-out forwards;
+  }
+
+  .serape-glow {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+
+  .serape-glow:hover {
+    box-shadow: 0 0 30px hsl(var(--serape-red) / 0.4),
+                0 0 50px hsl(var(--serape-yellow) / 0.3),
+                0 0 70px hsl(var(--serape-pink) / 0.2);
+  }
+
+  .serape-border-flow {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--serape-red)),
+      hsl(var(--serape-pink)),
+      hsl(var(--serape-purple)),
+      hsl(var(--serape-blue)),
+      hsl(var(--serape-green)),
+      hsl(var(--serape-yellow)),
+      hsl(var(--serape-orange)),
+      hsl(var(--serape-red))
+    );
+    background-size: 200% 200%;
+    animation: serape-flow 8s ease infinite;
+  }
+
+  .pulse-glow-btn {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+  
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+  
+  .pattern-tile {
+    position: relative;
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(231, 30, 36, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 50%, rgba(246, 141, 46, 0.03) 0%, transparent 50%),
+      repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(87, 185, 71, 0.02) 40px, rgba(87, 185, 71, 0.02) 80px),
+      repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(251, 185, 19, 0.02) 40px, rgba(251, 185, 19, 0.02) 80px);
+    background-size: 200% 200%, 200% 200%, 80px 80px, 80px 80px;
+  }
+  
+  .texture-warm {
+    position: relative;
+  }
+  
+  .texture-warm::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: 
+      radial-gradient(circle at 10% 20%, rgba(231, 30, 36, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 90% 80%, rgba(246, 141, 46, 0.04) 0%, transparent 50%),
+      url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='30' fill='none' stroke='%23E31E24' stroke-width='1' opacity='0.05'/%3E%3Cpath d='M50 20 L60 45 L85 45 L65 60 L75 85 L50 70 L25 85 L35 60 L15 45 L40 45 Z' fill='%23F68D2E' opacity='0.03'/%3E%3C/svg%3E");
+    background-size: 100% 100%, 100% 100%, 100px 100px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .texture-warm > * {
+    position: relative;
+    z-index: 1;
+  }
+}

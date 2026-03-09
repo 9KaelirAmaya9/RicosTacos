@@ -1,0 +1,41 @@
+project_id = "zburfinoxmfasqvxtnln"
+
+[functions.send-order-notification]
+verify_jwt = true
+# Requires auth for external calls, allows internal calls from webhook
+
+[functions.create-checkout-session]
+verify_jwt = false
+# Guest checkout allowed - validation in code prevents abuse
+
+[functions.stripe-webhook]
+verify_jwt = false
+# Webhook must remain false - called by Stripe with signature verification
+
+[functions.create-payment-intent]
+verify_jwt = false
+# Guest checkout allowed - validation in code prevents abuse
+
+[functions.create-embedded-checkout]
+verify_jwt = false
+# Guest checkout allowed - validation in code prevents abuse
+
+[functions.validate-delivery-address]
+verify_jwt = false
+# Public function - no auth required for address validation
+
+[functions.validate-coupon]
+verify_jwt = false
+# Public function - no auth required for coupon validation
+
+[functions.geocode-autocomplete]
+verify_jwt = false
+# Public function - no auth required for address autocomplete
+
+[functions.get-mapbox-token]
+verify_jwt = false
+# Public function - returns public Mapbox token for frontend use
+
+[functions.send-push-notification]
+verify_jwt = false
+# Local/dev behavior: allow guest checkout flow to trigger kitchen/admin push alerts
