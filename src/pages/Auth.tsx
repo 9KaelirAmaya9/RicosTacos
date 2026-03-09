@@ -53,40 +53,17 @@ const Auth = () => {
 
       if (error) throw error;
 
-      // Check if we got a session immediately
+      // Supabase returns session immediately on successful sign-in
       if (data?.session) {
         toast.success("Signed in successfully!");
+        // Small delay to ensure session is fully propagated
+        await new Promise(resolve => setTimeout(resolve, 100));
         navigate(redirectTo, { replace: true });
-        return;
-      }
-
-      // If no immediate session, wait briefly with timeout
-      const sessionCheckPromise = (async () => {
-        for (let attempt = 0; attempt < 6; attempt++) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData?.session?.user) {
-            return true;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 250));
-        }
-        return false;
-      })();
-
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Sign in timeout")), 3000)
-      );
-
-      await Promise.race([sessionCheckPromise, timeoutPromise]);
-      
-      toast.success("Signed in successfully!");
-      navigate(redirectTo, { replace: true });
-    } catch (error: any) {
-      if (error.message === "Sign in timeout") {
-        toast.error("Sign in is taking longer than expected. Please try again.");
       } else {
-        toast.error(error.message || "Failed to sign in");
+        throw new Error("No session returned after sign in");
       }
-    } finally {
+    } catch (error: any) {
+      toast.error(error.message || "Failed to sign in");
       setIsLoading(false);
     }
   };
