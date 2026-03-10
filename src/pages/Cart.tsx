@@ -38,6 +38,7 @@ const Cart = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [currentOrderNumber, setCurrentOrderNumber] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_amount: number; description?: string } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
@@ -47,6 +48,7 @@ const Cart = () => {
     // Check auth status
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
+      setCurrentUserId(session?.user?.id ?? null);
       if (session?.user?.email) {
         setCustomerInfo(prev => ({ ...prev, email: session.user.email }));
       }
@@ -54,6 +56,7 @@ const Cart = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
+      setCurrentUserId(session?.user?.id ?? null);
       if (session?.user?.email) {
         setCustomerInfo(prev => ({ ...prev, email: session.user.email }));
       }
@@ -243,32 +246,20 @@ const Cart = () => {
       });
       console.log(`⏱️  Step 1 Duration: ${Date.now() - step1Start}ms`);
 
-      // Get current user if authenticated
+      // Use auth state already resolved at component mount — no network call needed.
       console.log("\n┌─────────────────────────────────────────────────────────────┐");
       console.log("│ STEP 2: GETTING SESSION                                     │");
       console.log("└─────────────────────────────────────────────────────────────┘");
       const sessionStartTime = Date.now();
-      let session: any = null;
-      try {
-        // Await directly - do NOT use Promise.race here.
-        // A race with a timeout does NOT cancel the in-flight getSession() request;
-        // it keeps running in the background and conflicts with the subsequent
-        // database insert, causing it to hang for up to 30 seconds.
-        const sessionResult = await supabase.auth.getSession();
-        if (sessionResult?.error) {
-          console.warn("⚠️  Session error (non-critical):", sessionResult.error);
-        }
-        session = sessionResult?.data?.session ?? null;
-        console.log("🔐 Session Retrieved:", {
-          isAuthenticated: !!session,
-          userId: session?.user?.id || 'guest',
-          userEmail: session?.user?.email || 'none',
-        });
-      } catch (e) {
-        console.warn("⚠️  Session retrieval failed (non-critical):", e);
-      } finally {
-        console.log(`⏱️  Step 2 Duration: ${Date.now() - sessionStartTime}ms`);
-      }
+      // currentUserId is set by onAuthStateChange at mount — read it from state.
+      // Calling getSession() here would make a network request and can hang for
+      // 30+ seconds when Supabase is refreshing an expired token.
+      const userId = currentUserId;
+      console.log("🔐 Session from state:", {
+        isAuthenticated,
+        userId: userId || 'guest',
+      });
+      console.log(`⏱️  Step 2 Duration: ${Date.now() - sessionStartTime}ms`);
       
       // Generate order number on client to avoid needing SELECT permissions
       const orderNumber = `ORD-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -278,8 +269,8 @@ const Cart = () => {
       console.log("└─────────────────────────────────────────────────────────────┘");
       console.log("📝 Order Configuration:", {
         orderNumber: orderNumber,
-        userType: session?.user?.id ? "authenticated" : "guest",
-        userId: session?.user?.id || null,
+        userType: userId ? "authenticated" : "guest",
+        userId: userId || null,
         customerName: validation.data.name,
         customerEmail: validation.data.email,
         customerPhone: validation.data.phone,
@@ -306,7 +297,7 @@ const Cart = () => {
       // Prepare order data
       const orderDataToInsert = {
         order_number: orderNumber,
-        user_id: session?.user?.id || null,
+        user_id: userId || null,
         customer_name: validation.data.name,
         customer_email: validation.data.email || null,
         customer_phone: validation.data.phone,
