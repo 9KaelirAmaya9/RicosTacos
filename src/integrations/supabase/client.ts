@@ -69,7 +69,7 @@ export const supabase = createClient<Database>(
       detectSessionInUrl: false, // Prevent auth hanging on URL checks
     },
     global: {
-      fetch: fetchWithTimeout(8000), // 8 second timeout for all requests
+      fetch: fetchWithTimeout(60000), // 60s — must exceed the 30s order + 15s payment timeouts in Cart.tsx
       headers: {
         'X-Client-Info': 'ricos-tacos-web'
       }
