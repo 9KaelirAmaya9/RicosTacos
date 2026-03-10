@@ -244,28 +244,35 @@ const Cart = () => {
       console.log(`⏱️  Step 1 Duration: ${Date.now() - step1Start}ms`);
 
       // Get current user if authenticated
+      // We use the isAuthenticated state that was already set by the useEffect on mount.
+      // We do NOT call getSession() here because:
+      // 1. When a user has an active session, getSession() makes a network call to refresh
+      //    the token, which can hang indefinitely under the fetchWithTimeout wrapper.
+      // 2. The isAuthenticated state is already up-to-date from onAuthStateChange.
+      // 3. For the user_id on the order, we use supabase.auth.getUser() which is faster
+      //    and reads from the local JWT without a network call.
       console.log("\n┌─────────────────────────────────────────────────────────────┐");
-      console.log("│ STEP 2: GETTING SESSION                                     │");
+      console.log("│ STEP 2: GETTING USER (FROM LOCAL STATE)                     │");
       console.log("└─────────────────────────────────────────────────────────────┘");
       const sessionStartTime = Date.now();
       let session: any = null;
       try {
-        // Await directly - do NOT use Promise.race here.
-        // A race with a timeout does NOT cancel the in-flight getSession() request;
-        // it keeps running in the background and conflicts with the subsequent
-        // database insert, causing it to hang for up to 30 seconds.
-        const sessionResult = await supabase.auth.getSession();
-        if (sessionResult?.error) {
-          console.warn("⚠️  Session error (non-critical):", sessionResult.error);
+        // Use getUser() which reads from the local JWT - no network call needed
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.warn("⚠️  getUser error (non-critical):", error.message);
         }
-        session = sessionResult?.data?.session ?? null;
-        console.log("🔐 Session Retrieved:", {
-          isAuthenticated: !!session,
-          userId: session?.user?.id || 'guest',
-          userEmail: session?.user?.email || 'none',
+        if (user) {
+          // Construct a minimal session-like object with just what we need
+          session = { user };
+        }
+        console.log("🔐 User Retrieved:", {
+          isAuthenticated: !!user,
+          userId: user?.id || 'guest',
+          userEmail: user?.email || 'none',
         });
       } catch (e) {
-        console.warn("⚠️  Session retrieval failed (non-critical):", e);
+        console.warn("⚠️  User retrieval failed (non-critical):", e);
       } finally {
         console.log(`⏱️  Step 2 Duration: ${Date.now() - sessionStartTime}ms`);
       }
