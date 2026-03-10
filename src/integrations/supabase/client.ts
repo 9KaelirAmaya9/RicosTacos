@@ -29,6 +29,7 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // import { supabase } from "@/integrations/supabase/client";
 
 // Create a custom fetch with timeout to prevent hanging requests
+// IMPORTANT: This wrapper should NOT mask real errors - only handle true timeouts
 const fetchWithTimeout = (timeout = 8000) => {
   return async (url: RequestInfo, init?: RequestInit) => {
     const controller = new AbortController();
@@ -43,10 +44,15 @@ const fetchWithTimeout = (timeout = 8000) => {
       return response;
     } catch (error) {
       clearTimeout(id);
+      // Only handle AbortError (true timeout), preserve all other errors
       if (error instanceof Error && error.name === 'AbortError') {
         console.error('Request timed out after', timeout, 'ms:', url);
-        throw new Error(`Request timeout - please check your connection and try again`);
+        // Create a timeout error but preserve the original error type
+        const timeoutError = new Error(`Request timeout after ${timeout}ms - please check your connection and try again`);
+        timeoutError.name = 'TimeoutError';
+        throw timeoutError;
       }
+      // Preserve all other errors (database errors, network errors, etc.)
       throw error;
     }
   };
