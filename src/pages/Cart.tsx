@@ -245,15 +245,16 @@ const Cart = () => {
 
       // Get current user if authenticated
       console.log("\n┌─────────────────────────────────────────────────────────────┐");
-      console.log("│ STEP 2: GETTING SESSION (NON-BLOCKING)                     │");
+      console.log("│ STEP 2: GETTING SESSION                                     │");
       console.log("└─────────────────────────────────────────────────────────────┘");
       const sessionStartTime = Date.now();
       let session: any = null;
       try {
-        const sessionResult = await Promise.race([
-          supabase.auth.getSession(),
-          new Promise((resolve) => setTimeout(() => resolve({ data: { session: null }, error: null }), 2000)),
-        ]) as any;
+        // Await directly - do NOT use Promise.race here.
+        // A race with a timeout does NOT cancel the in-flight getSession() request;
+        // it keeps running in the background and conflicts with the subsequent
+        // database insert, causing it to hang for up to 30 seconds.
+        const sessionResult = await supabase.auth.getSession();
         if (sessionResult?.error) {
           console.warn("⚠️  Session error (non-critical):", sessionResult.error);
         }
