@@ -369,8 +369,8 @@ const Cart = () => {
         setTimeout(() => {
           const elapsed = Date.now() - orderStartTime;
           clearInterval(orderHeartbeat);
-          reject(new Error(`Order creation timed out after 5 seconds (elapsed: ${elapsed}ms). Please check your connection and try again.`));
-        }, 5000) // 5 seconds - fail fast to surface real errors
+          reject(new Error(`Order creation timed out after 30 seconds (elapsed: ${elapsed}ms). Please check your connection and try again.`));
+        }, 30000) // 30 seconds - allow enough time for cold starts and slow connections
       );
 
       const result = await Promise.race([
