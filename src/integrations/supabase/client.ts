@@ -28,31 +28,30 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// Create a custom fetch with timeout to prevent hanging requests
-// IMPORTANT: This wrapper should NOT mask real errors - only handle true timeouts
-const fetchWithTimeout = (timeout = 8000) => {
+// Create a custom fetch with timeout to prevent hanging requests.
+// Auth endpoints (/auth/v1/) get a short timeout — they should be fast.
+// DB and edge function endpoints get a long timeout to survive cold starts.
+const fetchWithTimeout = () => {
   return async (url: RequestInfo, init?: RequestInit) => {
+    const urlStr = url.toString();
+    const isAuthCall = urlStr.includes('/auth/v1/');
+    const timeout = isAuthCall ? 8000 : 60000;
+
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
-    
+
     try {
-      const response = await fetch(url, {
-        ...init,
-        signal: controller.signal,
-      });
+      const response = await fetch(url, { ...init, signal: controller.signal });
       clearTimeout(id);
       return response;
     } catch (error) {
       clearTimeout(id);
-      // Only handle AbortError (true timeout), preserve all other errors
       if (error instanceof Error && error.name === 'AbortError') {
-        console.error('Request timed out after', timeout, 'ms:', url);
-        // Create a timeout error but preserve the original error type
+        console.error(`Request timed out after ${timeout}ms:`, urlStr);
         const timeoutError = new Error(`Request timeout after ${timeout}ms - please check your connection and try again`);
         timeoutError.name = 'TimeoutError';
         throw timeoutError;
       }
-      // Preserve all other errors (database errors, network errors, etc.)
       throw error;
     }
   };
@@ -69,7 +68,7 @@ export const supabase = createClient<Database>(
       detectSessionInUrl: false, // Prevent auth hanging on URL checks
     },
     global: {
-      fetch: fetchWithTimeout(8000), // 8 second timeout for all requests
+      fetch: fetchWithTimeout(), // auth: 8s, DB/functions: 60s (see fetchWithTimeout above)
       headers: {
         'X-Client-Info': 'ricos-tacos-web'
       }
