@@ -16,49 +16,77 @@ const Dashboard = () => {
 
   useEffect(() => {
     let isMounted = true;
+    
+    // Force stop loading after 5 seconds max
     const hardStop = setTimeout(() => {
-      if (isMounted) setLoading(false);
-    }, 8000);
+      if (isMounted) {
+        console.warn("Dashboard: Force stopping loading after 5s");
+        setLoading(false);
+      }
+    }, 5000);
 
     const fetchRoles = async (userId: string) => {
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
+      try {
+        // Add timeout to role fetch
+        const rolesPromise = supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId);
 
-      if (!isMounted) return;
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Role fetch timeout")), 3000)
+        );
 
-      if (rolesError) {
-        if (import.meta.env.DEV) {
+        const { data: roles, error: rolesError } = await Promise.race([
+          rolesPromise,
+          timeoutPromise
+        ]) as any;
+
+        if (!isMounted) return;
+
+        if (rolesError) {
           console.error("Dashboard: Error fetching roles", rolesError);
+          setUserRoles([]);
+          return;
         }
-        setUserRoles([]);
-        return;
-      }
 
-      // Local/dev convenience: bootstrap first admin if user has no roles yet
-      if ((!roles || roles.length === 0) && import.meta.env.DEV) {
-        const { data: granted, error: bootstrapError } = await supabase.rpc("bootstrap_admin");
+        // Local/dev convenience: bootstrap first admin if user has no roles yet
+        if ((!roles || roles.length === 0) && import.meta.env.DEV) {
+          const { data: granted, error: bootstrapError } = await supabase.rpc("bootstrap_admin");
 
-        if (!bootstrapError && granted === true) {
-          const { data: refreshedRoles, error: refreshError } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", userId);
+          if (!bootstrapError && granted === true) {
+            const { data: refreshedRoles, error: refreshError } = await supabase
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", userId);
 
-          if (!refreshError) {
-            setUserRoles((refreshedRoles || []).map((r) => r.role));
-            return;
+            if (!refreshError) {
+              setUserRoles((refreshedRoles || []).map((r) => r.role));
+              return;
+            }
           }
         }
-      }
 
-      setUserRoles((roles || []).map((r) => r.role));
+        setUserRoles((roles || []).map((r) => r.role));
+      } catch (error: any) {
+        console.error("Dashboard: Role fetch failed", error.message);
+        setUserRoles([]);
+      }
     };
 
     const initialize = async () => {
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        // Add timeout to session fetch
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Session fetch timeout")), 3000)
+        );
+
+        const { data: { session: currentSession } } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any;
+
         if (!isMounted) return;
 
         setSession(currentSession ?? null);
@@ -69,10 +97,12 @@ const Dashboard = () => {
         } else {
           setUserRoles([]);
         }
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error("Dashboard initialization failed:", error);
-        }
+      } catch (error: any) {
+        console.error("Dashboard initialization failed:", error.message);
+        // On timeout/error, assume no session
+        setSession(null);
+        setUser(null);
+        setUserRoles([]);
       } finally {
         if (isMounted) setLoading(false);
       }
