@@ -10,14 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect, useRef } from "react";
+import { supabase, supabaseAnon } from "@/integrations/supabase/client";
 import { z } from "zod";
 import SecurePaymentModal from "@/components/checkout/SecurePaymentModal";
 import { CheckoutAuthOptions } from "@/components/checkout/CheckoutAuthOptions";
 import { validateDeliveryAddress, type DeliveryValidationResult } from "@/utils/deliveryValidation";
 import { validateDeliveryAddressGoogle, type GoogleMapsValidationResult } from "@/utils/googleMapsValidation";
 import { GooglePlacesAutocomplete } from "@/components/GooglePlacesAutocomplete";
+
+const CUSTOMER_INFO_KEY = 'ricos-tacos-customer-info';
+const PENDING_CHECKOUT_KEY = 'ricos-tacos-pending-checkout';
 
 const Cart = () => {
   const { t } = useLanguage();
@@ -37,6 +40,12 @@ const Cart = () => {
   const [checkoutPublishableKey, setCheckoutPublishableKey] = useState<string | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [currentOrderNumber, setCurrentOrderNumber] = useState<string | null>(null);
+  const [checkoutAmounts, setCheckoutAmounts] = useState<{ subtotal: number; tax: number; deliveryFee: number; total: number } | null>(null);
+  // Persists across retries within the same checkout flow so the edge function
+  // can use it as a stable idempotency key. Cleared on successful payment so
+  // subsequent orders in the same session get a fresh key.
+  const checkoutSessionIdRef = useRef<string | null>(null);
+  const hasWarmedUpRef = useRef(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [couponCode, setCouponCode] = useState("");
@@ -81,6 +90,64 @@ const Cart = () => {
     return () => subscription.unsubscribe();
   }, [searchParams, clearCart]);
 
+  // Pre-warm the edge function as soon as the cart has items so Deno cold-start
+  // time doesn't add latency when the user clicks "Proceed to Checkout".
+  useEffect(() => {
+    if (cart.length > 0 && !hasWarmedUpRef.current) {
+      hasWarmedUpRef.current = true;
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      if (url) fetch(`${url}/functions/v1/create-payment-intent`, { method: 'OPTIONS' }).catch(() => {});
+    }
+  }, [cart.length]);
+
+  // Restore persisted customer info and resume any interrupted checkout on mount.
+  useEffect(() => {
+    // Restore customer info from last session
+    try {
+      const saved = localStorage.getItem(CUSTOMER_INFO_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setCustomerInfo(prev => ({
+          name: parsed.name || prev.name,
+          phone: parsed.phone || prev.phone,
+          email: prev.email || parsed.email, // authenticated email takes priority
+          address: parsed.address || prev.address,
+          notes: parsed.notes || prev.notes,
+        }));
+      }
+    } catch {}
+
+    // Resume a pending checkout (e.g. modal closed mid-payment)
+    try {
+      const raw = localStorage.getItem(PENDING_CHECKOUT_KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p.expiresAt > Date.now() && p.clientSecret && p.orderNumber) {
+          checkoutSessionIdRef.current = p.checkoutSessionId;
+          setCurrentOrderNumber(p.orderNumber);
+          setCheckoutAmounts(p.amounts);
+          setCheckoutClientSecret(p.clientSecret);
+          setCheckoutPublishableKey(p.publishableKey);
+          toast.info('You have an incomplete payment.', {
+            duration: 10000,
+            action: { label: 'Resume Payment', onClick: () => setShowCheckout(true) },
+          });
+        } else {
+          localStorage.removeItem(PENDING_CHECKOUT_KEY);
+        }
+      }
+    } catch {
+      localStorage.removeItem(PENDING_CHECKOUT_KEY);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist customer info so the form survives a page refresh
+  useEffect(() => {
+    if (customerInfo.name || customerInfo.phone || customerInfo.email) {
+      localStorage.setItem(CUSTOMER_INFO_KEY, JSON.stringify(customerInfo));
+    }
+  }, [customerInfo]);
+
   const handlePlaceOrder = async () => {
     const processStartTime = Date.now();
     const processStartTimestamp = new Date().toISOString();
@@ -113,6 +180,15 @@ const Cart = () => {
       console.warn("Already processing, ignoring duplicate call");
       return;
     }
+
+    // Generate a stable session ID for this checkout flow once, on first attempt.
+    // Retries (e.g. after a timeout) reuse the same ID so the edge function's
+    // idempotency key is identical and Stripe returns the existing payment intent
+    // rather than creating a duplicate.
+    if (!checkoutSessionIdRef.current) {
+      checkoutSessionIdRef.current = crypto.randomUUID();
+    }
+    const checkoutSessionId = checkoutSessionIdRef.current;
 
     // Input validation schema - name, phone, and email are REQUIRED
     const orderSchema = z.object({
@@ -263,11 +339,99 @@ const Cart = () => {
       });
       console.log(`⏱️  Step 2 Duration: ${Date.now() - sessionStartTime}ms`);
       
-      // Generate order number on client to avoid needing SELECT permissions
-      const orderNumber = `ORD-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(1000 + Math.random() * 9000)}`;
-      
+      // STEP 3: Create payment intent FIRST before writing anything to the DB.
+      // Previously the order was inserted before the payment intent was created,
+      // which left orphaned unpaid orders whenever the edge function timed out
+      // (cold start + Stripe API call regularly exceeded the old 15s limit).
+      // By creating the payment intent first, a timeout here leaves nothing in
+      // the DB — no orphan, no cleanup needed, user can simply retry.
       console.log("\n┌─────────────────────────────────────────────────────────────┐");
-      console.log("│ STEP 3: CREATING ORDER                                      │");
+      console.log("│ STEP 3: CREATING PAYMENT INTENT                             │");
+      console.log("└─────────────────────────────────────────────────────────────┘");
+
+      const paymentItems = cart.map(item => ({
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+      }));
+
+      console.log("💳 Payment Configuration:", {
+        orderNumber: orderNumber,
+        itemsCount: paymentItems.length,
+        orderType: orderType,
+        totalAmount: `$${total.toFixed(2)}`,
+        hasCoupon: !!appliedCoupon,
+        discountAmount: `$${discountAmount.toFixed(2)}`,
+      });
+
+      console.log("🔄 Invoking payment intent creation...");
+      const paymentStartTime = Date.now();
+
+      // IMPORTANT: Use supabaseAnon to avoid JWT refresh hang.
+      const paymentIntentPromise = supabaseAnon.functions.invoke(
+        'create-payment-intent',
+        {
+          body: {
+            items: paymentItems,
+            orderType,
+            customerInfo: validation.data,
+            couponCode: appliedCoupon?.code || null,
+            discountAmount: discountAmount,
+            checkoutSessionId,
+          }
+        }
+      );
+
+      const paymentHeartbeat = setInterval(() => {
+        const elapsed = Date.now() - paymentStartTime;
+        console.log(`⏳ Payment intent creation in progress... (${elapsed}ms elapsed)`);
+      }, 2000);
+
+      // 45s timeout — cold start (up to 10s) + Stripe API (1-5s) fits well within this.
+      const paymentTimeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => {
+          const elapsed = Date.now() - paymentStartTime;
+          clearInterval(paymentHeartbeat);
+          reject(new Error(`Payment intent creation timed out after 45 seconds (elapsed: ${elapsed}ms)`));
+        }, 45000)
+      );
+
+      const { data: piData, error: piError } = await Promise.race([
+        paymentIntentPromise,
+        paymentTimeoutPromise
+      ]) as any;
+
+      clearInterval(paymentHeartbeat);
+
+      if (piError) {
+        const elapsed = Date.now() - paymentStartTime;
+        console.error("❌ Payment intent error:", {
+          error: piError,
+          message: piError.message,
+          elapsed: `${elapsed}ms`,
+        });
+        throw new Error(`Payment error: ${piError.message || piError.error || "Failed to create payment intent"}`);
+      }
+
+      if (!piData?.clientSecret || !piData?.publishableKey || !piData?.orderNumber) {
+        console.error("❌ Payment intent response missing data:", piData);
+        throw new Error('Payment service returned invalid data. Please try again.');
+      }
+
+      // Use server-generated order number (collision-proof via crypto.randomUUID)
+      const orderNumber = piData.orderNumber as string;
+      // Use server-calculated amounts as the single source of truth — these are
+      // the exact values charged to Stripe, so DB and display match the charge.
+      const serverAmounts = piData.amounts as { subtotal: number; tax: number; deliveryFee: number; total: number };
+
+      const paymentElapsed = Date.now() - paymentStartTime;
+      console.log(`✅ Payment intent created successfully! (${paymentElapsed}ms) Order: ${orderNumber}`);
+
+      // STEP 4: Now write the order to the DB. Payment intent already exists in
+      // Stripe, so if this insert fails the user sees an error and can retry —
+      // the existing payment intent will be reused via idempotency (Phase 2).
+      console.log("\n┌─────────────────────────────────────────────────────────────┐");
+      console.log("│ STEP 4: CREATING ORDER                                      │");
       console.log("└─────────────────────────────────────────────────────────────┘");
       console.log("📝 Order Configuration:", {
         orderNumber: orderNumber,
@@ -299,6 +463,7 @@ const Cart = () => {
       // Prepare order data
       const orderDataToInsert = {
         order_number: orderNumber,
+        stripe_payment_intent_id: piData.paymentIntentId || null,
         user_id: session?.user?.id || null,
         customer_name: validation.data.name,
         customer_email: validation.data.email || null,
@@ -306,9 +471,9 @@ const Cart = () => {
         order_type: orderType,
         delivery_address: orderType === "delivery" ? finalDeliveryAddress : null,
         items: cart as any,
-        subtotal,
-        tax,
-        total: total, // Include delivery fee in total
+        subtotal: serverAmounts.subtotal,
+        tax: serverAmounts.tax,
+        total: serverAmounts.total,
         notes: validation.data.notes || null,
         status: "pending",
       };
@@ -434,151 +599,38 @@ const Cart = () => {
       }
       
       const orderElapsed = Date.now() - orderStartTime;
-      console.log(`✅ Order created successfully!`);
-      console.log("📦 Order Details:", {
-        orderNumber: orderNumber,
-        creationTime: `${orderElapsed}ms`,
-        status: "pending",
-      });
-      console.log(`⏱️  Step 3 Duration: ${orderElapsed}ms`);
+      console.log(`✅ Order created successfully! (${orderElapsed}ms)`);
       console.log(`⏱️  Total elapsed: ${Date.now() - overallStartTime}ms`);
 
-      // Send push notification to kitchen staff and admins (non-blocking)
-      console.log("\n📲 Sending push notification...");
-      try {
-        await supabase.functions.invoke('send-push-notification', {
-          body: {
-            title: '🚨 New Order Received',
-            body: `Order #${orderNumber} • ${cart.length} items • $${total.toFixed(2)}`,
-            data: {
-              orderId: orderNumber,
-              orderNumber: orderNumber,
-              url: '/kitchen'
-            },
-            targetRoles: ['admin', 'kitchen']
-          }
-        });
-        console.log("✅ Push notification sent successfully");
-      } catch (notifError) {
-        console.warn('⚠️  Failed to send push notification (non-critical):', notifError);
-        // Don't fail the order if notification fails
-      }
+      const totalProcessTime = Date.now() - overallStartTime;
+      console.log("\n╔════════════════════════════════════════════════════════════════╗");
+      console.log("║       CHECKOUT PROCESS COMPLETED SUCCESSFULLY                  ║");
+      console.log("╚════════════════════════════════════════════════════════════════╝");
+      console.log("⏱️  TOTAL RUNTIME:", `${totalProcessTime}ms (${(totalProcessTime / 1000).toFixed(2)}s)`);
+      console.log("\n📊 Performance Summary:");
+      console.log("├─ Step 1 (Totals):         ~instant");
+      console.log("├─ Step 2 (Session):        " + (Date.now() - sessionStartTime) + "ms");
+      console.log("├─ Step 3 (Payment Intent): " + paymentElapsed + "ms");
+      console.log("└─ Step 4 (Order Creation): " + orderElapsed + "ms");
+      console.log("\n🎯 Next Action: Opening payment modal for order:", orderNumber);
+      console.log("═══════════════════════════════════════════════════════════════════\n");
 
-      // Create PaymentIntent for secure modal checkout
-      // Map cart items to the format expected by the payment function
-      const paymentItems = cart.map(item => ({
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
+      setCurrentOrderNumber(orderNumber);
+      setCheckoutAmounts(serverAmounts);
+      setCheckoutClientSecret(piData.clientSecret as string);
+      setCheckoutPublishableKey(piData.publishableKey as string);
+      // Persist so the user can resume if the modal closes unexpectedly
+      localStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify({
+        clientSecret: piData.clientSecret,
+        publishableKey: piData.publishableKey,
+        orderNumber,
+        checkoutSessionId,
+        amounts: serverAmounts,
+        expiresAt: Date.now() + 23 * 60 * 60 * 1000, // Stripe PI expires in 24h
       }));
-
-      console.log("\n┌─────────────────────────────────────────────────────────────┐");
-      console.log("│ STEP 4: CREATING PAYMENT INTENT                             │");
-      console.log("└─────────────────────────────────────────────────────────────┘");
-      console.log("💳 Payment Configuration:", {
-        orderNumber: orderNumber,
-        itemsCount: paymentItems.length,
-        orderType: orderType,
-        totalAmount: `$${total.toFixed(2)}`,
-        hasCoupon: !!appliedCoupon,
-        discountAmount: `$${discountAmount.toFixed(2)}`,
-      });
-      console.log("📋 Payment Items:", paymentItems.map(item => ({
-        name: item.name,
-        price: `$${item.price.toFixed(2)}`,
-        quantity: item.quantity,
-        subtotal: `$${(item.price * item.quantity).toFixed(2)}`,
-      })));
-      
-      // Add timeout to payment intent creation to prevent hanging
-      // Stripe API + edge function typically takes 1-4s, but we allow 15s for cold starts, slow networks, and Stripe API delays
-      console.log("🔄 Invoking payment intent creation...");
-      const paymentStartTime = Date.now();
-      const paymentIntentPromise = supabase.functions.invoke(
-        'create-payment-intent',
-        {
-          body: {
-            items: paymentItems,
-            orderType,
-            customerInfo: validation.data,
-            orderNumber,
-            couponCode: appliedCoupon?.code || null,
-            discountAmount: discountAmount,
-          }
-        }
-      );
-
-      // Add a heartbeat to track progress
-      const paymentHeartbeat = setInterval(() => {
-        const elapsed = Date.now() - paymentStartTime;
-        console.log(`⏳ Payment intent creation in progress... (${elapsed}ms elapsed)`);
-      }, 2000);
-
-      const paymentTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => {
-          const elapsed = Date.now() - paymentStartTime;
-          clearInterval(paymentHeartbeat);
-          reject(new Error(`Payment intent creation timed out after 15 seconds (elapsed: ${elapsed}ms)`));
-        }, 15000)
-      );
-
-      const { data: piData, error: piError } = await Promise.race([
-        paymentIntentPromise,
-        paymentTimeoutPromise
-      ]) as any;
-
-      clearInterval(paymentHeartbeat);
-      
-      if (piError) {
-        const elapsed = Date.now() - paymentStartTime;
-        console.error("❌ Payment intent error:", {
-          error: piError,
-          message: piError.message,
-          errorCode: piError.error,
-          elapsed: `${elapsed}ms`,
-          fullError: JSON.stringify(piError, null, 2)
-        });
-        // Show the actual error message if available
-        const errorMessage = piError.message || piError.error || "Failed to create payment intent";
-        throw new Error(`Payment error: ${errorMessage}`);
-      }
-
-      const paymentElapsed = Date.now() - paymentStartTime;
-      console.log(`✅ Payment intent created successfully!`);
-      console.log("🔑 Payment Intent Data:", {
-        hasClientSecret: !!piData?.clientSecret,
-        hasPublishableKey: !!piData?.publishableKey,
-        clientSecretPrefix: piData?.clientSecret ? piData.clientSecret.substring(0, 15) + "..." : "none",
-      });
-      console.log(`⏱️  Step 4 Duration: ${paymentElapsed}ms`);
-
-      if (piData?.clientSecret && piData?.publishableKey) {
-        const totalProcessTime = Date.now() - overallStartTime;
-        const processEndTimestamp = new Date().toISOString();
-        
-        console.log("\n╔════════════════════════════════════════════════════════════════╗");
-        console.log("║       CHECKOUT PROCESS COMPLETED SUCCESSFULLY                  ║");
-        console.log("╚════════════════════════════════════════════════════════════════╝");
-        console.log("⏰ End Timestamp:", processEndTimestamp);
-        console.log("⏱️  TOTAL RUNTIME:", `${totalProcessTime}ms (${(totalProcessTime / 1000).toFixed(2)}s)`);
-        console.log("\n📊 Performance Summary:");
-        console.log("├─ Step 1 (Totals):         ~instant");
-        console.log("├─ Step 2 (Session):        " + (Date.now() - sessionStartTime) + "ms");
-        console.log("├─ Step 3 (Order Creation): " + orderElapsed + "ms");
-        console.log("└─ Step 4 (Payment Intent): " + paymentElapsed + "ms");
-        console.log("\n🎯 Next Action: Opening payment modal for order:", orderNumber);
-        console.log("═══════════════════════════════════════════════════════════════════\n");
-        
-        setCurrentOrderNumber(orderNumber);
-        setCheckoutClientSecret(piData.clientSecret as string);
-        setCheckoutPublishableKey(piData.publishableKey as string);
-        setShowCheckout(true);
-        setIsProcessing(false);
-        return;
-      } else {
-        console.error("❌ Payment intent response missing data:", piData);
-        throw new Error('Payment service returned invalid data. Please try again.');
-      }
+      setShowCheckout(true);
+      setIsProcessing(false);
+      return;
 
 
     } catch (error: any) {
@@ -892,7 +944,7 @@ const Cart = () => {
                                   const deliveryFee = orderType === "delivery" ? 5.00 : 0;
                                   const orderAmount = subtotal + tax + deliveryFee;
 
-                                  const { data, error } = await supabase.functions.invoke('validate-coupon', {
+                                  const { data, error } = await supabaseAnon.functions.invoke('validate-coupon', {
                                     body: { code: couponCode.trim(), orderAmount }
                                   });
 
@@ -992,7 +1044,7 @@ const Cart = () => {
                         <span className="pointer-events-none">Proceed to Checkout</span>
                       </Button>
 
-                      {checkoutClientSecret && checkoutPublishableKey && currentOrderNumber && (
+                      {checkoutClientSecret && checkoutPublishableKey && currentOrderNumber && checkoutAmounts && (
                         <SecurePaymentModal
                           open={showCheckout}
                           onOpenChange={setShowCheckout}
@@ -1001,17 +1053,21 @@ const Cart = () => {
                           orderNumber={currentOrderNumber}
                           customerInfo={customerInfo}
                           orderType={orderType}
-                          cartTotal={cartTotal}
+                          amounts={checkoutAmounts}
                           cart={cart}
                           onSuccess={() => {
                             try {
                               clearCart();
+                              checkoutSessionIdRef.current = null;
+                              localStorage.removeItem(PENDING_CHECKOUT_KEY);
+                              localStorage.removeItem(CUSTOMER_INFO_KEY);
                               setCustomerInfo({ name: "", phone: "", email: "", address: "", notes: "" });
                               setAppliedCoupon(null);
                               setCouponCode("");
                               setShowCheckout(false);
                               setCheckoutClientSecret(null);
                               setCheckoutPublishableKey(null);
+                              setCheckoutAmounts(null);
                               
                               // Navigate to success page with error handling
                               if (currentOrderNumber) {

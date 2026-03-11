@@ -8,7 +8,7 @@ import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { AlertCircle, CreditCard, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseAnon } from '@/integrations/supabase/client';
 
 interface CustomerInfo {
   name: string;
@@ -16,6 +16,13 @@ interface CustomerInfo {
   email: string;
   address?: string;
   notes?: string;
+}
+
+interface OrderAmounts {
+  subtotal: number;
+  tax: number;
+  deliveryFee: number;
+  total: number;
 }
 
 interface SecurePaymentModalProps {
@@ -26,23 +33,23 @@ interface SecurePaymentModalProps {
   orderNumber: string;
   customerInfo: CustomerInfo;
   orderType: 'pickup' | 'delivery';
-  cartTotal: number;
+  amounts: OrderAmounts;
   cart: Array<{ name: string; price: number; quantity: number }>;
   onSuccess: () => void;
 }
 
-function PaymentForm({ 
-  orderNumber, 
-  customerInfo, 
-  orderType, 
-  cartTotal,
+function PaymentForm({
+  orderNumber,
+  customerInfo,
+  orderType,
+  amounts,
   cart,
-  onSuccess 
-}: { 
-  orderNumber: string; 
+  onSuccess
+}: {
+  orderNumber: string;
   customerInfo: CustomerInfo;
   orderType: string;
-  cartTotal: number;
+  amounts: OrderAmounts;
   cart: Array<{ name: string; price: number; quantity: number }>;
   onSuccess: () => void;
 }) {
@@ -69,9 +76,7 @@ function PaymentForm({
   }, [isReady]);
 
 
-  const tax = cartTotal * 0.08875;
-  const deliveryFee = orderType === 'delivery' ? 5.00 : 0;
-  const total = cartTotal + tax + deliveryFee;
+  const { subtotal, tax, deliveryFee, total } = amounts;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,20 +135,29 @@ function PaymentForm({
       });
 
       if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
-        // Order status is already 'pending' - no need to update
-        // The webhook will handle notifications when payment succeeds
+        // Notify kitchen now that payment is confirmed — fire-and-forget.
+        // Previously sent before payment was collected; moved here so the kitchen
+        // only sees orders that have actually been paid.
+        supabaseAnon.functions.invoke('send-push-notification', {
+          body: {
+            title: '🚨 New Order Received',
+            body: `Order #${orderNumber} • ${cart.length} item${cart.length !== 1 ? 's' : ''} • $${total.toFixed(2)}`,
+            data: { orderId: orderNumber, orderNumber, url: '/kitchen' },
+            targetRoles: ['admin', 'kitchen']
+          }
+        }).catch((e: any) => console.warn('Push notification failed (non-critical):', e));
 
         // Send confirmation email (with timeout to prevent blocking)
-        const emailPromise = supabase.functions.invoke('send-order-confirmation', {
+        const emailPromise = supabaseAnon.functions.invoke('send-order-confirmation', {
           body: {
             orderNumber,
             customerName: customerInfo.name,
             customerEmail: customerInfo.email,
             orderType,
             items: cart,
-            subtotal: cartTotal,
-            tax: cartTotal * 0.08875,
-            total: total, // Use the actual total including delivery fee
+            subtotal,
+            tax,
+            total,
             deliveryAddress: orderType === 'delivery' ? customerInfo.address : undefined
           }
         });
@@ -196,7 +210,7 @@ function PaymentForm({
           <Separator className="my-2" />
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal:</span>
-            <span>${cartTotal.toFixed(2)}</span>
+            <span>${subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Tax (8.875%):</span>
@@ -321,7 +335,7 @@ export default function SecurePaymentModal({
   orderNumber,
   customerInfo,
   orderType,
-  cartTotal,
+  amounts,
   cart,
   onSuccess,
 }: SecurePaymentModalProps) {
@@ -378,7 +392,7 @@ export default function SecurePaymentModal({
               orderNumber={orderNumber}
               customerInfo={customerInfo}
               orderType={orderType}
-              cartTotal={cartTotal}
+              amounts={amounts}
               cart={cart}
               onSuccess={onSuccess}
             />

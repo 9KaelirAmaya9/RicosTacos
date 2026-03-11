@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.77.0';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,25 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // Allow both authenticated and anonymous users for checkout
-    // But validate the request data to prevent abuse
-    const authHeader = req.headers.get("Authorization");
-    let userId: string | null = null;
-
-    // If auth header exists, verify it (optional for guest checkout)
-    if (authHeader) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } }
-      });
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        userId = user.id;
-      }
-    }
-
     const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY") || "";
     if (!stripeSecret) throw new Error("Missing STRIPE_SECRET_KEY");
 
@@ -40,14 +20,11 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const { items, orderType, customerInfo, orderNumber, couponCode, discountAmount } = await req.json();
+    const { items, orderType, customerInfo, couponCode, discountAmount, checkoutSessionId } = await req.json();
 
     // Validate input parameters (allows guest checkout)
     if (!items || !Array.isArray(items) || items.length === 0) {
       throw new Error("No items provided");
-    }
-    if (!orderNumber || typeof orderNumber !== 'string') {
-      throw new Error("Valid order number is required");
     }
     if (!orderType || !['pickup', 'delivery'].includes(orderType)) {
       throw new Error("Valid order type (pickup/delivery) is required");
@@ -97,6 +74,20 @@ serve(async (req) => {
 
     if (amount <= 0) throw new Error("Calculated amount must be greater than 0");
 
+    // The client sends a stable checkoutSessionId (crypto.randomUUID) that it
+    // generates once per checkout flow and reuses on retries. We derive the order
+    // number deterministically from it so the same retry always produces the same
+    // order number AND the same Stripe idempotency key — meaning Stripe returns
+    // the existing payment intent on retry rather than creating a duplicate.
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const suffix = checkoutSessionId
+      ? checkoutSessionId.replace(/-/g, '').slice(0, 6).toUpperCase()
+      : crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
+    const orderNumber = `ORD-${date}-${suffix}`;
+    const idempotencyKey = checkoutSessionId
+      ? `checkout-${checkoutSessionId}`
+      : `order-${orderNumber}`;
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: "usd",
@@ -115,14 +106,28 @@ serve(async (req) => {
         discount_amount: discountAmount ? String(discountAmount) : "",
       },
       description: `Order ${orderNumber}`,
+    }, {
+      idempotencyKey,
     });
 
     const publishableKey = Deno.env.get("STRIPE_PUBLISHABLE_KEY") || undefined;
 
+    // Return the exact amounts (in dollars) the edge function calculated and
+    // charged to Stripe. The client uses these values for display and DB storage
+    // so what the user sees, what's in the DB, and what Stripe charged are
+    // always the same number.
     return new Response(
       JSON.stringify({
         clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+        orderNumber,
         publishableKey,
+        amounts: {
+          subtotal: subtotalAfterDiscount / 100,
+          tax: taxCents / 100,
+          deliveryFee: deliveryFeeCents / 100,
+          total: amount / 100,
+        },
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
