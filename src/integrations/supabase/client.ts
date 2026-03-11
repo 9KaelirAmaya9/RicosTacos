@@ -51,25 +51,7 @@ export const supabase = createClient<Database>(
   }
 );
 
-// Anonymous Supabase client — no auth session, never triggers JWT refresh.
-// Used for edge function invocations during checkout so a stale/slow auth
-// server can't block the payment flow.
-export const supabaseAnon = createClient<Database>(
-  SUPABASE_URL || '',
-  SUPABASE_PUBLISHABLE_KEY || '',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'ricos-tacos-web'
-      }
-    },
-    db: {
-      schema: 'public'
-    }
-  }
-);
+// supabaseAnon has been removed. All edge function calls during checkout now
+// use raw fetch() directly, which bypasses GoTrueClient entirely and avoids
+// the "Multiple GoTrueClient instances" warning. See Cart.tsx and
+// SecurePaymentModal.tsx for the raw fetch() pattern.

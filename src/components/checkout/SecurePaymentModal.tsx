@@ -8,7 +8,6 @@ import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { AlertCircle, CreditCard, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabaseAnon } from '@/integrations/supabase/client';
 
 interface CustomerInfo {
   name: string;
@@ -136,20 +135,34 @@ function PaymentForm({
 
       if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
         // Notify kitchen now that payment is confirmed — fire-and-forget.
-        // Previously sent before payment was collected; moved here so the kitchen
-        // only sees orders that have actually been paid.
-        supabaseAnon.functions.invoke('send-push-notification', {
-          body: {
+        // Use raw fetch() to avoid GoTrueClient JWT refresh (same pattern as Cart.tsx).
+        const _SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
+        const _SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '';
+
+        fetch(`${_SUPABASE_URL}/functions/v1/send-push-notification`, {
+          method: 'POST',
+          headers: {
+            'apikey': _SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             title: '🚨 New Order Received',
             body: `Order #${orderNumber} • ${cart.length} item${cart.length !== 1 ? 's' : ''} • $${total.toFixed(2)}`,
             data: { orderId: orderNumber, orderNumber, url: '/kitchen' },
             targetRoles: ['admin', 'kitchen']
-          }
+          }),
         }).catch((e: any) => console.warn('Push notification failed (non-critical):', e));
 
         // Send confirmation email (with timeout to prevent blocking)
-        const emailPromise = supabaseAnon.functions.invoke('send-order-confirmation', {
-          body: {
+        const emailPromise = fetch(`${_SUPABASE_URL}/functions/v1/send-order-confirmation`, {
+          method: 'POST',
+          headers: {
+            'apikey': _SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             orderNumber,
             customerName: customerInfo.name,
             customerEmail: customerInfo.email,
@@ -159,7 +172,7 @@ function PaymentForm({
             tax,
             total,
             deliveryAddress: orderType === 'delivery' ? customerInfo.address : undefined
-          }
+          }),
         });
 
         // Add 5-second timeout to email confirmation

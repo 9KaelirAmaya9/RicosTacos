@@ -451,6 +451,17 @@ const Cart = () => {
             elapsed: `${Date.now() - paymentStartTime}ms`,
           });
         }
+
+        // Stripe idempotency conflict: the checkoutSessionId was used with different
+        // parameters in a previous attempt (e.g. during the old→new code transition).
+        // Reset the session ID so the next attempt generates a fresh Stripe PI.
+        const errMsg = edgeFnError || piError.message || '';
+        if (errMsg.includes('idempotent') || errMsg.includes('same parameters')) {
+          checkoutSessionIdRef.current = null;
+          localStorage.removeItem(PENDING_CHECKOUT_KEY);
+          throw new Error('A previous checkout attempt conflicted. Please try again — a fresh payment session has been started.');
+        }
+
         throw new Error(`Payment error: ${edgeFnError || piError.message || piError.error || "Failed to create payment intent"}`);
       }
 
