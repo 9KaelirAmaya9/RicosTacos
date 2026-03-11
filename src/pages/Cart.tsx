@@ -19,6 +19,9 @@ import { validateDeliveryAddress, type DeliveryValidationResult } from "@/utils/
 import { validateDeliveryAddressGoogle, type GoogleMapsValidationResult } from "@/utils/googleMapsValidation";
 import { GooglePlacesAutocomplete } from "@/components/GooglePlacesAutocomplete";
 
+const CUSTOMER_INFO_KEY = 'ricos-tacos-customer-info';
+const PENDING_CHECKOUT_KEY = 'ricos-tacos-pending-checkout';
+
 const Cart = () => {
   const { t } = useLanguage();
   const { cart, orderType, setOrderType, updateQuantity, removeFromCart, clearCart, cartTotal, cartCount } = useCart();
@@ -42,6 +45,7 @@ const Cart = () => {
   // can use it as a stable idempotency key. Cleared on successful payment so
   // subsequent orders in the same session get a fresh key.
   const checkoutSessionIdRef = useRef<string | null>(null);
+  const hasWarmedUpRef = useRef(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [couponCode, setCouponCode] = useState("");
@@ -85,6 +89,64 @@ const Cart = () => {
 
     return () => subscription.unsubscribe();
   }, [searchParams, clearCart]);
+
+  // Pre-warm the edge function as soon as the cart has items so Deno cold-start
+  // time doesn't add latency when the user clicks "Proceed to Checkout".
+  useEffect(() => {
+    if (cart.length > 0 && !hasWarmedUpRef.current) {
+      hasWarmedUpRef.current = true;
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      if (url) fetch(`${url}/functions/v1/create-payment-intent`, { method: 'OPTIONS' }).catch(() => {});
+    }
+  }, [cart.length]);
+
+  // Restore persisted customer info and resume any interrupted checkout on mount.
+  useEffect(() => {
+    // Restore customer info from last session
+    try {
+      const saved = localStorage.getItem(CUSTOMER_INFO_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setCustomerInfo(prev => ({
+          name: parsed.name || prev.name,
+          phone: parsed.phone || prev.phone,
+          email: prev.email || parsed.email, // authenticated email takes priority
+          address: parsed.address || prev.address,
+          notes: parsed.notes || prev.notes,
+        }));
+      }
+    } catch {}
+
+    // Resume a pending checkout (e.g. modal closed mid-payment)
+    try {
+      const raw = localStorage.getItem(PENDING_CHECKOUT_KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p.expiresAt > Date.now() && p.clientSecret && p.orderNumber) {
+          checkoutSessionIdRef.current = p.checkoutSessionId;
+          setCurrentOrderNumber(p.orderNumber);
+          setCheckoutAmounts(p.amounts);
+          setCheckoutClientSecret(p.clientSecret);
+          setCheckoutPublishableKey(p.publishableKey);
+          toast.info('You have an incomplete payment.', {
+            duration: 10000,
+            action: { label: 'Resume Payment', onClick: () => setShowCheckout(true) },
+          });
+        } else {
+          localStorage.removeItem(PENDING_CHECKOUT_KEY);
+        }
+      }
+    } catch {
+      localStorage.removeItem(PENDING_CHECKOUT_KEY);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist customer info so the form survives a page refresh
+  useEffect(() => {
+    if (customerInfo.name || customerInfo.phone || customerInfo.email) {
+      localStorage.setItem(CUSTOMER_INFO_KEY, JSON.stringify(customerInfo));
+    }
+  }, [customerInfo]);
 
   const handlePlaceOrder = async () => {
     const processStartTime = Date.now();
@@ -536,6 +598,15 @@ const Cart = () => {
       setCheckoutAmounts(serverAmounts);
       setCheckoutClientSecret(piData.clientSecret as string);
       setCheckoutPublishableKey(piData.publishableKey as string);
+      // Persist so the user can resume if the modal closes unexpectedly
+      localStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify({
+        clientSecret: piData.clientSecret,
+        publishableKey: piData.publishableKey,
+        orderNumber,
+        checkoutSessionId,
+        amounts: serverAmounts,
+        expiresAt: Date.now() + 23 * 60 * 60 * 1000, // Stripe PI expires in 24h
+      }));
       setShowCheckout(true);
       setIsProcessing(false);
       return;
@@ -967,6 +1038,8 @@ const Cart = () => {
                             try {
                               clearCart();
                               checkoutSessionIdRef.current = null;
+                              localStorage.removeItem(PENDING_CHECKOUT_KEY);
+                              localStorage.removeItem(CUSTOMER_INFO_KEY);
                               setCustomerInfo({ name: "", phone: "", email: "", address: "", notes: "" });
                               setAppliedCoupon(null);
                               setCouponCode("");
