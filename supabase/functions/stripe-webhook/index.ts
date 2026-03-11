@@ -48,38 +48,20 @@ serve(async (req) => {
       const orderNumber = paymentIntent.metadata?.order_number;
 
       if (orderNumber) {
-        // Order is already created with status 'pending', keep it as pending for kitchen workflow
-        // The order will be processed by kitchen staff
         console.log('Payment succeeded for order:', orderNumber);
-        
-        // Get order details for notification
-        const { data: order } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('order_number', orderNumber)
-          .single();
 
-        if (order) {
-          // Send notification to kitchen (internal call - no auth needed)
-          try {
-            await supabase.functions.invoke('send-order-notification', {
-              body: {
-                orderNumber: order.order_number,
-                customerName: order.customer_name,
-                customerEmail: order.customer_email,
-                customerPhone: order.customer_phone,
-                orderType: order.order_type,
-                total: order.total,
-                items: order.items,
-              },
-              headers: {
-                'x-internal-call': 'true'
-              }
-            });
-            console.log('Notification sent for order:', orderNumber);
-          } catch (notifError) {
-            console.error('Failed to send notification:', notifError);
-          }
+        // Update order status to 'confirmed' — this is the authoritative
+        // server-side confirmation that payment has been collected.
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({ status: 'confirmed' })
+          .eq('order_number', orderNumber)
+          .eq('status', 'pending'); // only update if still pending (idempotent)
+
+        if (updateError) {
+          console.error('Failed to update order status:', updateError);
+        } else {
+          console.log('Order status set to confirmed:', orderNumber);
         }
       }
     }

@@ -20,12 +20,14 @@ CREATE TABLE IF NOT EXISTS public.coupons (
 ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;
 
 -- Allow anyone to view active coupons (for validation)
+DROP POLICY IF EXISTS "Anyone can view active coupons" ON public.coupons;
 CREATE POLICY "Anyone can view active coupons"
 ON public.coupons
 FOR SELECT
 USING (is_active = true AND (valid_until IS NULL OR valid_until > now()));
 
 -- Only admins can manage coupons
+DROP POLICY IF EXISTS "Admins can manage coupons" ON public.coupons;
 CREATE POLICY "Admins can manage coupons"
 ON public.coupons
 FOR ALL
@@ -39,7 +41,7 @@ USING (
 );
 
 -- Add coupon_code and discount_amount to orders table
-ALTER TABLE public.orders 
+ALTER TABLE public.orders
 ADD COLUMN IF NOT EXISTS coupon_code TEXT,
 ADD COLUMN IF NOT EXISTS discount_amount DECIMAL(10,2) DEFAULT 0;
 
@@ -47,6 +49,7 @@ ADD COLUMN IF NOT EXISTS discount_amount DECIMAL(10,2) DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_coupons_code ON public.coupons(code) WHERE is_active = true;
 
 -- Trigger to update updated_at
+DROP TRIGGER IF EXISTS update_coupons_updated_at ON public.coupons;
 CREATE TRIGGER update_coupons_updated_at
   BEFORE UPDATE ON public.coupons
   FOR EACH ROW
@@ -54,8 +57,7 @@ CREATE TRIGGER update_coupons_updated_at
 
 -- Insert sample coupon for testing
 INSERT INTO public.coupons (code, discount_type, discount_value, min_order_amount, valid_until, description)
-VALUES 
+VALUES
   ('WELCOME10', 'percentage', 10.00, 0, NULL, '10% off your first order'),
   ('SAVE5', 'fixed', 5.00, 20.00, NULL, '$5 off orders over $20')
 ON CONFLICT (code) DO NOTHING;
-
