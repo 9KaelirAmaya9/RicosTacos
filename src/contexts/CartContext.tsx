@@ -36,7 +36,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   // Load cart and order type from localStorage or database on mount
   useEffect(() => {
     const loadCart = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Use getSession() instead of getUser() to avoid a network call to /auth/v1/user.
+      // getSession() reads from localStorage and only makes a network call to refresh
+      // an expired token. getUser() ALWAYS makes a network call when a session exists,
+      // which hangs under the fetchWithTimeout(8s) wrapper and blocks the DB connection.
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
       setUserId(user?.id || null);
 
       // Load order type from localStorage

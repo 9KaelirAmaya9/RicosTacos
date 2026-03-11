@@ -80,9 +80,10 @@ export const usePushNotifications = () => {
 
       const subscriptionJSON = subscription.toJSON();
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      // Get current user - use getSession() to avoid a network call to /auth/v1/user
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
+
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -129,9 +130,10 @@ export const usePushNotifications = () => {
       if (subscription) {
         await subscription.unsubscribe();
 
-        // Remove from database
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        // Remove from database - use getSession() to avoid a network call to /auth/v1/user
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user ?? null;
+
         if (user) {
           await supabase
             .from('push_subscriptions')
