@@ -95,8 +95,10 @@ const Cart = () => {
   useEffect(() => {
     if (cart.length > 0 && !hasWarmedUpRef.current) {
       hasWarmedUpRef.current = true;
+      // Send a HEAD request to wake the Deno worker; HEAD is safe and won't
+      // cause CORS issues the way OPTIONS does on some edge function configs.
       const url = import.meta.env.VITE_SUPABASE_URL;
-      if (url) fetch(`${url}/functions/v1/create-payment-intent`, { method: 'OPTIONS' }).catch(() => {});
+      if (url) fetch(`${url}/functions/v1/create-payment-intent`, { method: 'HEAD' }).catch(() => {});
     }
   }, [cart.length]);
 
@@ -356,7 +358,6 @@ const Cart = () => {
       }));
 
       console.log("💳 Payment Configuration:", {
-        orderNumber: orderNumber,
         itemsCount: paymentItems.length,
         orderType: orderType,
         totalAmount: `$${total.toFixed(2)}`,
