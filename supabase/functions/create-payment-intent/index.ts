@@ -77,6 +77,9 @@ serve(async (req) => {
 
     if (amount <= 0) throw new Error("Calculated amount must be greater than 0");
 
+    // Idempotency key scoped to the order number so that retries (e.g. after a
+    // cold-start timeout on the client side) reuse the same Stripe payment intent
+    // rather than creating a second one, preventing double charges.
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: "usd",
@@ -95,6 +98,8 @@ serve(async (req) => {
         discount_amount: discountAmount ? String(discountAmount) : "",
       },
       description: `Order ${orderNumber}`,
+    }, {
+      idempotencyKey: `order-${orderNumber}`,
     });
 
     const publishableKey = Deno.env.get("STRIPE_PUBLISHABLE_KEY") || undefined;
@@ -102,6 +107,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
         publishableKey,
       }),
       {

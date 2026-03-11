@@ -384,6 +384,7 @@ const Cart = () => {
       // Prepare order data
       const orderDataToInsert = {
         order_number: orderNumber,
+        stripe_payment_intent_id: piData.paymentIntentId || null,
         user_id: session?.user?.id || null,
         customer_name: validation.data.name,
         customer_email: validation.data.email || null,
