@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Lilita+One&amp;display=swap');
+    </style>
+  </defs>
+
+  <!-- Lime green background -->
+  <rect width="400" height="120" fill="#8BC34A"/>
+
+  <!-- Serape stripe top -->
+  <rect x="0" y="0" width="400" height="8" fill="#E53935"/>
+  <rect x="0" y="8" width="400" height="4" fill="#FF9800"/>
+  <rect x="0" y="12" width="400" height="3" fill="#FDD835"/>
+  <rect x="0" y="15" width="400" height="3" fill="#29B6F6"/>
+  <rect x="0" y="18" width="400" height="3" fill="#E53935"/>
+
+  <!-- Serape stripe bottom -->
+  <rect x="0" y="99" width="400" height="3" fill="#E53935"/>
+  <rect x="0" y="102" width="400" height="3" fill="#29B6F6"/>
+  <rect x="0" y="105" width="400" height="3" fill="#FDD835"/>
+  <rect x="0" y="108" width="400" height="4" fill="#FF9800"/>
+  <rect x="0" y="112" width="400" height="8" fill="#E53935"/>
+
+  <!-- "RICOS TACOS" text with thick white stroke (outline effect) -->
+  <!-- White outline layer -->
+  <text
+    x="200" y="90"
+    font-family="'Lilita One', 'Arial Black', Impact, sans-serif"
+    font-size="72"
+    font-weight="900"
+    text-anchor="middle"
+    fill="white"
+    stroke="white"
+    stroke-width="10"
+    stroke-linejoin="round"
+    letter-spacing="2"
+  >RICOS TACOS</text>
+
+  <!-- Red fill layer -->
+  <text
+    x="200" y="90"
+    font-family="'Lilita One', 'Arial Black', Impact, sans-serif"
+    font-size="72"
+    font-weight="900"
+    text-anchor="middle"
+    fill="#E53935"
+    stroke="#CC2020"
+    stroke-width="1"
+    letter-spacing="2"
+  >RICOS TACOS</text>
+</svg>
