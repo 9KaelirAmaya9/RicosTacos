@@ -423,9 +423,12 @@ const Cart = () => {
       console.log(`⏱️  Total elapsed: ${Date.now() - overallStartTime}ms`);
 
       // Send push notification to kitchen staff and admins (non-blocking)
+      // IMPORTANT: Use supabaseAnon here too - the main supabase client can hang
+      // trying to refresh the JWT, and this await has no timeout so it would
+      // freeze the entire checkout before the payment step is ever reached.
       console.log("\n📲 Sending push notification...");
       try {
-        await supabase.functions.invoke('send-push-notification', {
+        await supabaseAnon.functions.invoke('send-push-notification', {
           body: {
             title: '🚨 New Order Received',
             body: `Order #${orderNumber} • ${cart.length} items • $${total.toFixed(2)}`,
@@ -473,7 +476,10 @@ const Cart = () => {
       // Stripe API + edge function typically takes 1-4s, but we allow 15s for cold starts, slow networks, and Stripe API delays
       console.log("🔄 Invoking payment intent creation...");
       const paymentStartTime = Date.now();
-      const paymentIntentPromise = supabase.functions.invoke(
+      // IMPORTANT: Use supabaseAnon (not supabase) to avoid JWT refresh hang.
+      // The main supabase client tries to refresh the token before any call;
+      // if the auth server is slow this blocks the 15s timeout and checkout fails.
+      const paymentIntentPromise = supabaseAnon.functions.invoke(
         'create-payment-intent',
         {
           body: {
