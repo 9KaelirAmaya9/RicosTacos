@@ -1,7 +1,7 @@
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ShoppingCart, ArrowRight, Plus, Minus, Trash2, CreditCard } from "lucide-react";
+import { ShoppingCart, ArrowRight, Plus, Minus, Trash2, CreditCard, Loader2 } from "lucide-react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
@@ -921,10 +921,17 @@ const Cart = () => {
                         onClick={handlePlaceOrder}
                         disabled={cart.length === 0 || isProcessing}
                       >
-                        <CreditCard className="mr-2 h-4 w-4 pointer-events-none" />
-                        <span className="pointer-events-none">
-                          {isProcessing ? "Processing…" : "Proceed to Checkout"}
-                        </span>
+                        {isProcessing ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin pointer-events-none" />
+                            <span className="pointer-events-none">Preparing your order…</span>
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="mr-2 h-4 w-4 pointer-events-none" />
+                            <span className="pointer-events-none">Proceed to Checkout</span>
+                          </>
+                        )}
                       </Button>
 
                       {checkoutClientSecret && checkoutPublishableKey && currentOrderNumber && checkoutAmounts && (
@@ -936,7 +943,7 @@ const Cart = () => {
                           orderNumber={currentOrderNumber}
                           customerInfo={customerInfo}
                           orderType={orderType}
-                          cartTotal={checkoutAmounts?.total ?? cartTotal}
+                          amounts={checkoutAmounts}
                           cart={cart}
                           onSuccess={() => {
                             try {
