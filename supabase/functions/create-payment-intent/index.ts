@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.77.0';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +14,24 @@ serve(async (req) => {
   }
 
   try {
+    // Allow both authenticated and anonymous users for checkout
+    const authHeader = req.headers.get("Authorization");
+    let userId: string | null = null;
+
+    // If auth header exists, verify it (optional for guest checkout)
+    if (authHeader) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        userId = user.id;
+      }
+    }
+
     const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY") || "";
     if (!stripeSecret) throw new Error("Missing STRIPE_SECRET_KEY");
 
@@ -20,7 +39,14 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const { items, orderType, customerInfo, couponCode, discountAmount, checkoutSessionId } = await req.json();
+    // Accept both old flow (client sends orderNumber) and new flow (server generates it).
+    // checkoutSessionId is used as the Stripe idempotency key so retries reuse the same PI.
+    const { items, orderType, customerInfo, orderNumber: clientOrderNumber, couponCode, discountAmount, checkoutSessionId } = await req.json();
+
+    // Generate order number server-side if not provided by client (new flow)
+    const orderNumber: string = (clientOrderNumber && typeof clientOrderNumber === 'string')
+      ? clientOrderNumber
+      : crypto.randomUUID();
 
     // Validate input parameters (allows guest checkout)
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -36,10 +62,6 @@ serve(async (req) => {
     // Validate items structure and reasonable limits to prevent abuse
     if (items.length > 50) {
       throw new Error("Too many items in order (max 50)");
-    }
-
-    if (items.length === 0) {
-      throw new Error("No items in order");
     }
 
     for (const item of items) {
@@ -74,21 +96,10 @@ serve(async (req) => {
 
     if (amount <= 0) throw new Error("Calculated amount must be greater than 0");
 
-    // The client sends a stable checkoutSessionId (crypto.randomUUID) that it
-    // generates once per checkout flow and reuses on retries. We derive the order
-    // number deterministically from it so the same retry always produces the same
-    // order number AND the same Stripe idempotency key — meaning Stripe returns
-    // the existing payment intent on retry rather than creating a duplicate.
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const suffix = checkoutSessionId
-      ? checkoutSessionId.replace(/-/g, '').slice(0, 6).toUpperCase()
-      : crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
-    const orderNumber = `ORD-${date}-${suffix}`;
-    const idempotencyKey = checkoutSessionId
-      ? `checkout-${checkoutSessionId}`
-      : `order-${orderNumber}`;
+    // Use checkoutSessionId as idempotency key so retries reuse the same payment intent
+    const idempotencyKey = checkoutSessionId ? `pi-${checkoutSessionId}` : undefined;
 
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount,
       currency: "usd",
       automatic_payment_methods: {
@@ -97,7 +108,7 @@ serve(async (req) => {
       },
       receipt_email: customerInfo?.email || undefined,
       metadata: {
-        order_number: orderNumber || "",
+        order_number: orderNumber,
         customer_name: customerInfo?.name || "",
         customer_phone: customerInfo?.phone || "",
         order_type: orderType || "",
@@ -106,22 +117,22 @@ serve(async (req) => {
         discount_amount: discountAmount ? String(discountAmount) : "",
       },
       description: `Order ${orderNumber}`,
-    }, {
-      idempotencyKey,
-    });
+    };
+
+    const paymentIntent = idempotencyKey
+      ? await stripe.paymentIntents.create(paymentIntentParams, { idempotencyKey })
+      : await stripe.paymentIntents.create(paymentIntentParams);
 
     const publishableKey = Deno.env.get("STRIPE_PUBLISHABLE_KEY") || undefined;
 
-    // Return the exact amounts (in dollars) the edge function calculated and
-    // charged to Stripe. The client uses these values for display and DB storage
-    // so what the user sees, what's in the DB, and what Stripe charged are
-    // always the same number.
+    // Return server-generated order number and amounts so the client uses the
+    // exact same values that were charged to Stripe.
     return new Response(
       JSON.stringify({
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
-        orderNumber,
         publishableKey,
+        orderNumber,
         amounts: {
           subtotal: subtotalAfterDiscount / 100,
           tax: taxCents / 100,
