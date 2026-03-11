@@ -20,14 +20,11 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const { items, orderType, customerInfo, orderNumber, couponCode, discountAmount } = await req.json();
+    const { items, orderType, customerInfo, couponCode, discountAmount } = await req.json();
 
     // Validate input parameters (allows guest checkout)
     if (!items || !Array.isArray(items) || items.length === 0) {
       throw new Error("No items provided");
-    }
-    if (!orderNumber || typeof orderNumber !== 'string') {
-      throw new Error("Valid order number is required");
     }
     if (!orderType || !['pickup', 'delivery'].includes(orderType)) {
       throw new Error("Valid order type (pickup/delivery) is required");
@@ -77,6 +74,12 @@ serve(async (req) => {
 
     if (amount <= 0) throw new Error("Calculated amount must be greater than 0");
 
+    // Generate order number server-side using a cryptographically random suffix
+    // so concurrent orders can never collide on the UNIQUE constraint.
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const uniqueId = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
+    const orderNumber = `ORD-${date}-${uniqueId}`;
+
     // Idempotency key scoped to the order number so that retries (e.g. after a
     // cold-start timeout on the client side) reuse the same Stripe payment intent
     // rather than creating a second one, preventing double charges.
@@ -108,6 +111,7 @@ serve(async (req) => {
       JSON.stringify({
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
+        orderNumber,
         publishableKey,
       }),
       {

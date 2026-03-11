@@ -263,9 +263,6 @@ const Cart = () => {
       });
       console.log(`⏱️  Step 2 Duration: ${Date.now() - sessionStartTime}ms`);
       
-      // Generate order number on client to avoid needing SELECT permissions
-      const orderNumber = `ORD-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(1000 + Math.random() * 9000)}`;
-
       // STEP 3: Create payment intent FIRST before writing anything to the DB.
       // Previously the order was inserted before the payment intent was created,
       // which left orphaned unpaid orders whenever the edge function timed out
@@ -302,7 +299,6 @@ const Cart = () => {
             items: paymentItems,
             orderType,
             customerInfo: validation.data,
-            orderNumber,
             couponCode: appliedCoupon?.code || null,
             discountAmount: discountAmount,
           }
@@ -340,13 +336,16 @@ const Cart = () => {
         throw new Error(`Payment error: ${piError.message || piError.error || "Failed to create payment intent"}`);
       }
 
-      if (!piData?.clientSecret || !piData?.publishableKey) {
+      if (!piData?.clientSecret || !piData?.publishableKey || !piData?.orderNumber) {
         console.error("❌ Payment intent response missing data:", piData);
         throw new Error('Payment service returned invalid data. Please try again.');
       }
 
+      // Use server-generated order number (collision-proof via crypto.randomUUID)
+      const orderNumber = piData.orderNumber as string;
+
       const paymentElapsed = Date.now() - paymentStartTime;
-      console.log(`✅ Payment intent created successfully! (${paymentElapsed}ms)`);
+      console.log(`✅ Payment intent created successfully! (${paymentElapsed}ms) Order: ${orderNumber}`);
 
       // STEP 4: Now write the order to the DB. Payment intent already exists in
       // Stripe, so if this insert fails the user sees an error and can retry —
@@ -501,23 +500,6 @@ const Cart = () => {
       const orderElapsed = Date.now() - orderStartTime;
       console.log(`✅ Order created successfully! (${orderElapsed}ms)`);
       console.log(`⏱️  Total elapsed: ${Date.now() - overallStartTime}ms`);
-
-      // Fire-and-forget push notification — do NOT await.
-      // Previously this was awaited which blocked checkout if the edge function
-      // was slow. Also moved to after the DB insert so the kitchen is only
-      // notified once the order record actually exists (Phase 3 will move this
-      // further to after payment succeeds).
-      console.log("\n📲 Sending push notification (fire-and-forget)...");
-      supabaseAnon.functions.invoke('send-push-notification', {
-        body: {
-          title: '🚨 New Order Received',
-          body: `Order #${orderNumber} • ${cart.length} items • $${total.toFixed(2)}`,
-          data: { orderId: orderNumber, orderNumber, url: '/kitchen' },
-          targetRoles: ['admin', 'kitchen']
-        }
-      }).catch((notifError: any) => {
-        console.warn('⚠️  Push notification failed (non-critical):', notifError);
-      });
 
       const totalProcessTime = Date.now() - overallStartTime;
       console.log("\n╔════════════════════════════════════════════════════════════════╗");

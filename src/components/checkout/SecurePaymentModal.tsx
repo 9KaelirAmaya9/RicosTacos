@@ -130,8 +130,17 @@ function PaymentForm({
       });
 
       if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
-        // Order status is already 'pending' - no need to update
-        // The webhook will handle notifications when payment succeeds
+        // Notify kitchen now that payment is confirmed — fire-and-forget.
+        // Previously sent before payment was collected; moved here so the kitchen
+        // only sees orders that have actually been paid.
+        supabaseAnon.functions.invoke('send-push-notification', {
+          body: {
+            title: '🚨 New Order Received',
+            body: `Order #${orderNumber} • ${cart.length} item${cart.length !== 1 ? 's' : ''} • $${total.toFixed(2)}`,
+            data: { orderId: orderNumber, orderNumber, url: '/kitchen' },
+            targetRoles: ['admin', 'kitchen']
+          }
+        }).catch((e: any) => console.warn('Push notification failed (non-critical):', e));
 
         // Send confirmation email (with timeout to prevent blocking)
         const emailPromise = supabaseAnon.functions.invoke('send-order-confirmation', {
