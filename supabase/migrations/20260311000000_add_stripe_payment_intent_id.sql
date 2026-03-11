@@ -9,6 +9,9 @@ ALTER TABLE public.orders
 
 -- UNIQUE constraint prevents two orders from being linked to the same
 -- payment intent, which would indicate a double-charge scenario.
+-- Drop first so re-running this migration is idempotent.
+ALTER TABLE public.orders
+  DROP CONSTRAINT IF EXISTS orders_stripe_payment_intent_id_unique;
 ALTER TABLE public.orders
   ADD CONSTRAINT orders_stripe_payment_intent_id_unique
   UNIQUE (stripe_payment_intent_id);
