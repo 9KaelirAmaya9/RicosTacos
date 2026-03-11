@@ -368,20 +368,38 @@ const Cart = () => {
       console.log("🔄 Invoking payment intent creation...");
       const paymentStartTime = Date.now();
 
-      // IMPORTANT: Use supabaseAnon to avoid JWT refresh hang.
-      const paymentIntentPromise = supabaseAnon.functions.invoke(
-        'create-payment-intent',
-        {
-          body: {
-            items: paymentItems,
-            orderType,
-            customerInfo: validation.data,
-            couponCode: appliedCoupon?.code || null,
-            discountAmount: discountAmount,
-            checkoutSessionId,
+      // Use raw fetch() to call the edge function — bypasses GoTrue/JWT refresh entirely.
+      // supabaseAnon.functions.invoke() still calls auth.getSession() internally which
+      // hangs 45s when the Supabase auth server is slow. Raw fetch has no such dependency.
+      const paymentIntentPromise = (async () => {
+        const _SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
+        const _SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '';
+        try {
+          const response = await fetch(`${_SUPABASE_URL}/functions/v1/create-payment-intent`, {
+            method: 'POST',
+            headers: {
+              'apikey': _SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              items: paymentItems,
+              orderType,
+              customerInfo: validation.data,
+              couponCode: appliedCoupon?.code || null,
+              discountAmount: discountAmount,
+              checkoutSessionId,
+            }),
+          });
+          const json = await response.json();
+          if (!response.ok) {
+            return { data: null, error: { message: json?.error || `HTTP ${response.status}`, context: json } };
           }
+          return { data: json, error: null };
+        } catch (err: any) {
+          return { data: null, error: { message: err?.message || 'Network error calling payment service' } };
         }
-      );
+      })();
 
       const paymentHeartbeat = setInterval(() => {
         const elapsed = Date.now() - paymentStartTime;
@@ -406,12 +424,16 @@ const Cart = () => {
 
       if (piError) {
         const elapsed = Date.now() - paymentStartTime;
+        // piError.context is the parsed response body from the edge function (e.g. { error: "Missing STRIPE_SECRET_KEY" })
+        const edgeFnError = (piError as any).context?.error || (piError as any).context?.message || JSON.stringify((piError as any).context);
         console.error("❌ Payment intent error:", {
-          error: piError,
+          name: piError.name,
           message: piError.message,
+          context: (piError as any).context,
+          edgeFnError,
           elapsed: `${elapsed}ms`,
         });
-        throw new Error(`Payment error: ${piError.message || piError.error || "Failed to create payment intent"}`);
+        throw new Error(`Payment error: ${edgeFnError || piError.message || piError.error || "Failed to create payment intent"}`);
       }
 
       if (!piData?.clientSecret || !piData?.publishableKey || !piData?.orderNumber) {
