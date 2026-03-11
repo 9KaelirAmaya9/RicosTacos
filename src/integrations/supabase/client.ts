@@ -28,18 +28,7 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// DO NOT use a custom fetch wrapper here.
-//
-// Previous attempts used fetchWithTimeout() to abort slow auth calls at 8s.
-// This caused a worse problem: when the auth token refresh was aborted,
-// Supabase retried it in a loop. Each retry occupied the shared fetch queue,
-// blocking ALL subsequent DB calls (INSERT, SELECT, etc.) indefinitely.
-// The result was the order INSERT hanging for exactly 30s (our app-level timeout).
-//
-// The browser's native fetch handles connection timeouts correctly on its own.
-// Supabase's own retry/backoff logic works correctly with native fetch.
-// Adding a custom AbortController on top breaks that retry logic.
-
+// The main Supabase client - used for auth and authenticated operations.
 export const supabase = createClient<Database>(
   SUPABASE_URL || '',
   SUPABASE_PUBLISHABLE_KEY || '',
@@ -53,6 +42,36 @@ export const supabase = createClient<Database>(
     global: {
       headers: {
         'X-Client-Info': 'ricos-tacos-web'
+      }
+    },
+    db: {
+      schema: 'public'
+    }
+  }
+);
+
+// A separate anon-only client used exclusively for order INSERT operations.
+//
+// When a user is authenticated, the main supabase client tries to refresh
+// the JWT before making any DB call. If the Supabase auth server is slow or
+// unreachable, this refresh hangs indefinitely, blocking the INSERT.
+//
+// This anon client has NO auth session and NO autoRefreshToken, so it never
+// attempts a token refresh. It uses the anon key directly, which is allowed
+// by the RLS INSERT policy on the orders table.
+// The user_id is passed explicitly in the INSERT data.
+export const supabaseAnon = createClient<Database>(
+  SUPABASE_URL || '',
+  SUPABASE_PUBLISHABLE_KEY || '',
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'ricos-tacos-web-anon'
       }
     },
     db: {

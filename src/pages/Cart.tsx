@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseAnon } from "@/integrations/supabase/client";
 import { z } from "zod";
 import SecurePaymentModal from "@/components/checkout/SecurePaymentModal";
 import { CheckoutAuthOptions } from "@/components/checkout/CheckoutAuthOptions";
@@ -323,12 +323,18 @@ const Cart = () => {
         });
       }
       
-      // Create insert promise with explicit error handling
+      // Create insert promise with explicit error handling.
+      // IMPORTANT: Use supabaseAnon (not supabase) for the INSERT.
+      // When the user is authenticated, the main supabase client tries to refresh
+      // the JWT before making any DB call. If the auth server is slow, this refresh
+      // hangs indefinitely, blocking the INSERT. supabaseAnon has no auth session
+      // and never attempts a token refresh. The RLS policy allows anon INSERT.
+      // The user_id is passed explicitly in orderDataToInsert.
       const orderInsertPromise = (async () => {
         try {
-          if (isDev) console.log("🔄 Starting database insert...");
+          if (isDev) console.log("🔄 Starting database insert (using anon client to bypass JWT refresh)...");
           
-          const result = await supabase
+          const result = await supabaseAnon
             .from("orders")
             .insert([orderDataToInsert])
             .select()
