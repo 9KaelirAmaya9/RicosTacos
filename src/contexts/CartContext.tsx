@@ -211,6 +211,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateQuantity = (id: string, delta: number) => {
+    // Optimistic update: apply the change immediately in React state.
+    // The debounced persistence effect (500ms) will sync to DB/localStorage
+    // in the background, so the UI feels instant with no visible lag.
     setCart(prevCart => {
       const updatedCart = prevCart.map(item =>
         item.id === id
