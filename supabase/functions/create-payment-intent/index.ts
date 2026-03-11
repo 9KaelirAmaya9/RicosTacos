@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.77.0';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,25 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // Allow both authenticated and anonymous users for checkout
-    // But validate the request data to prevent abuse
-    const authHeader = req.headers.get("Authorization");
-    let userId: string | null = null;
-
-    // If auth header exists, verify it (optional for guest checkout)
-    if (authHeader) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } }
-      });
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        userId = user.id;
-      }
-    }
-
     const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY") || "";
     if (!stripeSecret) throw new Error("Missing STRIPE_SECRET_KEY");
 

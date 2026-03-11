@@ -8,7 +8,7 @@ import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { AlertCircle, CreditCard, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseAnon } from '@/integrations/supabase/client';
 
 interface CustomerInfo {
   name: string;
@@ -134,7 +134,7 @@ function PaymentForm({
         // The webhook will handle notifications when payment succeeds
 
         // Send confirmation email (with timeout to prevent blocking)
-        const emailPromise = supabase.functions.invoke('send-order-confirmation', {
+        const emailPromise = supabaseAnon.functions.invoke('send-order-confirmation', {
           body: {
             orderNumber,
             customerName: customerInfo.name,
