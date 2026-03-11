@@ -38,15 +38,17 @@ const Cart = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [currentOrderNumber, setCurrentOrderNumber] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_amount: number; description?: string } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<{ place_id: string; formatted_address: string } | null>(null);
 
   useEffect(() => {
-    // Check auth status
+    // Check auth status - store the user object so checkout never needs to call any auth API
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
+      setCurrentUser(session?.user ?? null);
       if (session?.user?.email) {
         setCustomerInfo(prev => ({ ...prev, email: session.user.email }));
       }
@@ -54,6 +56,7 @@ const Cart = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
+      setCurrentUser(session?.user ?? null);
       if (session?.user?.email) {
         setCustomerInfo(prev => ({ ...prev, email: session.user.email }));
       }
@@ -243,39 +246,22 @@ const Cart = () => {
       });
       console.log(`⏱️  Step 1 Duration: ${Date.now() - step1Start}ms`);
 
-      // Get current user if authenticated
-      // We use the isAuthenticated state that was already set by the useEffect on mount.
-      // We do NOT call getSession() here because:
-      // 1. When a user has an active session, getSession() makes a network call to refresh
-      //    the token, which can hang indefinitely under the fetchWithTimeout wrapper.
-      // 2. The isAuthenticated state is already up-to-date from onAuthStateChange.
-      // 3. For the user_id on the order, we use supabase.auth.getUser() which is faster
-      //    and reads from the local JWT without a network call.
+      // STEP 2: Use the user already stored in state from onAuthStateChange.
+      // We NEVER call getSession() or getUser() here because both make network
+      // calls to Supabase auth when a session exists, and those calls hang
+      // indefinitely under the fetchWithTimeout wrapper in client.ts.
+      // The currentUser state is always up-to-date from onAuthStateChange.
       console.log("\n┌─────────────────────────────────────────────────────────────┐");
-      console.log("│ STEP 2: GETTING USER (FROM LOCAL STATE)                     │");
+      console.log("│ STEP 2: GETTING USER (FROM REACT STATE - NO NETWORK CALL)  │");
       console.log("└─────────────────────────────────────────────────────────────┘");
       const sessionStartTime = Date.now();
-      let session: any = null;
-      try {
-        // Use getUser() which reads from the local JWT - no network call needed
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (error) {
-          console.warn("⚠️  getUser error (non-critical):", error.message);
-        }
-        if (user) {
-          // Construct a minimal session-like object with just what we need
-          session = { user };
-        }
-        console.log("🔐 User Retrieved:", {
-          isAuthenticated: !!user,
-          userId: user?.id || 'guest',
-          userEmail: user?.email || 'none',
-        });
-      } catch (e) {
-        console.warn("⚠️  User retrieval failed (non-critical):", e);
-      } finally {
-        console.log(`⏱️  Step 2 Duration: ${Date.now() - sessionStartTime}ms`);
-      }
+      const session = currentUser ? { user: currentUser } : null;
+      console.log("🔐 User from state:", {
+        isAuthenticated: !!currentUser,
+        userId: currentUser?.id || 'guest',
+        userEmail: currentUser?.email || 'none',
+      });
+      console.log(`⏱️  Step 2 Duration: ${Date.now() - sessionStartTime}ms`);
       
       // Generate order number on client to avoid needing SELECT permissions
       const orderNumber = `ORD-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(1000 + Math.random() * 9000)}`;
