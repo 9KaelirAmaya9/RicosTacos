@@ -43,6 +43,7 @@ const Cart = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [touched, setTouched] = useState({ name: false, phone: false, email: false });
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     phone: "",
@@ -749,12 +750,13 @@ const Cart = () => {
                           id="name"
                           value={customerInfo.name}
                           onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                          onBlur={() => setTouched((t) => ({ ...t, name: true }))}
                           placeholder="Your full name"
                           required
                           autoComplete="name"
-                          className={customerInfo.name.length > 0 && customerInfo.name.length < 2 ? "border-destructive" : ""}
+                          className={touched.name && customerInfo.name.length < 2 ? "border-destructive" : ""}
                         />
-                        {customerInfo.name.length > 0 && customerInfo.name.length < 2 && (
+                        {touched.name && customerInfo.name.length < 2 && (
                           <p className="text-xs text-destructive mt-1">Name must be at least 2 characters</p>
                         )}
                       </div>
@@ -766,13 +768,14 @@ const Cart = () => {
                           type="tel"
                           value={customerInfo.phone}
                           onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                          onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
                           placeholder="(555) 123-4567"
                           required
                           autoComplete="tel"
                           inputMode="tel"
-                          className={customerInfo.phone.length > 0 && customerInfo.phone.length < 10 ? "border-destructive" : ""}
+                          className={touched.phone && customerInfo.phone.length < 10 ? "border-destructive" : ""}
                         />
-                        {customerInfo.phone.length > 0 && customerInfo.phone.length < 10 && (
+                        {touched.phone && customerInfo.phone.length < 10 && (
                           <p className="text-xs text-destructive mt-1">Phone must be at least 10 digits</p>
                         )}
                       </div>
@@ -784,13 +787,14 @@ const Cart = () => {
                           type="email"
                           value={customerInfo.email}
                           onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
+                          onBlur={() => setTouched((t) => ({ ...t, email: true }))}
                           placeholder="your@email.com (for order confirmation)"
                           required
                           autoComplete="email"
                           inputMode="email"
-                          className={customerInfo.email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim()) ? "border-destructive" : ""}
+                          className={touched.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim()) ? "border-destructive" : ""}
                         />
-                        {customerInfo.email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim()) && (
+                        {touched.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim()) && (
                           <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
                         )}
                       </div>
