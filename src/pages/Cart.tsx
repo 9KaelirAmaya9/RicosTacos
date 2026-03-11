@@ -488,31 +488,52 @@ const Cart = () => {
         });
       }
       
-      // Create insert promise with explicit error handling.
-      // IMPORTANT: Use supabaseAnon (not supabase) for the INSERT.
-      // When the user is authenticated, the main supabase client tries to refresh
-      // the JWT before making any DB call. If the auth server is slow, this refresh
-      // hangs indefinitely, blocking the INSERT. supabaseAnon has no auth session
-      // and never attempts a token refresh. The RLS policy allows anon INSERT.
-      // The user_id is passed explicitly in orderDataToInsert.
+      // Create insert promise using a raw fetch() call directly to the Supabase REST API.
+      //
+      // We do NOT use the main supabase client here because when a user is authenticated,
+      // the Supabase JS client tries to refresh the JWT before making any DB call.
+      // If the auth server is slow or unreachable, this refresh hangs indefinitely,
+      // blocking the INSERT. The order never reaches the database.
+      //
+      // A raw fetch() bypasses the GoTrueClient entirely — no JWT refresh, no auth state,
+      // no second GoTrueClient instance. The anon key is used directly, which is allowed
+      // by the RLS INSERT policy on the orders table. The user_id is passed explicitly.
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '';
+
       const orderInsertPromise = (async () => {
         try {
-          if (isDev) console.log("🔄 Starting database insert (using anon client to bypass JWT refresh)...");
-          
-          const result = await supabaseAnon
-            .from("orders")
-            .insert([orderDataToInsert])
-            .select()
-            .single();
-          
-          if (isDev) {
-            console.log("📦 Insert completed:", {
-              hasError: !!result.error,
-              errorCode: result.error?.code
-            });
+          if (isDev) console.log("🔄 Starting database insert (raw fetch, no JWT refresh)...");
+
+          const response = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify(orderDataToInsert),
+          });
+
+          if (!response.ok) {
+            const errBody = await response.json().catch(() => ({}));
+            if (isDev) console.error("❌ Insert HTTP error:", response.status, errBody);
+            return {
+              data: null,
+              error: {
+                message: errBody?.message || errBody?.error || `HTTP ${response.status}`,
+                code: errBody?.code || String(response.status),
+                details: errBody,
+              }
+            };
           }
-          
-          return result;
+
+          const data = await response.json();
+          const inserted = Array.isArray(data) ? data[0] : data;
+
+          if (isDev) console.log("📦 Insert completed successfully");
+          return { data: inserted, error: null };
         } catch (insertError: any) {
           if (isDev) {
             console.error("❌ Insert exception:", {
