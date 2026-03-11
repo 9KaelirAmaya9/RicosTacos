@@ -20,7 +20,7 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const { items, orderType, customerInfo, couponCode, discountAmount } = await req.json();
+    const { items, orderType, customerInfo, couponCode, discountAmount, checkoutSessionId } = await req.json();
 
     // Validate input parameters (allows guest checkout)
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -74,15 +74,20 @@ serve(async (req) => {
 
     if (amount <= 0) throw new Error("Calculated amount must be greater than 0");
 
-    // Generate order number server-side using a cryptographically random suffix
-    // so concurrent orders can never collide on the UNIQUE constraint.
+    // The client sends a stable checkoutSessionId (crypto.randomUUID) that it
+    // generates once per checkout flow and reuses on retries. We derive the order
+    // number deterministically from it so the same retry always produces the same
+    // order number AND the same Stripe idempotency key — meaning Stripe returns
+    // the existing payment intent on retry rather than creating a duplicate.
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const uniqueId = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
-    const orderNumber = `ORD-${date}-${uniqueId}`;
+    const suffix = checkoutSessionId
+      ? checkoutSessionId.replace(/-/g, '').slice(0, 6).toUpperCase()
+      : crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
+    const orderNumber = `ORD-${date}-${suffix}`;
+    const idempotencyKey = checkoutSessionId
+      ? `checkout-${checkoutSessionId}`
+      : `order-${orderNumber}`;
 
-    // Idempotency key scoped to the order number so that retries (e.g. after a
-    // cold-start timeout on the client side) reuse the same Stripe payment intent
-    // rather than creating a second one, preventing double charges.
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: "usd",
@@ -102,7 +107,7 @@ serve(async (req) => {
       },
       description: `Order ${orderNumber}`,
     }, {
-      idempotencyKey: `order-${orderNumber}`,
+      idempotencyKey,
     });
 
     const publishableKey = Deno.env.get("STRIPE_PUBLISHABLE_KEY") || undefined;

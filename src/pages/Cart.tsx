@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase, supabaseAnon } from "@/integrations/supabase/client";
 import { z } from "zod";
 import SecurePaymentModal from "@/components/checkout/SecurePaymentModal";
@@ -38,6 +38,10 @@ const Cart = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [currentOrderNumber, setCurrentOrderNumber] = useState<string | null>(null);
   const [checkoutAmounts, setCheckoutAmounts] = useState<{ subtotal: number; tax: number; deliveryFee: number; total: number } | null>(null);
+  // Persists across retries within the same checkout flow so the edge function
+  // can use it as a stable idempotency key. Cleared on successful payment so
+  // subsequent orders in the same session get a fresh key.
+  const checkoutSessionIdRef = useRef<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [couponCode, setCouponCode] = useState("");
@@ -114,6 +118,15 @@ const Cart = () => {
       console.warn("Already processing, ignoring duplicate call");
       return;
     }
+
+    // Generate a stable session ID for this checkout flow once, on first attempt.
+    // Retries (e.g. after a timeout) reuse the same ID so the edge function's
+    // idempotency key is identical and Stripe returns the existing payment intent
+    // rather than creating a duplicate.
+    if (!checkoutSessionIdRef.current) {
+      checkoutSessionIdRef.current = crypto.randomUUID();
+    }
+    const checkoutSessionId = checkoutSessionIdRef.current;
 
     // Input validation schema - name, phone, and email are REQUIRED
     const orderSchema = z.object({
@@ -302,6 +315,7 @@ const Cart = () => {
             customerInfo: validation.data,
             couponCode: appliedCoupon?.code || null,
             discountAmount: discountAmount,
+            checkoutSessionId,
           }
         }
       );
@@ -952,6 +966,7 @@ const Cart = () => {
                           onSuccess={() => {
                             try {
                               clearCart();
+                              checkoutSessionIdRef.current = null;
                               setCustomerInfo({ name: "", phone: "", email: "", address: "", notes: "" });
                               setAppliedCoupon(null);
                               setCouponCode("");
