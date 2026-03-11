@@ -126,13 +126,13 @@ const handler = async (req: Request): Promise<Response> => {
                   `
                 }
               </ul>
-              <p style="margin: 15px 0 0 0; font-size: 14px;">Need help? Call us at (718) 555-TACO</p>
+              <p style="margin: 15px 0 0 0; font-size: 14px;">Need help? Call us at (718) 633-4816</p>
             </div>
 
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
               <p style="margin: 0; color: #666; font-size: 14px;">
                 Thank you for choosing Ricos Tacos!<br>
-                <a href="https://ricostacosny.com" style="color: #d97706; text-decoration: none;">Visit our website</a>
+                <a href="https://losricostacos.com" style="color: #d97706; text-decoration: none;">Visit our website</a>
               </p>
             </div>
           </div>
@@ -141,7 +141,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "Ricos Tacos <onboarding@resend.dev>",
+      from: "Ricos Tacos <orders@losricostacos.com>",
       to: [orderData.customerEmail],
       subject: `Order Confirmation - ${orderData.orderNumber}`,
       html: emailHtml,

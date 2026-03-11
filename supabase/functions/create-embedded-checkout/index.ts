@@ -66,7 +66,7 @@ serve(async (req) => {
       }
     }
 
-    const origin = req.headers.get('origin') || 'https://1c5a3260-4d54-412b-b8f8-4af54564df01.lovableproject.com';
+    const origin = req.headers.get('origin') || 'https://losricostacos.com';
 
     const lineItems = items.map((item: any) => ({
       price_data: {

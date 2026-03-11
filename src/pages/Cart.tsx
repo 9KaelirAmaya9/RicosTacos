@@ -877,7 +877,7 @@ const Cart = () => {
                                   const deliveryFee = orderType === "delivery" ? 5.00 : 0;
                                   const orderAmount = subtotal + tax + deliveryFee;
 
-                                  const { data, error } = await supabase.functions.invoke('validate-coupon', {
+                                  const { data, error } = await supabaseAnon.functions.invoke('validate-coupon', {
                                     body: { code: couponCode.trim(), orderAmount }
                                   });
 
