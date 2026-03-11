@@ -11,9 +11,9 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   const missing = [];
   if (!SUPABASE_URL) missing.push('VITE_SUPABASE_URL or SUPABASE_URL');
   if (!SUPABASE_PUBLISHABLE_KEY) missing.push('VITE_SUPABASE_PUBLISHABLE_KEY or SUPABASE_PUBLISHABLE_KEY');
-  
+
   const errorMessage = `Missing required Supabase environment variables: ${missing.join(', ')}`;
-  
+
   // Don't throw in production - just log and let the app try to work
   // This allows for graceful degradation
   console.error(errorMessage);
@@ -28,47 +28,29 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// Create a custom fetch with timeout to prevent hanging requests.
-// Auth endpoints (/auth/v1/) get a short timeout — they should be fast.
-// DB and edge function endpoints get a long timeout to survive cold starts.
-const fetchWithTimeout = () => {
-  return async (url: RequestInfo, init?: RequestInit) => {
-    const urlStr = url.toString();
-    const isAuthCall = urlStr.includes('/auth/v1/');
-    const timeout = isAuthCall ? 8000 : 60000;
-
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      const response = await fetch(url, { ...init, signal: controller.signal });
-      clearTimeout(id);
-      return response;
-    } catch (error) {
-      clearTimeout(id);
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.error(`Request timed out after ${timeout}ms:`, urlStr);
-        const timeoutError = new Error(`Request timeout after ${timeout}ms - please check your connection and try again`);
-        timeoutError.name = 'TimeoutError';
-        throw timeoutError;
-      }
-      throw error;
-    }
-  };
-};
+// DO NOT use a custom fetch wrapper here.
+//
+// Previous attempts used fetchWithTimeout() to abort slow auth calls at 8s.
+// This caused a worse problem: when the auth token refresh was aborted,
+// Supabase retried it in a loop. Each retry occupied the shared fetch queue,
+// blocking ALL subsequent DB calls (INSERT, SELECT, etc.) indefinitely.
+// The result was the order INSERT hanging for exactly 30s (our app-level timeout).
+//
+// The browser's native fetch handles connection timeouts correctly on its own.
+// Supabase's own retry/backoff logic works correctly with native fetch.
+// Adding a custom AbortController on top breaks that retry logic.
 
 export const supabase = createClient<Database>(
-  SUPABASE_URL || '', 
-  SUPABASE_PUBLISHABLE_KEY || '', 
+  SUPABASE_URL || '',
+  SUPABASE_PUBLISHABLE_KEY || '',
   {
     auth: {
       storage: localStorage,
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false, // Prevent auth hanging on URL checks
+      detectSessionInUrl: false,
     },
     global: {
-      fetch: fetchWithTimeout(), // auth: 8s, DB/functions: 60s (see fetchWithTimeout above)
       headers: {
         'X-Client-Info': 'ricos-tacos-web'
       }
