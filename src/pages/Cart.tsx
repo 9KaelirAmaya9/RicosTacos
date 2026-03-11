@@ -406,12 +406,16 @@ const Cart = () => {
 
       if (piError) {
         const elapsed = Date.now() - paymentStartTime;
+        // piError.context is the parsed response body from the edge function (e.g. { error: "Missing STRIPE_SECRET_KEY" })
+        const edgeFnError = (piError as any).context?.error || (piError as any).context?.message || JSON.stringify((piError as any).context);
         console.error("❌ Payment intent error:", {
-          error: piError,
+          name: piError.name,
           message: piError.message,
+          context: (piError as any).context,
+          edgeFnError,
           elapsed: `${elapsed}ms`,
         });
-        throw new Error(`Payment error: ${piError.message || piError.error || "Failed to create payment intent"}`);
+        throw new Error(`Payment error: ${edgeFnError || piError.message || piError.error || "Failed to create payment intent"}`);
       }
 
       if (!piData?.clientSecret || !piData?.publishableKey || !piData?.orderNumber) {
