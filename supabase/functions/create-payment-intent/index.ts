@@ -107,12 +107,22 @@ serve(async (req) => {
 
     const publishableKey = Deno.env.get("STRIPE_PUBLISHABLE_KEY") || undefined;
 
+    // Return the exact amounts (in dollars) the edge function calculated and
+    // charged to Stripe. The client uses these values for display and DB storage
+    // so what the user sees, what's in the DB, and what Stripe charged are
+    // always the same number.
     return new Response(
       JSON.stringify({
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
         orderNumber,
         publishableKey,
+        amounts: {
+          subtotal: subtotalAfterDiscount / 100,
+          tax: taxCents / 100,
+          deliveryFee: deliveryFeeCents / 100,
+          total: amount / 100,
+        },
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

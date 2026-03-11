@@ -18,6 +18,13 @@ interface CustomerInfo {
   notes?: string;
 }
 
+interface OrderAmounts {
+  subtotal: number;
+  tax: number;
+  deliveryFee: number;
+  total: number;
+}
+
 interface SecurePaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -26,23 +33,23 @@ interface SecurePaymentModalProps {
   orderNumber: string;
   customerInfo: CustomerInfo;
   orderType: 'pickup' | 'delivery';
-  cartTotal: number;
+  amounts: OrderAmounts;
   cart: Array<{ name: string; price: number; quantity: number }>;
   onSuccess: () => void;
 }
 
-function PaymentForm({ 
-  orderNumber, 
-  customerInfo, 
-  orderType, 
-  cartTotal,
+function PaymentForm({
+  orderNumber,
+  customerInfo,
+  orderType,
+  amounts,
   cart,
-  onSuccess 
-}: { 
-  orderNumber: string; 
+  onSuccess
+}: {
+  orderNumber: string;
   customerInfo: CustomerInfo;
   orderType: string;
-  cartTotal: number;
+  amounts: OrderAmounts;
   cart: Array<{ name: string; price: number; quantity: number }>;
   onSuccess: () => void;
 }) {
@@ -69,9 +76,7 @@ function PaymentForm({
   }, [isReady]);
 
 
-  const tax = cartTotal * 0.08875;
-  const deliveryFee = orderType === 'delivery' ? 5.00 : 0;
-  const total = cartTotal + tax + deliveryFee;
+  const { subtotal, tax, deliveryFee, total } = amounts;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,9 +155,9 @@ function PaymentForm({
             customerEmail: customerInfo.email,
             orderType,
             items: cart,
-            subtotal: cartTotal,
-            tax: cartTotal * 0.08875,
-            total: total, // Use the actual total including delivery fee
+            subtotal,
+            tax,
+            total,
             deliveryAddress: orderType === 'delivery' ? customerInfo.address : undefined
           }
         });
@@ -205,7 +210,7 @@ function PaymentForm({
           <Separator className="my-2" />
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal:</span>
-            <span>${cartTotal.toFixed(2)}</span>
+            <span>${subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Tax (8.875%):</span>
@@ -330,7 +335,7 @@ export default function SecurePaymentModal({
   orderNumber,
   customerInfo,
   orderType,
-  cartTotal,
+  amounts,
   cart,
   onSuccess,
 }: SecurePaymentModalProps) {
@@ -387,7 +392,7 @@ export default function SecurePaymentModal({
               orderNumber={orderNumber}
               customerInfo={customerInfo}
               orderType={orderType}
-              cartTotal={cartTotal}
+              amounts={amounts}
               cart={cart}
               onSuccess={onSuccess}
             />

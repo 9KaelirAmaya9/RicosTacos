@@ -37,6 +37,7 @@ const Cart = () => {
   const [checkoutPublishableKey, setCheckoutPublishableKey] = useState<string | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [currentOrderNumber, setCurrentOrderNumber] = useState<string | null>(null);
+  const [checkoutAmounts, setCheckoutAmounts] = useState<{ subtotal: number; tax: number; deliveryFee: number; total: number } | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [couponCode, setCouponCode] = useState("");
@@ -343,6 +344,9 @@ const Cart = () => {
 
       // Use server-generated order number (collision-proof via crypto.randomUUID)
       const orderNumber = piData.orderNumber as string;
+      // Use server-calculated amounts as the single source of truth — these are
+      // the exact values charged to Stripe, so DB and display match the charge.
+      const serverAmounts = piData.amounts as { subtotal: number; tax: number; deliveryFee: number; total: number };
 
       const paymentElapsed = Date.now() - paymentStartTime;
       console.log(`✅ Payment intent created successfully! (${paymentElapsed}ms) Order: ${orderNumber}`);
@@ -391,9 +395,9 @@ const Cart = () => {
         order_type: orderType,
         delivery_address: orderType === "delivery" ? finalDeliveryAddress : null,
         items: cart as any,
-        subtotal,
-        tax,
-        total: total, // Include delivery fee in total
+        subtotal: serverAmounts.subtotal,
+        tax: serverAmounts.tax,
+        total: serverAmounts.total,
         notes: validation.data.notes || null,
         status: "pending",
       };
@@ -515,6 +519,7 @@ const Cart = () => {
       console.log("═══════════════════════════════════════════════════════════════════\n");
 
       setCurrentOrderNumber(orderNumber);
+      setCheckoutAmounts(serverAmounts);
       setCheckoutClientSecret(piData.clientSecret as string);
       setCheckoutPublishableKey(piData.publishableKey as string);
       setShowCheckout(true);
@@ -933,7 +938,7 @@ const Cart = () => {
                         <span className="pointer-events-none">Proceed to Checkout</span>
                       </Button>
 
-                      {checkoutClientSecret && checkoutPublishableKey && currentOrderNumber && (
+                      {checkoutClientSecret && checkoutPublishableKey && currentOrderNumber && checkoutAmounts && (
                         <SecurePaymentModal
                           open={showCheckout}
                           onOpenChange={setShowCheckout}
@@ -942,7 +947,7 @@ const Cart = () => {
                           orderNumber={currentOrderNumber}
                           customerInfo={customerInfo}
                           orderType={orderType}
-                          cartTotal={cartTotal}
+                          amounts={checkoutAmounts}
                           cart={cart}
                           onSuccess={() => {
                             try {
@@ -953,6 +958,7 @@ const Cart = () => {
                               setShowCheckout(false);
                               setCheckoutClientSecret(null);
                               setCheckoutPublishableKey(null);
+                              setCheckoutAmounts(null);
                               
                               // Navigate to success page with error handling
                               if (currentOrderNumber) {
