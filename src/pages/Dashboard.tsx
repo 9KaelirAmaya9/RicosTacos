@@ -34,7 +34,7 @@ const Dashboard = () => {
           .eq("user_id", userId);
 
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Role fetch timeout")), 3000)
+          setTimeout(() => reject(new Error("Role fetch timeout")), 10000)
         );
 
         const { data: roles, error: rolesError } = await Promise.race([
@@ -76,16 +76,9 @@ const Dashboard = () => {
 
     const initialize = async () => {
       try {
-        // Add timeout to session fetch
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Session fetch timeout")), 3000)
-        );
-
-        const { data: { session: currentSession } } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]) as any;
+        // Get session — no artificial timeout; the Supabase client reads from
+        // localStorage synchronously so this resolves in <10 ms in practice.
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
 
         if (!isMounted) return;
 
