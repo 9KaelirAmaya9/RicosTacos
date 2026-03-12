@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const SUPABASE_URL = 'https://psbbrezasrwjjqppgtok.supabase.co';
+const SUPABASE_URL = 'https://zburfinoxmfasqvxtnln.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzYmJyZXphc3J3ampxcHBndG9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNDc1NTUsImV4cCI6MjA4MzgyMzU1NX0.1nOFLMDzFYI2tgxfNTCPalnFVIDI2hNauY7ZIgKrpGA';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -40,7 +40,7 @@ async function createAdminUser() {
     if (signInError) {
       console.log('❌ Sign in also failed:', signInError.message);
       console.log('\n⚠️  Please create the user manually in Supabase dashboard:');
-      console.log(`   1. Go to: https://supabase.com/dashboard/project/psbbrezasrwjjqppgtok/auth/users`);
+      console.log(`   1. Go to: https://supabase.com/dashboard/project/zburfinoxmfasqvxtnln/auth/users`);
       console.log(`   2. Click "Add user" -> "Create new user"`);
       console.log(`   3. Email: ${email}`);
       console.log(`   4. Password: ${password}`);

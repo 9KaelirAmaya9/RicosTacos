@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const SUPABASE_URL = 'https://psbbrezasrwjjqppgtok.supabase.co';
+const SUPABASE_URL = 'https://zburfinoxmfasqvxtnln.supabase.co';
 const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzYmJyZXphc3J3ampxcHBndG9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI0NzU1NSwiZXhwIjoyMDgzODIzNTU1fQ.QWAlv8GhzYouJWpN3rdZOrECw9prOjak3nxcpuMTVrs';
 
 // Admin client with service role

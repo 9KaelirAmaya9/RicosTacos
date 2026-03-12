@@ -3,7 +3,7 @@
 ## Issues Identified
 
 ### 1. ❌ Sign-In 500 Error (NOT caused by my changes)
-**Error:** `POST https://psbbrezasrwjjqppgtok.supabase.co/auth/v1/token?grant_type=password 500`
+**Error:** `POST https://zburfinoxmfasqvxtnln.supabase.co/auth/v1/token?grant_type=password 500`
 
 **Root Cause:** This is a Supabase backend error, not frontend code
 **Possible Reasons:**
@@ -18,7 +18,7 @@
 - No changes to auth API endpoints
 
 ### 2. ❌ CORS Error on Payment Intent
-**Error:** `Access to fetch at 'https://psbbrezasrwjjqppgtok.supabase.co/functions/v1/create-payment-intent' blocked by CORS`
+**Error:** `Access to fetch at 'https://zburfinoxmfasqvxtnln.supabase.co/functions/v1/create-payment-intent' blocked by CORS`
 
 **Root Cause:** Edge Function not deployed or Supabase project configuration
 **Fix Required:** Deploy Edge Functions to Supabase

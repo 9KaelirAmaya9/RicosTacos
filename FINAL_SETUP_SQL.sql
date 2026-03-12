@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
 -- FINAL PRODUCTION SETUP - Run this in Supabase SQL Editor
--- URL: https://supabase.com/dashboard/project/psbbrezasrwjjqppgtok/sql/new
+-- URL: https://supabase.com/dashboard/project/zburfinoxmfasqvxtnln/sql/new
 -- ═══════════════════════════════════════════════════════════════════
 
 -- Step 1: Grant admin role to albertijan@gmail.com
