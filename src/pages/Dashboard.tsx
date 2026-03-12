@@ -17,13 +17,13 @@ const Dashboard = () => {
   useEffect(() => {
     let isMounted = true;
     
-    // Force stop loading after 5 seconds max
+    // Force stop loading after 15 seconds max (role fetch can take up to 10s)
     const hardStop = setTimeout(() => {
       if (isMounted) {
-        console.warn("Dashboard: Force stopping loading after 5s");
+        console.warn("Dashboard: Force stopping loading after 15s");
         setLoading(false);
       }
-    }, 5000);
+    }, 15000);
 
     const fetchRoles = async (userId: string) => {
       try {
