@@ -102,6 +102,21 @@ const Kitchen = () => {
         alarmMinimumUntilRef.current = Math.max(alarmMinimumUntilRef.current, Date.now() + 10000);
         void startAlarm();
         toast.info(`🔔 ${newUnacceptedOrders.length} new order${newUnacceptedOrders.length > 1 ? "s" : ""} received`);
+
+        // Fire Web Push notification so the tablet gets alerted even if the
+        // browser tab is closed or the screen is off.
+        const orderWord = newUnacceptedOrders.length === 1 ? 'order' : 'orders';
+        const names = newUnacceptedOrders.map((o) => o.customer_name).join(', ');
+        supabase.functions
+          .invoke('send-push-notification', {
+            body: {
+              title: `🌮 ${newUnacceptedOrders.length} New ${orderWord.charAt(0).toUpperCase() + orderWord.slice(1)}!`,
+              body: `From: ${names}`,
+              data: { url: '/kitchen' },
+              targetRoles: ['kitchen', 'admin'],
+            },
+          })
+          .catch((err) => console.warn('Push notification failed (non-critical):', err));
       }
 
       knownOrderIdsRef.current = nextIds;
