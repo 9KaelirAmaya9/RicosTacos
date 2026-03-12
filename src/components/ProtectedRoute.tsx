@@ -86,7 +86,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
             .limit(5);
 
           const roleTimeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Role check timeout")), 3000)
+            setTimeout(() => reject(new Error("Role check timeout")), 10000)
           );
 
           const { data: roles, error: roleError } = await Promise.race([
