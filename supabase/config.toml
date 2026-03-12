@@ -28,6 +28,10 @@ verify_jwt = false
 verify_jwt = false
 # Public function - no auth required for coupon validation
 
+[functions.validate-delivery-google]
+verify_jwt = false
+# Public function - no auth required for delivery zone validation
+
 [functions.geocode-autocomplete]
 verify_jwt = false
 # Public function - no auth required for address autocomplete
