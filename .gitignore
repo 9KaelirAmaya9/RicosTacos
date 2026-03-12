@@ -28,3 +28,5 @@ env
 *.sln
 *.sw?
 agency-agents
+.vercel
+.env*.local
