@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ricos Tacos — Font Comparison</title>
+
+  <!-- Google Fonts — closest free web equivalents to the 4 requested styles -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!--
+    Taco Fiesta style  → Baloo 2 / Baloo Bhai 2 (rounded, festive, Latin-friendly)
+    Mexican Taco Box   → Boogaloo (casual, hand-painted block)
+    Cactus Love        → Pacifico (flowing, hand-lettered)
+    Tequila Typeface   → Righteous (bold, geometric, display)
+    + Chewy            → bubbly balloon letters (very close to sign)
+    + Lilita One       → current implementation
+  -->
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=Baloo+Bhai+2:wght@800&family=Boogaloo&family=Pacifico&family=Righteous&family=Chewy&family=Lilita+One&family=Titan+One&family=Fredoka+One&family=Lobster+Two:ital,wght@1,700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Adobe Fonts / premium fonts are loaded via @font-face below using Google-hosted equivalents -->
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #111;
+      color: #fff;
+      padding: 32px 20px;
+    }
+
+    .wrapper { max-width: 960px; margin: 0 auto; }
+
+    /* ─── Page header ─────────────────────────────────────────── */
+    .page-header {
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .agent-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: #aaa;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .agent-badge .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #8BC34A;
+      box-shadow: 0 0 6px #8BC34A;
+    }
+    .page-header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .page-header p {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.6;
+    }
+
+    /* ─── Serape stripe ───────────────────────────────────────── */
+    .serape {
+      display: flex;
+      width: 100%;
+      overflow: hidden;
+      height: 8px;
+    }
+    .serape > span { flex: 1; min-width: 0; }
+
+    /* ─── Font card ───────────────────────────────────────────── */
+    .font-card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+    .font-card-header {
+      background: #222;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .font-card-header .font-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .font-card-header .font-meta {
+      font-size: 11px;
+      color: #666;
+      font-family: 'Courier New', monospace;
+    }
+    .font-card-header .badge {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .badge-free { background: #1a3a1a; color: #57B947; border: 1px solid #57B947; }
+    .badge-premium { background: #3a1a00; color: #F68D2E; border: 1px solid #F68D2E; }
+    .badge-current { background: #1a1a3a; color: #0071BC; border: 1px solid #0071BC; }
+
+    /* ─── Header preview inside card ─────────────────────────── */
+    .preview-wrap {
+      padding: 20px;
+    }
+    .mini-header {
+      border: 2px solid #E31E24;
+      border-radius: 6px;
+      overflow: hidden;
+      max-width: 860px;
+    }
+    .mini-header .lime-band {
+      background: #8BC34A;
+      padding: 14px 28px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .mini-header .nav-row {
+      background: #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mini-header .nav-row a {
+      font-family: 'Fredoka One', cursive;
+      font-size: 14px;
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 18px;
+      border-right: 1px solid #333;
+      letter-spacing: 0.04em;
+    }
+    .mini-header .nav-row a:last-child { border-right: none; }
+    .mini-header .nav-row a.active { background: #E31E24; }
+
+    /* ─── Subtitle (script) ───────────────────────────────────── */
+    .subtitle-script {
+      font-family: 'Lobster Two', cursive;
+      font-style: italic;
+      font-weight: 700;
+      font-size: 15px;
+      color: #c0392b;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+
+    /* ─── Brand text variants ─────────────────────────────────── */
+    /* Shared stroke/shadow treatment — same as sign */
+    .brand-stroke {
+      -webkit-text-stroke: 5px white;
+      paint-order: stroke fill;
+      text-shadow: 3px 3px 0 #7a0000;
+      color: #E31E24;
+      line-height: 0.9;
+      font-size: clamp(48px, 7vw, 76px);
+      display: block;
+    }
+
+    .font-baloo2      { font-family: 'Baloo 2', cursive; font-weight: 800; }
+    .font-boogaloo    { font-family: 'Boogaloo', cursive; }
+    .font-pacifico    { font-family: 'Pacifico', cursive; }
+    .font-righteous   { font-family: 'Righteous', cursive; }
+    .font-chewy       { font-family: 'Chewy', cursive; }
+    .font-lilita      { font-family: 'Lilita One', cursive; }
+    .font-titan       { font-family: 'Titan One', cursive; }
+
+    /* ─── Comparison note ─────────────────────────────────────── */
+    .note {
+      font-size: 12px;
+      color: #777;
+      line-height: 1.6;
+      padding: 12px 20px;
+      border-top: 1px solid #2a2a2a;
+      background: #161616;
+    }
+    .note strong { color: #aaa; }
+
+    /* ─── Specimen row ────────────────────────────────────────── */
+    .specimen-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 20px;
+      border-top: 1px solid #1e1e1e;
+    }
+    .specimen-label {
+      font-size: 10px;
+      color: #555;
+      font-family: 'Courier New', monospace;
+      width: 120px;
+      flex-shrink: 0;
+    }
+    .specimen-text {
+      font-size: 28px;
+      color: #E31E24;
+      -webkit-text-stroke: 3px white;
+      paint-order: stroke fill;
+      text-shadow: 2px 2px 0 #7a0000;
+      line-height: 1;
+    }
+
+    /* ─── Section divider ─────────────────────────────────────── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #555;
+      margin: 40px 0 16px;
+    }
+
+    /* ─── Pick banner ─────────────────────────────────────────── */
+    .pick-banner {
+      background: linear-gradient(90deg, #1a2a0a, #1a1a1a);
+      border: 1px solid #57B947;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pick-banner .icon { font-size: 24px; }
+    .pick-banner .text { font-size: 13px; color: #aaa; line-height: 1.6; }
+    .pick-banner .text strong { color: #8BC34A; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="agent-badge"><span class="dot"></span> UX Designer Agent — Font Comparison</div>
+    <h1>Font Style Comparison — "Ricos Tacos" Sign</h1>
+    <p>Live header previews using the 4 requested font styles + current implementation. Each shows the exact sign treatment: red fill, white stroke, dark red drop shadow, lime-green background.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       OPTION A — Taco Fiesta style → Baloo 2 ExtraBold
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Option A — "Taco Fiesta" Style</div>
+  <div class="font-card">
+    <div class="font-card-header">
+      <div>
+        <div class="font-name">Baloo 2 ExtraBold 800</div>
+        <div class="font-meta">Closest free web equivalent to "Taco Fiesta" — rounded, festive, Latin-script friendly</div>
+      </div>
+      <span class="badge badge-free">Free · Google Fonts</span>
+    </div>
+    <div class="preview-wrap">
+      <div class="mini-header">
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+        <div class="lime-band">
+          <span class="subtitle-script">Piaxtla es México Deli</span>
+          <span class="brand-stroke font-baloo2">Ricos Tacos</span>
+        </div>
+        <div class="nav-row">
+          <a href="#" class="active">Home</a>
+          <a href="#">Menu</a>
+          <a href="#">Order Online</a>
+          <a href="#">Location</a>
+        </div>
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+      </div>
+    </div>
+    <div class="specimen-row">
+      <div class="specimen-label">Baloo 2 · 800<br>Alphabet sample</div>
+      <div class="specimen-text font-baloo2">ABCDEFGabcdefg 0123</div>
+    </div>
+    <div class="note">
+      <strong>Baloo 2 ExtraBold</strong> — Very close to "Taco Fiesta" commercial font. Rounded terminals, tall x-height, festive Latin character. The rounded bowl shapes closely match the sign's "O", "C", "R" letterforms. <strong>Best overall match to the sign.</strong>
+      <br>CSS: <code style="background:#222;padding:2px 5px;border-radius:3px;font-size:10px;">font-family: 'Baloo 2', cursive; font-weight: 800;</code>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       OPTION B — Mexican Taco Box style → Boogaloo
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Option B — "Mexican Taco Box" Style</div>
+  <div class="font-card">
+    <div class="font-card-header">
+      <div>
+        <div class="font-name">Boogaloo</div>
+        <div class="font-meta">Closest free web equivalent to "Mexican Taco Box" — casual, hand-painted block letters</div>
+      </div>
+      <span class="badge badge-free">Free · Google Fonts</span>
+    </div>
+    <div class="preview-wrap">
+      <div class="mini-header">
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+        <div class="lime-band">
+          <span class="subtitle-script">Piaxtla es México Deli</span>
+          <span class="brand-stroke font-boogaloo">Ricos Tacos</span>
+        </div>
+        <div class="nav-row">
+          <a href="#" class="active">Home</a>
+          <a href="#">Menu</a>
+          <a href="#">Order Online</a>
+          <a href="#">Location</a>
+        </div>
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+      </div>
+    </div>
+    <div class="specimen-row">
+      <div class="specimen-label">Boogaloo<br>Alphabet sample</div>
+      <div class="specimen-text font-boogaloo">ABCDEFGabcdefg 0123</div>
+    </div>
+    <div class="note">
+      <strong>Boogaloo</strong> — Casual, slightly condensed, hand-painted feel. Matches the "Mexican Taco Box" aesthetic with its informal stroke variation. Slightly thinner than the sign's letters but the character shapes are very similar.
+      <br>CSS: <code style="background:#222;padding:2px 5px;border-radius:3px;font-size:10px;">font-family: 'Boogaloo', cursive;</code>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       OPTION C — Cactus Love style → Pacifico
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Option C — "Cactus Love" Style</div>
+  <div class="font-card">
+    <div class="font-card-header">
+      <div>
+        <div class="font-name">Pacifico</div>
+        <div class="font-meta">Closest free web equivalent to "Cactus Love" — flowing, hand-lettered script-display hybrid</div>
+      </div>
+      <span class="badge badge-free">Free · Google Fonts</span>
+    </div>
+    <div class="preview-wrap">
+      <div class="mini-header">
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+        <div class="lime-band">
+          <span class="subtitle-script">Piaxtla es México Deli</span>
+          <span class="brand-stroke font-pacifico">Ricos Tacos</span>
+        </div>
+        <div class="nav-row">
+          <a href="#" class="active">Home</a>
+          <a href="#">Menu</a>
+          <a href="#">Order Online</a>
+          <a href="#">Location</a>
+        </div>
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+      </div>
+    </div>
+    <div class="specimen-row">
+      <div class="specimen-label">Pacifico<br>Alphabet sample</div>
+      <div class="specimen-text font-pacifico">ABCDEFGabcdefg 0123</div>
+    </div>
+    <div class="note">
+      <strong>Pacifico</strong> — Flowing, rounded, retro hand-lettered feel. Matches "Cactus Love" style with its organic curves and casual warmth. More script-like than the sign's block letters — great for a softer, artisanal look.
+      <br>CSS: <code style="background:#222;padding:2px 5px;border-radius:3px;font-size:10px;">font-family: 'Pacifico', cursive;</code>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       OPTION D — Tequila Typeface style → Righteous
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Option D — "Tequila Typeface" Style</div>
+  <div class="font-card">
+    <div class="font-card-header">
+      <div>
+        <div class="font-name">Righteous</div>
+        <div class="font-meta">Closest free web equivalent to "Tequila Typeface" — bold, geometric, Art Deco-influenced display</div>
+      </div>
+      <span class="badge badge-free">Free · Google Fonts</span>
+    </div>
+    <div class="preview-wrap">
+      <div class="mini-header">
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+        <div class="lime-band">
+          <span class="subtitle-script">Piaxtla es México Deli</span>
+          <span class="brand-stroke font-righteous">Ricos Tacos</span>
+        </div>
+        <div class="nav-row">
+          <a href="#" class="active">Home</a>
+          <a href="#">Menu</a>
+          <a href="#">Order Online</a>
+          <a href="#">Location</a>
+        </div>
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+      </div>
+    </div>
+    <div class="specimen-row">
+      <div class="specimen-label">Righteous<br>Alphabet sample</div>
+      <div class="specimen-text font-righteous">ABCDEFGabcdefg 0123</div>
+    </div>
+    <div class="note">
+      <strong>Righteous</strong> — Bold, geometric, slightly condensed. Matches "Tequila Typeface" with its strong vertical strokes and Art Deco influence. More structured/angular than the sign's rounded letters — great for a premium, modern Mexican brand feel.
+      <br>CSS: <code style="background:#222;padding:2px 5px;border-radius:3px;font-size:10px;">font-family: 'Righteous', cursive;</code>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       BONUS — Chewy (very close to sign's actual letterforms)
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Bonus — "Chewy" (Closest to Sign's Actual Letterforms)</div>
+  <div class="font-card" style="border-color:#57B947;">
+    <div class="font-card-header" style="background:#1a2a0a;">
+      <div>
+        <div class="font-name" style="color:#8BC34A;">Chewy ⭐ Recommended</div>
+        <div class="font-meta">Bubbly, rounded, chunky — extremely close to the sign's actual "Ricos Tacos" letterforms</div>
+      </div>
+      <span class="badge badge-free">Free · Google Fonts</span>
+    </div>
+    <div class="preview-wrap">
+      <div class="mini-header">
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+        <div class="lime-band">
+          <span class="subtitle-script">Piaxtla es México Deli</span>
+          <span class="brand-stroke font-chewy">Ricos Tacos</span>
+        </div>
+        <div class="nav-row">
+          <a href="#" class="active">Home</a>
+          <a href="#">Menu</a>
+          <a href="#">Order Online</a>
+          <a href="#">Location</a>
+        </div>
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+      </div>
+    </div>
+    <div class="specimen-row">
+      <div class="specimen-label">Chewy<br>Alphabet sample</div>
+      <div class="specimen-text font-chewy">ABCDEFGabcdefg 0123</div>
+    </div>
+    <div class="note">
+      <strong>Chewy</strong> — The bubbly, rounded, slightly irregular letterforms are the closest free Google Font match to the sign's actual painted block letters. The "R", "i", "C", "O", "S" shapes match the sign's proportions very well. <strong>Highly recommended as the primary brand font.</strong>
+      <br>CSS: <code style="background:#222;padding:2px 5px;border-radius:3px;font-size:10px;">font-family: 'Chewy', cursive;</code>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       CURRENT — Lilita One (for reference)
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Current Implementation (for reference)</div>
+  <div class="font-card" style="border-color:#0071BC;">
+    <div class="font-card-header">
+      <div>
+        <div class="font-name">Lilita One (current)</div>
+        <div class="font-meta">Currently used in Navigation.tsx — bold, rounded display</div>
+      </div>
+      <span class="badge badge-current">Current</span>
+    </div>
+    <div class="preview-wrap">
+      <div class="mini-header">
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+        <div class="lime-band">
+          <span class="subtitle-script">Piaxtla es México Deli</span>
+          <span class="brand-stroke font-lilita">Ricos Tacos</span>
+        </div>
+        <div class="nav-row">
+          <a href="#" class="active">Home</a>
+          <a href="#">Menu</a>
+          <a href="#">Order Online</a>
+          <a href="#">Location</a>
+        </div>
+        <div class="serape">
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span><span style="background:#000"></span>
+          <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+          <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+          <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+          <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+          <span style="background:#000"></span><span style="background:#00BCD4"></span>
+          <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+          <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+          <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+          <span style="background:#F68D2E"></span>
+        </div>
+      </div>
+    </div>
+    <div class="specimen-row">
+      <div class="specimen-label">Lilita One<br>Alphabet sample</div>
+      <div class="specimen-text font-lilita">ABCDEFGabcdefg 0123</div>
+    </div>
+    <div class="note">
+      <strong>Lilita One</strong> — Current implementation. Bold, rounded, good match but slightly more uniform/geometric than the sign's hand-painted feel.
+    </div>
+  </div>
+
+  <!-- ─── Pick banner ─────────────────────────────────────────── -->
+  <div class="pick-banner">
+    <div class="icon">🎯</div>
+    <div class="text">
+      <strong>Recommendation:</strong> Use <strong>Chewy</strong> as the primary brand font — it most closely replicates the sign's bubbly, rounded, hand-painted block letter style. Use <strong>Baloo 2 ExtraBold</strong> as a secondary option for a slightly more polished look. Both are free on Google Fonts and already compatible with the existing Navigation.tsx architecture.
+    </div>
+  </div>
+
+  <div style="height:40px"></div>
+</div>
+</body>
+</html>

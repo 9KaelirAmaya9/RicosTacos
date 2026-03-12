@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ricos Tacos — 3 Header Design Concepts</title>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FONTS — exactly matching the sign's typography hierarchy
+       ───────────────────────────────────────────────────────────
+       • "Ricos Tacos" big block letters  → Chewy ⭐ (selected)
+         Fallbacks: Lilita One, Titan One, Fredoka One
+       • "Piaxtla es México Deli" script  → Lobster Two Italic
+         Fallbacks: Dancing Script, Pacifico
+       • Nav / UI labels                  → Fredoka One / Boogaloo
+         Fallbacks: Righteous, Inter
+  ═══════════════════════════════════════════════════════════════ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chewy&family=Lilita+One&family=Titan+One&family=Fredoka+One&family=Boogaloo&family=Righteous&family=Lobster+Two:ital,wght@1,700&family=Dancing+Script:wght@700&family=Pacifico&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ─── Reset & page chrome ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      padding: 40px 20px;
+    }
+
+    /* ─── Section labels ──────────────────────────────────────── */
+    .section-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #aaa;
+      margin: 60px 0 8px;
+    }
+    .section-label:first-child { margin-top: 0; }
+    .design-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .design-desc {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 18px;
+      max-width: 780px;
+      line-height: 1.6;
+    }
+
+    /* ─── Spec table ──────────────────────────────────────────── */
+    .spec-table {
+      width: 100%;
+      max-width: 900px;
+      border-collapse: collapse;
+      margin-top: 18px;
+      font-size: 12px;
+    }
+    .spec-table th {
+      background: #2a2a2a;
+      color: #aaa;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+      border: 1px solid #333;
+    }
+    .spec-table td {
+      padding: 8px 12px;
+      border: 1px solid #2a2a2a;
+      color: #ddd;
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .spec-table tr:nth-child(even) td { background: #1e1e1e; }
+    .swatch {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.2);
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    code {
+      background: #2a2a2a;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 11px;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SHARED SERAPE STRIPE COMPONENT
+    ═══════════════════════════════════════════════════════════ */
+    .serape {
+      display: flex;
+      width: 100%;
+      overflow: hidden;
+    }
+    .serape > span {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       DESIGN 1 — "Classic Sign"
+       Lime-green background, full-width serape borders top & bottom,
+       centered logo lockup, nav below
+    ═══════════════════════════════════════════════════════════ */
+    .header-1 {
+      max-width: 900px;
+      border: 3px solid #E31E24;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .header-1 .serape-top    { height: 10px; }
+    .header-1 .main-band {
+      background: #8BC34A;
+      padding: 18px 32px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .header-1 .subtitle {
+      font-family: 'Lobster Two', 'Dancing Script', cursive;
+      font-style: italic;
+      font-weight: 700;
+      font-size: 18px;
+      color: #c0392b;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+      letter-spacing: 0.02em;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .header-1 .brand-text {
+      font-family: 'Chewy', 'Lilita One', 'Titan One', cursive;
+      font-size: clamp(52px, 8vw, 88px);
+      color: #E31E24;
+      line-height: 0.9;
+      -webkit-text-stroke: 5px white;
+      paint-order: stroke fill;
+      text-shadow: 3px 3px 0 #7a0000;
+      letter-spacing: -0.01em;
+    }
+    .header-1 .tagline {
+      font-family: 'Fredoka One', 'Boogaloo', cursive;
+      font-size: 13px;
+      color: #1a1a1a;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+    .header-1 .nav-bar {
+      background: #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 0;
+    }
+    .header-1 .nav-bar a {
+      font-family: 'Fredoka One', 'Boogaloo', cursive;
+      font-size: 15px;
+      color: #fff;
+      text-decoration: none;
+      padding: 12px 22px;
+      letter-spacing: 0.04em;
+      transition: background 0.2s, color 0.2s;
+      border-right: 1px solid #333;
+    }
+    .header-1 .nav-bar a:last-child { border-right: none; }
+    .header-1 .nav-bar a:hover,
+    .header-1 .nav-bar a.active { background: #E31E24; color: #fff; }
+    .header-1 .serape-bottom { height: 8px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       DESIGN 2 — "Split Panel"
+       Dark left panel with logo lockup, lime-green right accent,
+       serape stripe as a vertical divider element
+    ═══════════════════════════════════════════════════════════ */
+    .header-2 {
+      max-width: 900px;
+      overflow: hidden;
+      border-radius: 6px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .header-2 .serape-top { height: 8px; }
+    .header-2 .body {
+      display: flex;
+      align-items: stretch;
+      background: #111;
+      min-height: 90px;
+    }
+    .header-2 .logo-panel {
+      background: #8BC34A;
+      padding: 14px 24px 14px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      flex-shrink: 0;
+      border-right: 4px solid #E31E24;
+      position: relative;
+    }
+    /* Zigzag right edge on logo panel — like the sign's right border */
+    .header-2 .logo-panel::after {
+      content: '';
+      position: absolute;
+      right: -14px;
+      top: 0; bottom: 0;
+      width: 14px;
+      background:
+        linear-gradient(135deg, #8BC34A 50%, transparent 50%) 0 0 / 14px 18px repeat-y,
+        linear-gradient(225deg, #8BC34A 50%, transparent 50%) 0 9px / 14px 18px repeat-y;
+      z-index: 2;
+    }
+    .header-2 .subtitle-2 {
+      font-family: 'Lobster Two', 'Dancing Script', cursive;
+      font-style: italic;
+      font-weight: 700;
+      font-size: 13px;
+      color: #c0392b;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+      line-height: 1;
+      margin-bottom: 1px;
+    }
+    .header-2 .brand-text-2 {
+      font-family: 'Chewy', 'Lilita One', 'Titan One', cursive;
+      font-size: clamp(36px, 5.5vw, 58px);
+      color: #E31E24;
+      line-height: 0.9;
+      -webkit-text-stroke: 4px white;
+      paint-order: stroke fill;
+      text-shadow: 2px 2px 0 #7a0000;
+    }
+    .header-2 .nav-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 24px 0 32px;
+      gap: 8px;
+    }
+    .header-2 .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .header-2 .nav-links a {
+      font-family: 'Fredoka One', 'Boogaloo', cursive;
+      font-size: 15px;
+      color: #ddd;
+      text-decoration: none;
+      padding: 6px 14px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+      transition: background 0.2s, color 0.2s;
+    }
+    .header-2 .nav-links a:hover,
+    .header-2 .nav-links a.active {
+      background: #E31E24;
+      color: #fff;
+    }
+    .header-2 .cta-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-2 .cta-btn {
+      font-family: 'Fredoka One', cursive;
+      font-size: 13px;
+      background: #E31E24;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 7px 16px;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .header-2 .phone {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      color: #888;
+      letter-spacing: 0.04em;
+    }
+    .header-2 .serape-bottom { height: 6px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       DESIGN 3 — "Hero Banner"
+       Full-width hero header with serape top/bottom borders,
+       centered logo + tagline + CTA buttons, dark overlay on bg
+    ═══════════════════════════════════════════════════════════ */
+    .header-3 {
+      max-width: 900px;
+      overflow: hidden;
+      border-radius: 6px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      position: relative;
+    }
+    .header-3 .serape-top { height: 12px; }
+    .header-3 .hero-body {
+      background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 40%, #0a1a00 100%);
+      padding: 36px 40px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Decorative lime-green glow behind logo */
+    .header-3 .hero-body::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: 50%;
+      transform: translateX(-50%);
+      width: 400px; height: 200px;
+      background: radial-gradient(ellipse, rgba(139,195,74,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .header-3 .logo-badge {
+      background: #8BC34A;
+      border: 3px solid #E31E24;
+      border-radius: 10px;
+      padding: 10px 28px 8px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 0 4px rgba(139,195,74,0.15);
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .header-3 .subtitle-3 {
+      font-family: 'Lobster Two', 'Dancing Script', cursive;
+      font-style: italic;
+      font-weight: 700;
+      font-size: 16px;
+      color: #c0392b;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .header-3 .brand-text-3 {
+      font-family: 'Chewy', 'Lilita One', 'Titan One', cursive;
+      font-size: clamp(48px, 7.5vw, 80px);
+      color: #E31E24;
+      line-height: 0.88;
+      -webkit-text-stroke: 5px white;
+      paint-order: stroke fill;
+      text-shadow: 3px 3px 0 #7a0000;
+    }
+    .header-3 .hero-tagline {
+      font-family: 'Fredoka One', 'Boogaloo', cursive;
+      font-size: 16px;
+      color: #ccc;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .header-3 .hero-tagline span {
+      color: #FDB913;
+    }
+    .header-3 .cta-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+      margin-bottom: 24px;
+    }
+    .header-3 .btn-primary {
+      font-family: 'Fredoka One', cursive;
+      font-size: 16px;
+      background: #E31E24;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 28px;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      box-shadow: 0 3px 10px rgba(227,30,36,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .header-3 .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 16px rgba(227,30,36,0.5);
+    }
+    .header-3 .btn-secondary {
+      font-family: 'Fredoka One', cursive;
+      font-size: 16px;
+      background: transparent;
+      color: #8BC34A;
+      border: 2px solid #8BC34A;
+      border-radius: 6px;
+      padding: 10px 28px;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    .header-3 .btn-secondary:hover {
+      background: #8BC34A;
+      color: #1a1a1a;
+    }
+    .header-3 .nav-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      background: rgba(255,255,255,0.04);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
+    .header-3 .nav-strip a {
+      font-family: 'Fredoka One', 'Boogaloo', cursive;
+      font-size: 14px;
+      color: #bbb;
+      text-decoration: none;
+      padding: 11px 20px;
+      letter-spacing: 0.05em;
+      border-right: 1px solid rgba(255,255,255,0.07);
+      transition: color 0.2s, background 0.2s;
+    }
+    .header-3 .nav-strip a:last-child { border-right: none; }
+    .header-3 .nav-strip a:hover,
+    .header-3 .nav-strip a.active { color: #E31E24; background: rgba(227,30,36,0.08); }
+    .header-3 .serape-bottom { height: 10px; }
+
+    /* ─── Divider ─────────────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid #2a2a2a;
+      margin: 50px 0 0;
+    }
+
+    /* ─── Color palette display ───────────────────────────────── */
+    .palette {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 12px 0 0;
+    }
+    .palette-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .palette-chip .chip {
+      width: 40px; height: 40px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .palette-chip span {
+      font-size: 10px;
+      color: #888;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ─── Font specimen ───────────────────────────────────────── */
+    .font-specimen {
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin-top: 12px;
+      max-width: 900px;
+    }
+    .font-row {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 8px 0;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .font-row:last-child { border-bottom: none; }
+    .font-label {
+      font-size: 10px;
+      color: #666;
+      font-family: 'Courier New', monospace;
+      width: 180px;
+      flex-shrink: 0;
+    }
+    .font-sample-1 {
+      font-family: 'Chewy', 'Lilita One', 'Titan One', cursive;
+      font-size: 36px;
+      color: #E31E24;
+      -webkit-text-stroke: 3px white;
+      paint-order: stroke fill;
+      text-shadow: 2px 2px 0 #7a0000;
+      line-height: 1;
+    }
+    .font-sample-2 {
+      font-family: 'Lobster Two', 'Dancing Script', cursive;
+      font-style: italic;
+      font-weight: 700;
+      font-size: 26px;
+      color: #c0392b;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+    }
+    .font-sample-3 {
+      font-family: 'Fredoka One', 'Boogaloo', cursive;
+      font-size: 20px;
+      color: #fff;
+      letter-spacing: 0.04em;
+    }
+    .font-sample-4 {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: #aaa;
+      font-weight: 400;
+    }
+
+    /* ─── Page header ─────────────────────────────────────────── */
+    .page-header {
+      max-width: 900px;
+      margin: 0 auto 48px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .page-header h1 {
+      font-family: 'Lilita One', cursive;
+      font-size: 32px;
+      color: #E31E24;
+      -webkit-text-stroke: 2px white;
+      paint-order: stroke fill;
+      text-shadow: 2px 2px 0 #7a0000;
+      margin-bottom: 6px;
+    }
+    .page-header p {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.6;
+      max-width: 600px;
+    }
+    .agent-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: #aaa;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .agent-badge .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #8BC34A;
+      box-shadow: 0 0 6px #8BC34A;
+    }
+
+    .wrapper { max-width: 900px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- ─── Page Header ──────────────────────────────────────────── -->
+  <div class="page-header">
+    <div class="agent-badge"><span class="dot"></span> UX Designer Agent — Active</div>
+    <h1>Ricos Tacos — Header Design Concepts</h1>
+    <p>
+      Three header treatments for <strong style="color:#fff">losricostacos.com</strong> derived directly from the
+      physical sign's visual language: lime-green (#8BC34A) background, bold red (#E31E24) block lettering with
+      white outline, italic script subtitle, and serape rainbow stripe borders.
+    </p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FONT SPECIMENS
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Typography System — Derived from Sign</div>
+  <div class="font-specimen">
+    <div class="font-row">
+      <div class="font-label">Chewy ⭐ Selected<br>Primary brand / "Ricos Tacos"<br>Google Fonts ✓ Free</div>
+      <div class="font-sample-1">Ricos Tacos</div>
+    </div>
+    <div class="font-row">
+      <div class="font-label">Lobster Two Italic Bold<br>Script subtitle / "Piaxtla es México Deli"<br>Google Fonts ✓ Free</div>
+      <div class="font-sample-2">Piaxtla es México Deli</div>
+    </div>
+    <div class="font-row">
+      <div class="font-label">Fredoka One<br>Navigation / UI labels<br>Google Fonts ✓ Free</div>
+      <div class="font-sample-3">Menu · Order Online · Location · About</div>
+    </div>
+    <div class="font-row">
+      <div class="font-label">Inter 400–600<br>Body copy / meta text<br>Google Fonts ✓ Free</div>
+      <div class="font-sample-4">Authentic Mexican street tacos · Brooklyn, NY · (718) 633-4816</div>
+    </div>
+  </div>
+
+  <!-- ─── Color Palette ─────────────────────────────────────────── -->
+  <div class="section-label" style="margin-top:32px">Color Palette — Extracted from Sign</div>
+  <div class="palette">
+    <div class="palette-chip"><div class="chip" style="background:#8BC34A"></div><span>#8BC34A</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#E31E24"></div><span>#E31E24</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#ffffff;border-color:#555"></div><span>#FFFFFF</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#7a0000"></div><span>#7A0000</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#c0392b"></div><span>#C0392B</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#FDB913"></div><span>#FDB913</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#F68D2E"></div><span>#F68D2E</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#57B947"></div><span>#57B947</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#0071BC"></div><span>#0071BC</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#92278F"></div><span>#92278F</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#FF1493"></div><span>#FF1493</span></div>
+    <div class="palette-chip"><div class="chip" style="background:#111111"></div><span>#111111</span></div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       DESIGN 1
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label" style="margin-top:50px">Design 1 of 3</div>
+  <div class="design-title">🟢 "Classic Sign" — Full-Width Centered</div>
+  <div class="design-desc">
+    Directly mirrors the physical sign: lime-green (#8BC34A) full-width background, centered logo lockup with
+    italic script subtitle above the chunky block-letter brand name, serape rainbow stripes top and bottom,
+    and a dark nav bar below. Best for a bold, festive first impression. Ideal for desktop hero headers.
+  </div>
+
+  <!-- LIVE RENDER -->
+  <div class="header-1">
+    <!-- Top serape stripe -->
+    <div class="serape serape-top">
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span><span style="background:#000000"></span>
+      <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+      <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+      <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+      <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+      <span style="background:#000000"></span><span style="background:#00BCD4"></span>
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span>
+    </div>
+
+    <!-- Main lime-green band -->
+    <div class="main-band">
+      <div class="subtitle">Piaxtla es México Deli</div>
+      <div class="brand-text">Ricos Tacos</div>
+      <div class="tagline">Brooklyn's Authentic Mexican Street Tacos</div>
+    </div>
+
+    <!-- Dark nav bar -->
+    <div class="nav-bar">
+      <a href="#" class="active">Home</a>
+      <a href="#">Menu</a>
+      <a href="#">Order Online</a>
+      <a href="#">Location</a>
+      <a href="#">Sign In</a>
+    </div>
+
+    <!-- Bottom serape stripe -->
+    <div class="serape serape-bottom">
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span><span style="background:#000000"></span>
+      <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+      <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+      <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+      <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+      <span style="background:#000000"></span><span style="background:#00BCD4"></span>
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span>
+    </div>
+  </div>
+
+  <!-- Spec table -->
+  <table class="spec-table">
+    <thead>
+      <tr><th>Element</th><th>Value / Spec</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Header height</td>
+        <td><code>auto</code> — approx. 130–160px desktop</td>
+        <td>Grows with content; no fixed height needed</td>
+      </tr>
+      <tr>
+        <td>Background</td>
+        <td><span class="swatch" style="background:#8BC34A"></span><code>#8BC34A</code> lime green</td>
+        <td>Exact match to sign background</td>
+      </tr>
+      <tr>
+        <td>Border</td>
+        <td><code>3px solid #E31E24</code> all sides</td>
+        <td>Red border frames the sign</td>
+      </tr>
+      <tr>
+        <td>Serape stripe height</td>
+        <td><code>10px</code> top · <code>8px</code> bottom</td>
+        <td>25 color segments, equal flex widths</td>
+      </tr>
+      <tr>
+        <td>Subtitle font</td>
+        <td><strong>Lobster Two</strong> Italic 700 · <code>18px</code></td>
+        <td>Color: <span class="swatch" style="background:#c0392b"></span><code>#C0392B</code> · text-shadow white 0 1px</td>
+      </tr>
+      <tr>
+        <td>Brand name font</td>
+        <td><strong>Lilita One</strong> · <code>clamp(52px, 8vw, 88px)</code></td>
+        <td>Fill: <code>#E31E24</code> · -webkit-text-stroke: <code>5px white</code> · shadow: <code>3px 3px 0 #7a0000</code></td>
+      </tr>
+      <tr>
+        <td>Tagline font</td>
+        <td><strong>Fredoka One</strong> · <code>13px</code> · uppercase · <code>0.12em</code> tracking</td>
+        <td>Color: <code>#1a1a1a</code> (dark on lime)</td>
+      </tr>
+      <tr>
+        <td>Nav bar background</td>
+        <td><span class="swatch" style="background:#1a1a1a"></span><code>#1a1a1a</code></td>
+        <td>High contrast against lime header</td>
+      </tr>
+      <tr>
+        <td>Nav link font</td>
+        <td><strong>Fredoka One</strong> · <code>15px</code> · <code>0.04em</code> tracking</td>
+        <td>Active/hover: <code>background #E31E24</code></td>
+      </tr>
+      <tr>
+        <td>Padding (main band)</td>
+        <td><code>18px 32px 14px</code></td>
+        <td>Centered flex column, gap 0</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr class="divider">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       DESIGN 2
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label" style="margin-top:50px">Design 2 of 3</div>
+  <div class="design-title">⚫ "Split Panel" — Logo Left, Nav Right</div>
+  <div class="design-desc">
+    A compact, modern sticky-nav approach. The lime-green logo panel is pinned to the left with a red border
+    and a decorative zigzag right edge (echoing the sign's serrated right border). Navigation and CTA buttons
+    live in the dark right panel. Serape stripe runs across the top only. Best for a persistent sticky header
+    that doesn't dominate the viewport.
+  </div>
+
+  <!-- LIVE RENDER -->
+  <div class="header-2">
+    <!-- Top serape stripe -->
+    <div class="serape serape-top">
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span><span style="background:#000000"></span>
+      <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+      <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+      <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+      <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+      <span style="background:#000000"></span><span style="background:#00BCD4"></span>
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span>
+    </div>
+
+    <div class="body">
+      <!-- Logo panel -->
+      <div class="logo-panel">
+        <div class="subtitle-2">Piaxtla es México Deli</div>
+        <div class="brand-text-2">Ricos Tacos</div>
+      </div>
+
+      <!-- Nav panel -->
+      <div class="nav-panel">
+        <div class="nav-links">
+          <a href="#" class="active">Home</a>
+          <a href="#">Menu</a>
+          <a href="#">Order Online</a>
+          <a href="#">Location</a>
+        </div>
+        <div class="cta-row">
+          <a href="#" class="cta-btn">🛒 Order Now</a>
+          <span class="phone">📞 (718) 633-4816 · 505 51st St, Brooklyn</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom serape stripe -->
+    <div class="serape serape-bottom">
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span><span style="background:#000000"></span>
+      <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+      <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+      <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+      <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+      <span style="background:#000000"></span><span style="background:#00BCD4"></span>
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span>
+    </div>
+  </div>
+
+  <!-- Spec table -->
+  <table class="spec-table">
+    <thead>
+      <tr><th>Element</th><th>Value / Spec</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Header height</td>
+        <td><code>min-height: 90px</code> + serape stripes</td>
+        <td>Compact sticky nav — ~106px total</td>
+      </tr>
+      <tr>
+        <td>Logo panel background</td>
+        <td><span class="swatch" style="background:#8BC34A"></span><code>#8BC34A</code></td>
+        <td>Right border: <code>4px solid #E31E24</code></td>
+      </tr>
+      <tr>
+        <td>Logo panel right edge</td>
+        <td>CSS zigzag via <code>::after</code> pseudo-element</td>
+        <td>14px wide, 18px pitch — echoes sign's serrated border</td>
+      </tr>
+      <tr>
+        <td>Nav panel background</td>
+        <td><span class="swatch" style="background:#111111"></span><code>#111111</code></td>
+        <td>Dark contrast panel</td>
+      </tr>
+      <tr>
+        <td>Subtitle font</td>
+        <td><strong>Lobster Two</strong> Italic 700 · <code>13px</code></td>
+        <td>Color: <code>#C0392B</code></td>
+      </tr>
+      <tr>
+        <td>Brand name font</td>
+        <td><strong>Lilita One</strong> · <code>clamp(36px, 5.5vw, 58px)</code></td>
+        <td>Fill: <code>#E31E24</code> · stroke: <code>4px white</code> · shadow: <code>2px 2px 0 #7a0000</code></td>
+      </tr>
+      <tr>
+        <td>Nav link font</td>
+        <td><strong>Fredoka One</strong> · <code>15px</code></td>
+        <td>Hover/active: <code>background #E31E24</code> · border-radius <code>4px</code></td>
+      </tr>
+      <tr>
+        <td>CTA button</td>
+        <td><strong>Fredoka One</strong> · <code>13px</code> · <code>background #E31E24</code></td>
+        <td>Padding: <code>7px 16px</code> · border-radius <code>4px</code></td>
+      </tr>
+      <tr>
+        <td>Logo panel padding</td>
+        <td><code>14px 24px 14px 20px</code></td>
+        <td>Extra right padding accounts for zigzag overhang</td>
+      </tr>
+      <tr>
+        <td>Nav panel padding</td>
+        <td><code>0 24px 0 32px</code></td>
+        <td>Left padding clears zigzag element</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr class="divider">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       DESIGN 3
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label" style="margin-top:50px">Design 3 of 3</div>
+  <div class="design-title">🌙 "Hero Banner" — Dark Background, Glowing Logo Badge</div>
+  <div class="design-desc">
+    A premium dark-mode hero header. The logo is presented as a floating lime-green badge (bordered in red)
+    centered on a deep dark background with a subtle lime radial glow. Serape stripes frame the top and bottom.
+    A tagline with golden accent text and two CTA buttons sit below the badge, followed by a slim nav strip.
+    Best for a modern, upscale feel while keeping the brand's festive identity.
+  </div>
+
+  <!-- LIVE RENDER -->
+  <div class="header-3">
+    <!-- Top serape stripe -->
+    <div class="serape serape-top">
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span><span style="background:#000000"></span>
+      <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+      <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+      <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+      <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+      <span style="background:#000000"></span><span style="background:#00BCD4"></span>
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span>
+    </div>
+
+    <div class="hero-body">
+      <!-- Logo badge -->
+      <div class="logo-badge">
+        <div class="subtitle-3">Piaxtla es México Deli</div>
+        <div class="brand-text-3">Ricos Tacos</div>
+      </div>
+
+      <!-- Tagline -->
+      <div class="hero-tagline">
+        Brooklyn's Authentic <span>Mexican Street Tacos</span> · Since 1998
+      </div>
+
+      <!-- CTA buttons -->
+      <div class="cta-group">
+        <a href="#" class="btn-primary">🛒 Order Online</a>
+        <a href="#" class="btn-secondary">📋 View Menu</a>
+      </div>
+
+      <!-- Nav strip -->
+      <div class="nav-strip">
+        <a href="#" class="active">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Order Online</a>
+        <a href="#">Location</a>
+        <a href="#">Sign In</a>
+      </div>
+    </div>
+
+    <!-- Bottom serape stripe -->
+    <div class="serape serape-bottom">
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span><span style="background:#000000"></span>
+      <span style="background:#00BCD4"></span><span style="background:#E31E24"></span>
+      <span style="background:#FF1493"></span><span style="background:#92278F"></span>
+      <span style="background:#0071BC"></span><span style="background:#57B947"></span>
+      <span style="background:#FDB913"></span><span style="background:#F68D2E"></span>
+      <span style="background:#000000"></span><span style="background:#00BCD4"></span>
+      <span style="background:#E31E24"></span><span style="background:#FF1493"></span>
+      <span style="background:#92278F"></span><span style="background:#0071BC"></span>
+      <span style="background:#57B947"></span><span style="background:#FDB913"></span>
+      <span style="background:#F68D2E"></span>
+    </div>
+  </div>
+
+  <!-- Spec table -->
+  <table class="spec-table">
+    <thead>
+      <tr><th>Element</th><th>Value / Spec</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Hero body background</td>
+        <td><code>linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 40%, #0a1a00 100%)</code></td>
+        <td>Subtle dark-green tint at bottom-right</td>
+      </tr>
+      <tr>
+        <td>Logo badge background</td>
+        <td><span class="swatch" style="background:#8BC34A"></span><code>#8BC34A</code></td>
+        <td>Border: <code>3px solid #E31E24</code> · border-radius: <code>10px</code></td>
+      </tr>
+      <tr>
+        <td>Logo badge shadow</td>
+        <td><code>0 4px 20px rgba(0,0,0,0.4), 0 0 0 4px rgba(139,195,74,0.15)</code></td>
+        <td>Outer glow ring in lime</td>
+      </tr>
+      <tr>
+        <td>Background glow</td>
+        <td><code>radial-gradient(ellipse, rgba(139,195,74,0.18) 0%, transparent 70%)</code></td>
+        <td>400×200px ellipse centered above badge via <code>::before</code></td>
+      </tr>
+      <tr>
+        <td>Subtitle font</td>
+        <td><strong>Lobster Two</strong> Italic 700 · <code>16px</code></td>
+        <td>Color: <code>#C0392B</code></td>
+      </tr>
+      <tr>
+        <td>Brand name font</td>
+        <td><strong>Lilita One</strong> · <code>clamp(48px, 7.5vw, 80px)</code></td>
+        <td>Fill: <code>#E31E24</code> · stroke: <code>5px white</code> · shadow: <code>3px 3px 0 #7a0000</code></td>
+      </tr>
+      <tr>
+        <td>Tagline font</td>
+        <td><strong>Fredoka One</strong> · <code>16px</code> · uppercase · <code>0.14em</code> tracking</td>
+        <td>Base: <code>#ccc</code> · accent word: <span class="swatch" style="background:#FDB913"></span><code>#FDB913</code></td>
+      </tr>
+      <tr>
+        <td>Primary CTA button</td>
+        <td><strong>Fredoka One</strong> · <code>16px</code> · <code>background #E31E24</code></td>
+        <td>Padding: <code>12px 28px</code> · border-radius: <code>6px</code> · box-shadow red glow</td>
+      </tr>
+      <tr>
+        <td>Secondary CTA button</td>
+        <td><strong>Fredoka One</strong> · <code>16px</code> · <code>border 2px solid #8BC34A</code></td>
+        <td>Hover fills lime green; text goes dark</td>
+      </tr>
+      <tr>
+        <td>Nav strip</td>
+        <td><strong>Fredoka One</strong> · <code>14px</code> · <code>background rgba(255,255,255,0.04)</code></td>
+        <td>Active/hover: <code>color #E31E24</code> · subtle red bg tint</td>
+      </tr>
+      <tr>
+        <td>Hero body padding</td>
+        <td><code>36px 40px 32px</code></td>
+        <td>Centered flex column, text-align center</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr class="divider">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       IMPLEMENTATION NOTES
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="section-label" style="margin-top:50px">Implementation Notes for losricostacos.com</div>
+  <div class="font-specimen">
+    <div class="font-row" style="flex-direction:column; align-items:flex-start; gap:6px;">
+      <div class="font-label" style="width:auto; font-size:12px; color:#aaa; font-family:'Inter',sans-serif; font-weight:600;">Google Fonts import (already in index.html)</div>
+      <code style="font-size:11px; line-height:1.8; display:block; color:#8BC34A;">
+        Lilita One — primary brand lettering (matches sign's chunky block letters)<br>
+        Lobster Two:ital,wght@1,700 — italic script subtitle<br>
+        Fredoka One — nav links, buttons, UI labels<br>
+        Boogaloo — fallback for Fredoka One<br>
+        Inter:wght@400;500;600 — body copy, meta text
+      </code>
+    </div>
+    <div class="font-row" style="flex-direction:column; align-items:flex-start; gap:6px;">
+      <div class="font-label" style="width:auto; font-size:12px; color:#aaa; font-family:'Inter',sans-serif; font-weight:600;">CSS text-stroke technique for sign-accurate lettering</div>
+      <code style="font-size:11px; line-height:1.8; display:block; color:#FDB913;">
+        -webkit-text-stroke: 5px white;<br>
+        paint-order: stroke fill;<br>
+        text-shadow: 3px 3px 0 #7a0000;<br>
+        /* Creates the thick white outline + dark red drop shadow seen on the sign */
+      </code>
+    </div>
+    <div class="font-row" style="flex-direction:column; align-items:flex-start; gap:6px;">
+      <div class="font-label" style="width:auto; font-size:12px; color:#aaa; font-family:'Inter',sans-serif; font-weight:600;">Serape stripe component (already in Navigation.tsx)</div>
+      <code style="font-size:11px; line-height:1.8; display:block; color:#00BCD4;">
+        Colors in order: #E31E24 · #FF1493 · #92278F · #0071BC · #57B947<br>
+        #FDB913 · #F68D2E · #000000 · #00BCD4 — repeat 3× for 25 segments<br>
+        Height: 8–12px top stripe · 6–8px bottom stripe
+      </code>
+    </div>
+    <div class="font-row" style="flex-direction:column; align-items:flex-start; gap:6px;">
+      <div class="font-label" style="width:auto; font-size:12px; color:#aaa; font-family:'Inter',sans-serif; font-weight:600;">Recommended design for current Navigation.tsx</div>
+      <code style="font-size:11px; line-height:1.8; display:block; color:#E31E24;">
+        Design 2 "Split Panel" — matches the existing sticky nav architecture exactly.<br>
+        The current component already uses the lime-green logo panel + dark nav approach.<br>
+        Upgrade path: add zigzag ::after edge, increase brand-text size, add CTA button.
+      </code>
+    </div>
+  </div>
+
+  <div style="height:60px"></div>
+
+</div><!-- /wrapper -->
+</body>
+</html>

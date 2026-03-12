@@ -82,48 +82,61 @@ export const Navigation = () => {
               />
             </div>
 
-            {/* Text lockup — subtitle + name stacked, both left-aligned */}
-            <div className="flex flex-col justify-center" style={{ gap: '1px' }}>
-              {/* Subtitle */}
+            {/* Text lockup — lime green bg panel like the sign */}
+            <div
+              className="flex flex-col justify-center rounded-md px-2 py-1"
+              style={{
+                gap: '2px',
+                background: '#8BC34A',
+                border: '2px solid #E31E24',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+              }}
+            >
+              {/* Subtitle — italic script like the sign's "Piaxtla es México Deli" */}
               <span
-                className="italic font-medium tracking-wide block"
                 style={{
-                  fontSize: 'clamp(8px, 1.8vw, 11px)',
-                  color: '#b45309',
+                  fontFamily: "'Lobster Two', 'Dancing Script', 'Pacifico', cursive",
+                  fontStyle: 'italic',
+                  fontWeight: 700,
+                  fontSize: 'clamp(8px, 1.7vw, 11px)',
+                  color: '#c0392b',
                   lineHeight: 1,
+                  display: 'block',
+                  letterSpacing: '0.01em',
+                  textShadow: '0 1px 0 rgba(255,255,255,0.4)',
                 }}
               >
                 Piaxtla es México Deli
               </span>
 
-              {/* "Ricos Tacos" SVG — left-aligned, not centered */}
+              {/* "Ricos Tacos" SVG — big chunky block letters like the sign */}
               <svg
-                viewBox="0 0 220 44"
+                viewBox="0 0 230 48"
                 xmlns="http://www.w3.org/2000/svg"
                 aria-label="Ricos Tacos"
                 style={{
-                  width: 'clamp(140px, 28vw, 210px)',
+                  width: 'clamp(145px, 29vw, 215px)',
                   height: 'auto',
                   display: 'block',
                   overflow: 'visible',
-                  marginLeft: '-3px', // optical alignment: SVG has internal left padding from stroke
+                  marginLeft: '-2px',
                 }}
               >
                 <defs>
                   <filter id="signShadow" x="-5%" y="-5%" width="120%" height="140%">
-                    <feDropShadow dx="2" dy="2" stdDeviation="0" floodColor="#5a0000" floodOpacity="1" />
+                    <feDropShadow dx="2" dy="2" stdDeviation="0" floodColor="#7a0000" floodOpacity="1" />
                   </filter>
                 </defs>
-                {/* White outline */}
+                {/* White outline — very thick, rounded like the sign */}
                 <text
-                  x="4" y="36"
+                  x="4" y="40"
                   textAnchor="start"
-                  fontFamily="'Boogaloo', 'Fredoka One', cursive"
-                  fontSize="40"
+                  fontFamily="'Chewy', 'Lilita One', 'Titan One', cursive"
+                  fontSize="42"
                   fontWeight="400"
                   fill="none"
                   stroke="white"
-                  strokeWidth="7"
+                  strokeWidth="10"
                   strokeLinejoin="round"
                   paintOrder="stroke"
                 >
@@ -131,10 +144,10 @@ export const Navigation = () => {
                 </text>
                 {/* Red fill */}
                 <text
-                  x="4" y="36"
+                  x="4" y="40"
                   textAnchor="start"
-                  fontFamily="'Boogaloo', 'Fredoka One', cursive"
-                  fontSize="40"
+                  fontFamily="'Chewy', 'Lilita One', 'Titan One', cursive"
+                  fontSize="42"
                   fontWeight="400"
                   fill="#E31E24"
                   filter="url(#signShadow)"
