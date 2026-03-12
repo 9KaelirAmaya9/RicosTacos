@@ -16,18 +16,23 @@ const SignIn = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Only redirect if there's already an active session when the page loads.
+    // Do NOT redirect on INITIAL_SESSION event — that fires even when there's
+    // no session and can cause a loop. Only redirect on explicit SIGNED_IN.
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/dashboard");
+        navigate("/dashboard", { replace: true });
       }
     };
 
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/dashboard");
+      // Only navigate on an explicit sign-in event, not on INITIAL_SESSION
+      // or TOKEN_REFRESHED which can fire spuriously and cause redirect loops.
+      if (event === 'SIGNED_IN' && session) {
+        navigate("/dashboard", { replace: true });
       }
     });
 

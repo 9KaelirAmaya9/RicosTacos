@@ -24,17 +24,17 @@ const Auth = () => {
   const isPasswordReset = searchParams.get("type") === "recovery";
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Check existing session first
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session && !isPasswordReset) {
-        navigate(redirectTo);
+        navigate(redirectTo, { replace: true });
       }
     });
 
-    // THEN check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !isPasswordReset) {
-        navigate(redirectTo);
+    // Only navigate on explicit SIGNED_IN — not INITIAL_SESSION or TOKEN_REFRESHED
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session && !isPasswordReset) {
+        navigate(redirectTo, { replace: true });
       }
     });
 

@@ -146,21 +146,10 @@ const Dashboard = () => {
   }
 
   if (!user && !isDev) {
-    return (
-      <div className="min-h-screen bg-background pattern-tile flex items-center justify-center p-6">
-        <Card className="w-full max-w-md border-2">
-          <CardHeader>
-            <CardTitle>Sign in required</CardTitle>
-            <CardDescription>You need to sign in to access the dashboard.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full" onClick={() => navigate('/auth')}>
-              Go to Sign In
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    // Redirect to sign-in instead of showing a dead-end card.
+    // Use replace so the back button doesn't loop back here.
+    navigate('/signin', { replace: true });
+    return null;
   }
 
   const hasAdminRole = userRoles.includes("admin") || import.meta.env.DEV;
