@@ -10,36 +10,40 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
-    <title>Ricos Tacos Brooklyn - Authentic Mexican Street Tacos | Order Online</title>
-    <meta name="description" content="Authentic Mexican street tacos in Brooklyn, NY. Order al pastor, birria, carnitas & more for pickup or delivery. Fresh ingredients, traditional recipes. 505 51st Street. Call (718) 633-4816." />
-    <meta name="keywords" content="mexican food brooklyn, street tacos brooklyn, tacos near me, al pastor tacos, birria tacos, brooklyn mexican restaurant, authentic tacos, mexican delivery brooklyn" />
+    <title>Ricos Tacos Brooklyn - Authentic Street Tacos &amp; Birria | Sunset Park</title>
+    <meta name="description" content="Brooklyn's best authentic Mexican street tacos in Sunset Park. Order birria tacos, al pastor, carnitas &amp; more for pickup or delivery. Mexican catering available. 505 51st Street. Call (718) 633-4816." />
+    <meta name="keywords" content="street tacos brooklyn, birria sunset park, birria tacos brooklyn, mexican catering brooklyn, tacos near me, al pastor tacos, brooklyn mexican restaurant, authentic tacos, mexican delivery brooklyn, sunset park restaurant" />
     <meta name="author" content="Ricos Tacos" />
     <link rel="canonical" href="https://losricostacos.com/" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="restaurant" />
     <meta property="og:url" content="https://losricostacos.com/" />
-    <meta property="og:title" content="Ricos Tacos Brooklyn - Authentic Mexican Street Tacos" />
-    <meta property="og:description" content="Brooklyn's best authentic Mexican street tacos. Order al pastor, birria, carnitas & more. Fresh ingredients, traditional recipes from Puebla." />
+    <meta property="og:title" content="Ricos Tacos Brooklyn - Street Tacos &amp; Birria in Sunset Park" />
+    <meta property="og:description" content="Brooklyn's best authentic Mexican street tacos in Sunset Park. Order birria, al pastor, carnitas &amp; more. Mexican catering available. Fresh ingredients, traditional recipes from Puebla." />
     <meta property="og:image" content="https://losricostacos.com/logo.png" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="es_US" />
+    <meta property="og:site_name" content="Ricos Tacos Brooklyn" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://losricostacos.com/" />
-    <meta name="twitter:title" content="Ricos Tacos Brooklyn - Authentic Mexican Street Tacos" />
-    <meta name="twitter:description" content="Brooklyn's best authentic Mexican street tacos. Order online for pickup or delivery." />
+    <meta name="twitter:title" content="Ricos Tacos Brooklyn - Street Tacos &amp; Birria in Sunset Park" />
+    <meta name="twitter:description" content="Brooklyn's best authentic Mexican street tacos in Sunset Park. Birria, al pastor, carnitas. Order online for pickup or delivery. Mexican catering available." />
     <meta name="twitter:image" content="https://losricostacos.com/logo.png" />
 
-    <!-- Local Business Schema -->
+    <!-- Restaurant Schema -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Restaurant",
       "name": "Ricos Tacos",
-      "image": "https://losricostacos.com/logo.png",
-      "description": "Authentic Mexican street tacos restaurant in Brooklyn serving traditional recipes from Puebla, Mexico.",
+      "alternateName": "Los Ricos Tacos",
+      "image": [
+        "https://losricostacos.com/logo.png"
+      ],
+      "description": "Authentic Mexican street tacos restaurant in Sunset Park, Brooklyn. Serving traditional recipes from Puebla, Mexico — birria, al pastor, carnitas, and more. Catering available.",
       "address": {
         "@type": "PostalAddress",
         "streetAddress": "505 51st Street",
@@ -56,7 +60,9 @@
       "url": "https://losricostacos.com",
       "telephone": "+17186334816",
       "priceRange": "$$",
-      "servesCuisine": ["Mexican", "Street Food"],
+      "servesCuisine": ["Mexican", "Street Food", "Tacos", "Birria"],
+      "currenciesAccepted": "USD",
+      "paymentAccepted": "Cash, Credit Card",
       "openingHoursSpecification": [
         {
           "@type": "OpeningHoursSpecification",
@@ -67,7 +73,102 @@
       ],
       "menu": "https://losricostacos.com/menu",
       "acceptsReservations": "False",
-      "hasMenu": "https://losricostacos.com/menu"
+      "hasMenu": "https://losricostacos.com/menu",
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Ricos Tacos Menu",
+        "itemListElement": [
+          {
+            "@type": "OfferCatalog",
+            "name": "Street Tacos",
+            "description": "Authentic Mexican street tacos on hand-pressed corn tortillas",
+            "itemListElement": [
+              { "@type": "Offer", "itemOffered": { "@type": "MenuItem", "name": "Birria Tacos", "description": "Slow-braised beef birria with consomé for dipping" } },
+              { "@type": "Offer", "itemOffered": { "@type": "MenuItem", "name": "Al Pastor Tacos", "description": "Marinated pork with pineapple, cilantro, and onion" } },
+              { "@type": "Offer", "itemOffered": { "@type": "MenuItem", "name": "Carnitas Tacos", "description": "Slow-cooked pulled pork with fresh salsa" } }
+            ]
+          },
+          {
+            "@type": "OfferCatalog",
+            "name": "Catering",
+            "description": "Mexican catering for events, parties, and corporate gatherings in Brooklyn"
+          }
+        ]
+      },
+      "areaServed": {
+        "@type": "City",
+        "name": "Brooklyn",
+        "sameAs": "https://en.wikipedia.org/wiki/Brooklyn"
+      },
+      "sameAs": [
+        "https://losricostacos.com"
+      ]
+    }
+    </script>
+
+    <!-- FAQ Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Where is Ricos Tacos located in Brooklyn?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ricos Tacos is located at 505 51st Street, Brooklyn, NY 11220 in the Sunset Park neighborhood. Call us at (718) 633-4816."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do you offer birria tacos?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! We serve authentic birria tacos — slow-braised beef on hand-pressed corn tortillas, served with consomé for dipping. It's one of our most popular items."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Ricos Tacos offer delivery in Brooklyn?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, we offer delivery in the Sunset Park area and surrounding Brooklyn neighborhoods. Order online at losricostacos.com for pickup or delivery."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do you offer Mexican catering in Brooklyn?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! We offer Mexican catering for events, parties, and corporate gatherings throughout Brooklyn. Contact us at (718) 633-4816 to discuss your catering needs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are your hours?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We are open 7 days a week from 11:00 AM to 10:00 PM."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Breadcrumb Schema for inner pages (homepage breadcrumb) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Ricos Tacos Brooklyn",
+          "item": "https://losricostacos.com/"
+        }
+      ]
     }
     </script>
 
