@@ -6,15 +6,28 @@ import { LanguageSwitch } from "./LanguageSwitch";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/logo-illustration.png";
+import logoGreen from "@/assets/logo-header-green.png";
 import {
   NavigationMenu,
-  NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  NavigationMenuTrigger,
 } from "./ui/navigation-menu";
+
+// Serape stripe pattern — matches the sign's colorful border
+const SerapeStripe = ({ className = "" }: { className?: string }) => (
+  <div className={`flex w-full overflow-hidden ${className}`} aria-hidden="true">
+    {[
+      '#E31E24','#FF1493','#92278F','#0071BC','#57B947',
+      '#FDB913','#F68D2E','#000000','#00BCD4','#E31E24',
+      '#FF1493','#92278F','#0071BC','#57B947','#FDB913',
+      '#F68D2E','#000000','#00BCD4','#E31E24','#FF1493',
+      '#92278F','#0071BC','#57B947','#FDB913','#F68D2E',
+    ].map((color, i) => (
+      <div key={i} className="flex-1 min-w-0" style={{ backgroundColor: color }} />
+    ))}
+  </div>
+);
 
 export const Navigation = () => {
   const location = useLocation();
@@ -24,116 +37,134 @@ export const Navigation = () => {
   const { cartCount } = useCart();
 
   useEffect(() => {
-    // Check auth status
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
   const isActive = (path: string) => location.pathname === path;
 
+  const navLinks = [
+    { to: "/", label: t("nav.home") },
+    { to: "/menu", label: t("nav.fullMenu") },
+    { to: "/order", label: t("nav.orderOnline") },
+    { to: "/location", label: t("nav.location") },
+  ];
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] bg-background/95 backdrop-blur-sm border-b border-border">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <img 
-              src={logo} 
-              alt="Ricos Tacos" 
-              className="h-14 w-14 lg:h-20 lg:w-20 transition-transform group-hover:scale-105 rounded-lg"
-            />
-            <div className="hidden lg:flex flex-col items-start">
-              <span className="font-serif text-sm font-semibold tracking-wider text-foreground/80 uppercase">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
+      {/* Top serape stripe */}
+      <SerapeStripe className="h-1.5" />
+
+      <div className="container mx-auto px-3 sm:px-4">
+        {/* Fix: h-16 mobile, h-20 desktop — h-18 is not a default Tailwind class */}
+        <div className="flex items-center justify-between h-16 md:h-20">
+
+          {/* ── Logo ── */}
+          <Link
+            to="/"
+            className="flex items-center gap-3 group flex-shrink-0"
+            aria-label="Ricos Tacos — Home"
+          >
+            {/* Sign photo thumbnail */}
+            <div
+              className="relative flex-shrink-0 rounded-lg overflow-hidden shadow-md border-2 border-[#E31E24] bg-[#8BC34A] transition-transform duration-300 origin-left group-hover:scale-105"
+              style={{ height: 'clamp(2.75rem, 5vw, 4rem)', width: 'clamp(2.75rem, 5vw, 4rem)' }}
+            >
+              <img
+                src={logoGreen}
+                alt="Ricos Tacos sign"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {/* Text lockup — subtitle + name stacked, both left-aligned */}
+            <div className="flex flex-col justify-center" style={{ gap: '1px' }}>
+              {/* Subtitle */}
+              <span
+                className="italic font-medium tracking-wide block"
+                style={{
+                  fontSize: 'clamp(8px, 1.8vw, 11px)',
+                  color: '#b45309',
+                  lineHeight: 1,
+                }}
+              >
                 Piaxtla es México Deli
               </span>
-              <span className="font-playfair text-3xl font-black tracking-tight bg-gradient-to-r from-serape-red via-serape-pink to-serape-orange bg-clip-text text-transparent group-hover:from-serape-orange group-hover:via-serape-yellow group-hover:to-serape-red transition-all duration-500">
-                Ricos Tacos
-              </span>
-              <div className="mt-1 w-full">
-                <div className="h-2 w-full flex">
-                  <div className="flex-1" style={{ backgroundColor: '#00BCD4' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#E31E24' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#FF1493' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#92278F' }}></div>
-                  <div className="w-1 bg-black"></div>
-                  <div className="flex-1" style={{ backgroundColor: '#0071BC' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#57B947' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#FDB913' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#F68D2E' }}></div>
-                  <div className="w-1 bg-black"></div>
-                  <div className="flex-1" style={{ backgroundColor: '#E31E24' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#00BCD4' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#FF1493' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#92278F' }}></div>
-                  <div className="w-1 bg-black"></div>
-                  <div className="flex-1" style={{ backgroundColor: '#0071BC' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#57B947' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#FDB913' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#F68D2E' }}></div>
-                  <div className="w-1 bg-black"></div>
-                  <div className="flex-1" style={{ backgroundColor: '#E31E24' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#FF1493' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#92278F' }}></div>
-                  <div className="flex-1" style={{ backgroundColor: '#00BCD4' }}></div>
-                </div>
-              </div>
+
+              {/* "Ricos Tacos" SVG — left-aligned, not centered */}
+              <svg
+                viewBox="0 0 220 44"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-label="Ricos Tacos"
+                style={{
+                  width: 'clamp(140px, 28vw, 210px)',
+                  height: 'auto',
+                  display: 'block',
+                  overflow: 'visible',
+                  marginLeft: '-3px', // optical alignment: SVG has internal left padding from stroke
+                }}
+              >
+                <defs>
+                  <filter id="signShadow" x="-5%" y="-5%" width="120%" height="140%">
+                    <feDropShadow dx="2" dy="2" stdDeviation="0" floodColor="#5a0000" floodOpacity="1" />
+                  </filter>
+                </defs>
+                {/* White outline */}
+                <text
+                  x="4" y="36"
+                  textAnchor="start"
+                  fontFamily="'Boogaloo', 'Fredoka One', cursive"
+                  fontSize="40"
+                  fontWeight="400"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="7"
+                  strokeLinejoin="round"
+                  paintOrder="stroke"
+                >
+                  Ricos Tacos
+                </text>
+                {/* Red fill */}
+                <text
+                  x="4" y="36"
+                  textAnchor="start"
+                  fontFamily="'Boogaloo', 'Fredoka One', cursive"
+                  fontSize="40"
+                  fontWeight="400"
+                  fill="#E31E24"
+                  filter="url(#signShadow)"
+                >
+                  Ricos Tacos
+                </text>
+              </svg>
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
+          {/* ── Desktop Nav ── */}
+          <div className="hidden md:flex items-center gap-4 lg:gap-6">
             <NavigationMenu>
               <NavigationMenuList>
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link
-                      to="/"
-                      className={`relative px-4 py-2 text-sm font-medium transition-all duration-300 ${isActive("/") ? "text-primary" : "text-foreground"} after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full after:bg-gradient-to-r after:from-serape-cyan after:via-serape-pink after:to-serape-yellow after:scale-x-0 hover:after:scale-x-100 after:origin-left after:transition-transform after:duration-300`}
-                    >
-                      {t("nav.home")}
-                    </Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link
-                      to="/menu"
-                      className={`relative px-4 py-2 text-sm font-medium transition-all duration-300 ${isActive("/menu") ? "text-primary" : "text-foreground"} after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full after:bg-gradient-to-r after:from-serape-red after:via-serape-orange after:to-serape-yellow after:scale-x-0 hover:after:scale-x-100 after:origin-left after:transition-transform after:duration-300`}
-                    >
-                      {t("nav.fullMenu")}
-                    </Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link
-                      to="/order"
-                      className={`relative px-4 py-2 text-sm font-medium transition-all duration-300 ${isActive("/order") ? "text-primary" : "text-foreground"} after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full after:bg-gradient-to-r after:from-serape-pink after:via-serape-purple after:to-serape-blue after:scale-x-0 hover:after:scale-x-100 after:origin-left after:transition-transform after:duration-300`}
-                    >
-                      {t("nav.orderOnline")}
-                    </Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link
-                      to="/location"
-                      className={`relative px-4 py-2 text-sm font-medium transition-all duration-300 ${isActive("/location") ? "text-primary" : "text-foreground"} after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full after:bg-gradient-to-r after:from-serape-green after:via-serape-yellow after:to-serape-orange after:scale-x-0 hover:after:scale-x-100 after:origin-left after:transition-transform after:duration-300`}
-                    >
-                      {t("nav.location")}
-                    </Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
+                {navLinks.map(({ to, label }) => (
+                  <NavigationMenuItem key={to}>
+                    <NavigationMenuLink asChild>
+                      <Link
+                        to={to}
+                        className={`relative px-3 lg:px-4 py-2 text-sm font-medium transition-colors duration-200
+                          ${isActive(to) ? "text-[#E31E24]" : "text-foreground hover:text-[#E31E24]"}
+                          after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full
+                          after:bg-gradient-to-r after:from-[#E31E24] after:via-[#FF1493] after:to-[#FDB913]
+                          after:scale-x-0 hover:after:scale-x-100 after:origin-left after:transition-transform after:duration-300`}
+                      >
+                        {label}
+                      </Link>
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                ))}
               </NavigationMenuList>
             </NavigationMenu>
 
@@ -141,103 +172,111 @@ export const Navigation = () => {
 
             {isAuthenticated ? (
               <Link to="/profile">
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" aria-label="Profile">
                   <User className="h-5 w-5" />
                 </Button>
               </Link>
             ) : (
               <Link to="/signin">
-                <Button variant="outline" size="sm">
-                  Sign In
-                </Button>
+                <Button variant="outline" size="sm">Sign In</Button>
               </Link>
             )}
 
             <Link to="/cart">
-              <Button variant="outline" size="icon" className="relative">
+              <Button variant="outline" size="icon" className="relative" aria-label={`Cart (${cartCount} items)`}>
                 <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-semibold">
-                    {cartCount}
+                  <span className="absolute -top-1.5 -right-1.5 bg-[#E31E24] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold leading-none">
+                    {cartCount > 9 ? '9+' : cartCount}
                   </span>
                 )}
               </Button>
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
-        </div>
+          {/* ── Mobile: cart badge + hamburger ── */}
+          <div className="flex md:hidden items-center gap-2">
+            <Link to="/cart" aria-label={`Cart (${cartCount} items)`}>
+              <Button variant="ghost" size="icon" className="relative h-10 w-10">
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-[#E31E24] text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold leading-none">
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border">
-            <div className="flex flex-col gap-4">
-              <Link
-                to="/"
-                className={`text-sm font-medium ${isActive("/") ? "text-primary" : "text-foreground"}`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {t("nav.home")}
-              </Link>
-              <Link
-                to="/menu"
-                className={`text-sm font-medium ${isActive("/menu") ? "text-primary" : "text-foreground"}`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {t("nav.fullMenu")}
-              </Link>
-              <Link
-                to="/order"
-                className={`text-sm font-medium ${isActive("/order") ? "text-primary" : "text-foreground"}`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {t("nav.orderOnline")}
-              </Link>
-              <Link
-                to="/location"
-                className={`text-sm font-medium ${isActive("/location") ? "text-primary" : "text-foreground"}`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {t("nav.location")}
-              </Link>
+            <button
+              className="p-2 rounded-md hover:bg-muted transition-colors"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen
+                ? <X className="h-6 w-6" />
+                : <Menu className="h-6 w-6" />
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Mobile Drawer ── */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-border bg-background/98 backdrop-blur-md">
+          <SerapeStripe className="h-1" />
+
+          <div className="container mx-auto px-4 py-4">
+            <nav className="flex flex-col gap-1 mb-4">
+              {navLinks.map(({ to, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`flex items-center px-3 py-3.5 rounded-lg text-base font-medium transition-colors
+                    ${isActive(to)
+                      ? "bg-[#E31E24]/10 text-[#E31E24]"
+                      : "text-foreground hover:bg-muted hover:text-[#E31E24]"
+                    }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {label}
+                </Link>
+              ))}
               {isAuthenticated ? (
                 <Link
                   to="/profile"
-                  className={`text-sm font-medium ${isActive("/profile") ? "text-primary" : "text-foreground"}`}
+                  className={`flex items-center gap-2 px-3 py-3.5 rounded-lg text-base font-medium transition-colors
+                    ${isActive("/profile") ? "bg-[#E31E24]/10 text-[#E31E24]" : "text-foreground hover:bg-muted"}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
+                  <User className="h-4 w-4" />
                   Profile
                 </Link>
               ) : (
                 <Link
                   to="/signin"
-                  className={`text-sm font-medium ${isActive("/signin") ? "text-primary" : "text-foreground"}`}
+                  className={`flex items-center px-3 py-3.5 rounded-lg text-base font-medium transition-colors
+                    ${isActive("/signin") ? "bg-[#E31E24]/10 text-[#E31E24]" : "text-foreground hover:bg-muted"}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Sign In
                 </Link>
               )}
-              <Link
-                to="/cart"
-                className="text-sm font-medium text-foreground"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {t("nav.cart")}
-              </Link>
-              <div className="pt-2">
-                <LanguageSwitch />
-              </div>
+            </nav>
+
+            <div className="pt-3 border-t border-border flex items-center justify-between">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Language</span>
+              <LanguageSwitch />
             </div>
           </div>
-        )}
-      </div>
+
+          <SerapeStripe className="h-1" />
+        </div>
+      )}
+
+      {/* Bottom serape stripe */}
+      <SerapeStripe className="h-1" />
     </nav>
   );
 };
