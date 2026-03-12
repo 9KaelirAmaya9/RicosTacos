@@ -137,7 +137,7 @@ export const translations: Record<"en" | "es", Translations> = {
     // Common
     "common.browseMenu": "Browse Menu",
     "common.days": "Monday - Sunday",
-    "common.hours": "10:00 AM - 10:00 PM",
+    "common.hours": "10:00 AM - 2:30 AM",
   },
   es: {
     // Navigation
@@ -274,7 +274,7 @@ export const translations: Record<"en" | "es", Translations> = {
     // Common
     "common.browseMenu": "Explorar Menú",
     "common.days": "Lunes - Domingo",
-    "common.hours": "10:00 AM - 10:00 PM",
+    "common.hours": "10:00 AM - 2:30 AM",
   }
 };
 
