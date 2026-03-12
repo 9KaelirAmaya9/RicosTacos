@@ -9,7 +9,7 @@ Supabase is rejecting email signups programmatically. This is a **Supabase proje
 ### Step 1: Create Admin User in Supabase Dashboard
 
 1. **Go to Supabase Dashboard:**
-   - URL: https://supabase.com/dashboard/project/zburfinoxmfasqvxtnln/auth/users
+   - URL: https://supabase.com/dashboard/project/psbbrezasrwjjqppgtok/auth/users
 
 2. **Click "Add user" button** (top right)
 
@@ -31,7 +31,7 @@ Supabase is rejecting email signups programmatically. This is a **Supabase proje
 ### Step 2: Disable Email Confirmation (Optional but Recommended for Development)
 
 1. **Go to Authentication Settings:**
-   - URL: https://supabase.com/dashboard/project/zburfinoxmfasqvxtnln/auth/settings
+   - URL: https://supabase.com/dashboard/project/psbbrezasrwjjqppgtok/auth/settings
 
 2. **Scroll to "Email"**
 
@@ -47,7 +47,7 @@ Supabase is rejecting email signups programmatically. This is a **Supabase proje
 **Option A: Using Supabase SQL Editor (Recommended)**
 
 1. **Go to SQL Editor:**
-   - URL: https://supabase.com/dashboard/project/zburfinoxmfasqvxtnln/sql/new
+   - URL: https://supabase.com/dashboard/project/psbbrezasrwjjqppgtok/sql/new
 
 2. **Run this query** (replace `YOUR_USER_ID` with the ID from Step 1):
 
@@ -70,7 +70,7 @@ If the bootstrap_admin function exists, you can try signing in first, then it wi
 ### Step 4: Verify Email Validation Settings
 
 1. **Go to Authentication Settings:**
-   - URL: https://supabase.com/dashboard/project/zburfinoxmfasqvxtnln/auth/settings
+   - URL: https://supabase.com/dashboard/project/psbbrezasrwjjqppgtok/auth/settings
 
 2. **Check "Email Auth Provider":**
    - Ensure it's **ENABLED**
@@ -112,7 +112,7 @@ If Supabase continues to reject emails, use your personal email:
 ### If you still get 500 errors:
 
 1. **Check Supabase project status:**
-   - Go to https://supabase.com/dashboard/project/zburfinoxmfasqvxtnln
+   - Go to https://supabase.com/dashboard/project/psbbrezasrwjjqppgtok
    - Look for any warnings or paused services
 
 2. **Check Database:**
