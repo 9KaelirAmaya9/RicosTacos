@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, MapPin } from 'lucide-react';
+import { Loader2, MapPin, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface GooglePlace {
   place_id: string;
@@ -48,19 +48,14 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
+  // Track whether a place has been selected from the dropdown (vs. free-typed)
+  const [placeSelected, setPlaceSelected] = useState(false);
 
   // Initialize autocomplete when Google Maps is loaded
   const initializeAutocomplete = useCallback(() => {
-    if (!inputRef.current || !window.google || !window.google.maps || !window.google.maps.places) {
-      return;
-    }
+    if (!inputRef.current || !window.google?.maps?.places) return;
+    if (autocompleteRef.current) return; // already initialized
 
-    // Don't reinitialize if already initialized
-    if (autocompleteRef.current) {
-      return;
-    }
-
-    // Create autocomplete instance
     const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
       types: ['address'],
       componentRestrictions: { country: 'us' },
@@ -69,13 +64,12 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
 
     autocompleteRef.current = autocomplete;
 
-    // Listen for place selection
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
-      
+
       if (place.place_id && place.formatted_address) {
         setIsLoading(true);
-        
+
         const googlePlace: GooglePlace = {
           place_id: place.place_id,
           formatted_address: place.formatted_address,
@@ -87,110 +81,79 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
           } : undefined
         };
 
-        console.log('📍 Google Place selected:', googlePlace);
-        
-        // Update the input value
+        // Autopopulate the input with the full formatted address
         if (inputRef.current) {
           inputRef.current.value = place.formatted_address;
         }
-        
-        // Call callbacks
+
+        setPlaceSelected(true);
         onChange(place.formatted_address, googlePlace);
-        if (onPlaceSelect) {
-          onPlaceSelect(googlePlace);
-        }
-        
+        if (onPlaceSelect) onPlaceSelect(googlePlace);
+
         setIsLoading(false);
       }
     });
-
-    // Handle input changes (manual typing) - clear place when typing
-    if (inputRef.current) {
-      const handleInput = (e: Event) => {
-        const target = e.target as HTMLInputElement;
-        // Call onChange with undefined place to clear selection when typing
-        if (target.value !== value) {
-          onChange(target.value, undefined);
-        }
-      };
-      
-      inputRef.current.addEventListener('input', handleInput);
-    }
-  }, [onChange, onPlaceSelect, value]);
+  }, [onChange, onPlaceSelect]);
 
   // Load Google Maps API dynamically
   useEffect(() => {
-    // Suppress Google Maps internal debug messages
-    const originalConsoleLog = console.log;
-    console.log = (...args: any[]) => {
-      // Filter out Google Maps internal messages
-      const message = args[0];
-      if (typeof message === 'string' && (
-        message.includes('bind_telephone_numbers') ||
-        message.includes('telephone_number_')
-      )) {
-        return; // Suppress this message
-      }
-      originalConsoleLog.apply(console, args);
-    };
-
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    
+
     if (!apiKey) {
-      console.warn('⚠️ VITE_GOOGLE_MAPS_API_KEY not set - Google Maps autocomplete will not work');
+      console.warn('⚠️ VITE_GOOGLE_MAPS_API_KEY not set — Google Maps autocomplete disabled');
       return;
     }
 
-    // Check if already loaded
-    if (window.google && window.google.maps && window.google.maps.places) {
+    // Already loaded
+    if (window.google?.maps?.places) {
       setIsGoogleMapsLoaded(true);
       initializeAutocomplete();
       return;
     }
 
-    // Check if script is already being loaded
-    if (document.querySelector(`script[src*="maps.googleapis.com"]`)) {
-      // Script is loading, wait for it
-      const checkInterval = setInterval(() => {
-        if (window.google && window.google.maps && window.google.maps.places) {
-          clearInterval(checkInterval);
+    // Script already injected — wait for it
+    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const poll = setInterval(() => {
+        if (window.google?.maps?.places) {
+          clearInterval(poll);
           setIsGoogleMapsLoaded(true);
           initializeAutocomplete();
         }
       }, 100);
-      
-      return () => clearInterval(checkInterval);
+      return () => clearInterval(poll);
     }
 
-    // Load the script
+    // Inject script
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
     script.async = true;
     script.defer = true;
-    
     script.onload = () => {
-      console.log('✅ Google Maps API loaded');
       setIsGoogleMapsLoaded(true);
       initializeAutocomplete();
     };
-    
-    script.onerror = () => {
-      console.error('❌ Failed to load Google Maps API');
-    };
-    
+    script.onerror = () => console.error('❌ Failed to load Google Maps API');
     document.head.appendChild(script);
-
-    return () => {
-      // Cleanup if component unmounts
-    };
   }, [initializeAutocomplete]);
 
-  // Update input value when prop changes (but not when user is typing)
+  // Sync controlled value → DOM input (only when not focused, to avoid fighting the user)
   useEffect(() => {
-    if (inputRef.current && inputRef.current.value !== value && document.activeElement !== inputRef.current) {
+    if (
+      inputRef.current &&
+      inputRef.current.value !== value &&
+      document.activeElement !== inputRef.current
+    ) {
       inputRef.current.value = value;
+      // If value was cleared externally, reset placeSelected flag
+      if (!value) setPlaceSelected(false);
     }
   }, [value]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // User is typing manually — clear the selected place
+    setPlaceSelected(false);
+    onChange(e.target.value, undefined);
+  };
 
   return (
     <div className="space-y-2">
@@ -204,31 +167,41 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
           ref={inputRef}
           id={id}
           type="text"
-          placeholder={placeholder}
+          placeholder={isGoogleMapsLoaded ? placeholder : "Loading address search..."}
           required={required}
-          disabled={disabled || !isGoogleMapsLoaded}
+          disabled={disabled}
           className={`pr-10 ${className}`}
           defaultValue={value}
           autoComplete="off"
+          onChange={handleInputChange}
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : placeSelected ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : !isGoogleMapsLoaded ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : (
             <MapPin className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
       </div>
-      {!isGoogleMapsLoaded && (
-        <p className="text-xs text-muted-foreground">
-          Loading address autocomplete...
+
+      {/* Status hint */}
+      {isGoogleMapsLoaded && !placeSelected && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <AlertCircle className="h-3 w-3 shrink-0" />
+          Type your address and <strong>select it from the dropdown</strong> for accurate delivery validation.
         </p>
       )}
-      {isGoogleMapsLoaded && (
-        <p className="text-xs text-muted-foreground">
-          💡 <strong>Important:</strong> Type your address and select it from the dropdown suggestions that appear.
+      {placeSelected && (
+        <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+          <CheckCircle className="h-3 w-3 shrink-0" />
+          Address confirmed — delivery zone will be validated at checkout.
         </p>
       )}
+
       <style>{`
         .pac-container {
           z-index: 99999 !important;
@@ -247,22 +220,13 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
           color: hsl(var(--foreground)) !important;
           background: hsl(var(--background)) !important;
         }
-        .pac-item:hover {
-          background-color: hsl(var(--accent)) !important;
-        }
+        .pac-item:hover,
         .pac-item-selected {
           background-color: hsl(var(--accent)) !important;
         }
-        .pac-icon {
-          margin-right: 0.5rem;
-        }
-        .pac-item-query {
-          font-weight: 500;
-          color: hsl(var(--foreground));
-        }
-        .pac-matched {
-          font-weight: 600;
-        }
+        .pac-icon { margin-right: 0.5rem; }
+        .pac-item-query { font-weight: 500; color: hsl(var(--foreground)); }
+        .pac-matched { font-weight: 600; }
       `}</style>
     </div>
   );
