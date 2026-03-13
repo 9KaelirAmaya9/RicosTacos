@@ -1,135 +1,21 @@
-import { useEffect, useState } from "react";
+/**
+ * Dashboard — uses shared AuthContext (Fix 1–5).
+ *
+ * Fix 3: Hard stop reduced to 5s (handled in AuthContext).
+ *        Shows a retry card instead of silently redirecting when auth times out.
+ */
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { User, Session } from "@supabase/supabase-js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChefHat, ClipboardList, UserCircle, LogOut, Loader2 } from "lucide-react";
+import { ChefHat, ClipboardList, UserCircle, LogOut, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
   const isDev = import.meta.env.DEV;
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [userRoles, setUserRoles] = useState<string[]>([]);
   const navigate = useNavigate();
+  const { user, roles, loading, error, signOut, refetchRoles } = useAuth();
 
-  useEffect(() => {
-    let isMounted = true;
-    
-    // Force stop loading after 15 seconds max (role fetch can take up to 10s)
-    const hardStop = setTimeout(() => {
-      if (isMounted) {
-        console.warn("Dashboard: Force stopping loading after 15s");
-        setLoading(false);
-      }
-    }, 15000);
-
-    const fetchRoles = async (userId: string) => {
-      try {
-        // Add timeout to role fetch
-        const rolesPromise = supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId);
-
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Role fetch timeout")), 10000)
-        );
-
-        const { data: roles, error: rolesError } = await Promise.race([
-          rolesPromise,
-          timeoutPromise
-        ]) as any;
-
-        if (!isMounted) return;
-
-        if (rolesError) {
-          console.error("Dashboard: Error fetching roles", rolesError);
-          setUserRoles([]);
-          return;
-        }
-
-        // Local/dev convenience: bootstrap first admin if user has no roles yet
-        if ((!roles || roles.length === 0) && import.meta.env.DEV) {
-          const { data: granted, error: bootstrapError } = await supabase.rpc("bootstrap_admin");
-
-          if (!bootstrapError && granted === true) {
-            const { data: refreshedRoles, error: refreshError } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", userId);
-
-            if (!refreshError) {
-              setUserRoles((refreshedRoles || []).map((r) => r.role));
-              return;
-            }
-          }
-        }
-
-        setUserRoles((roles || []).map((r) => r.role));
-      } catch (error: any) {
-        console.error("Dashboard: Role fetch failed", error.message);
-        setUserRoles([]);
-      }
-    };
-
-    const initialize = async () => {
-      try {
-        // Get session — no artificial timeout; the Supabase client reads from
-        // localStorage synchronously so this resolves in <10 ms in practice.
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-
-        if (!isMounted) return;
-
-        setSession(currentSession ?? null);
-        setUser(currentSession?.user ?? null);
-
-        if (currentSession?.user) {
-          await fetchRoles(currentSession.user.id);
-        } else {
-          setUserRoles([]);
-        }
-      } catch (error: any) {
-        console.error("Dashboard initialization failed:", error.message);
-        // On timeout/error, assume no session
-        setSession(null);
-        setUser(null);
-        setUserRoles([]);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    initialize();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      if (!isMounted) return;
-
-      setSession(newSession ?? null);
-      setUser(newSession?.user ?? null);
-
-      if (newSession?.user) {
-        await fetchRoles(newSession.user.id);
-      } else {
-        setUserRoles([]);
-      }
-
-      if (isMounted) setLoading(false);
-    });
-
-    return () => {
-      isMounted = false;
-      clearTimeout(hardStop);
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
-
+  // ── Loading state ────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -138,15 +24,53 @@ const Dashboard = () => {
     );
   }
 
+  // ── Fix 3: Timeout/error — show retry card instead of silent redirect ────────
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full border-amber-400/50">
+          <CardHeader>
+            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-4">
+              <AlertTriangle className="h-6 w-6 text-amber-600" />
+            </div>
+            <CardTitle>Session Check Failed</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <Button
+              onClick={() => refetchRoles()}
+              variant="default"
+              className="w-full"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+            <Button
+              onClick={() => navigate("/signin", { replace: true })}
+              variant="outline"
+              className="w-full"
+            >
+              Sign In Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── Not authenticated ────────────────────────────────────────────────────────
   if (!user && !isDev) {
-    // Redirect to sign-in instead of showing a dead-end card.
-    // Use replace so the back button doesn't loop back here.
-    navigate('/signin', { replace: true });
+    navigate("/signin", { replace: true });
     return null;
   }
 
-  const hasAdminRole = userRoles.includes("admin") || import.meta.env.DEV;
-  const hasKitchenRole = userRoles.includes("kitchen") || import.meta.env.DEV;
+  const hasAdminRole = roles.includes("admin") || isDev;
+  const hasKitchenRole = roles.includes("kitchen") || isDev;
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
 
   return (
     <div className="min-h-screen bg-background pattern-tile">
@@ -156,6 +80,7 @@ const Dashboard = () => {
             DEV MODE: dashboard menu is enabled for local testing.
           </div>
         )}
+
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl md:text-5xl font-serif text-foreground mb-2">
@@ -170,7 +95,10 @@ const Dashboard = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
           {/* Admin Card */}
           {hasAdminRole && (
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary" onClick={() => navigate("/admin")}>
+            <Card
+              className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary"
+              onClick={() => navigate("/admin")}
+            >
               <CardHeader>
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                   <ClipboardList className="h-6 w-6 text-primary" />
@@ -190,7 +118,10 @@ const Dashboard = () => {
 
           {/* Kitchen Card */}
           {hasKitchenRole && (
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-accent" onClick={() => navigate("/kitchen")}>
+            <Card
+              className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-accent"
+              onClick={() => navigate("/kitchen")}
+            >
               <CardHeader>
                 <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mb-4">
                   <ChefHat className="h-6 w-6 text-accent" />
@@ -209,7 +140,10 @@ const Dashboard = () => {
           )}
 
           {/* Profile Card */}
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-secondary" onClick={() => navigate("/profile")}>
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-secondary"
+            onClick={() => navigate("/profile")}
+          >
             <CardHeader>
               <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center mb-4">
                 <UserCircle className="h-6 w-6 text-secondary" />
@@ -237,6 +171,12 @@ const Dashboard = () => {
                   You don't have admin or kitchen roles assigned yet. Please contact an administrator for access.
                 </CardDescription>
               </CardHeader>
+              <CardContent>
+                <Button variant="outline" onClick={() => refetchRoles()} className="w-full">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh Permissions
+                </Button>
+              </CardContent>
             </Card>
           </div>
         )}
