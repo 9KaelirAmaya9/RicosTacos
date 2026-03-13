@@ -1,15 +1,16 @@
 /**
  * AuthContext — shared auth + role state for the entire app.
  *
- * Fixes implemented here:
- *  Fix 1: Use getUser() (server-validated) instead of getSession() to avoid
- *          the JWT-refresh hang that caused the 15s timeout.
- *  Fix 2: Explicit refreshSession() with a 5s timeout before role fetch so
- *          expired tokens are renewed quickly or fail fast.
- *  Fix 4: Roles are cached in sessionStorage keyed by userId so repeat
- *          Dashboard/ProtectedRoute mounts are instant (no network call).
- *  Fix 5: Single shared context — Dashboard, ProtectedRoute, and Navigation
- *          all read from here instead of each making their own user_roles query.
+ * v2 — fixes the "Hard stop after 5s" regression:
+ *  - refreshSession() was timing out at 5s and consuming the entire hard-stop
+ *    budget before getUser() even ran. Removed refreshSession() from the
+ *    critical path entirely. Supabase's autoRefreshToken handles token renewal
+ *    in the background; we just need to read the current user.
+ *  - SIGNED_IN event was calling initialize() concurrently with the mount
+ *    initialize(), causing a double-run. Now the onAuthStateChange handler
+ *    directly sets state from the session it already receives — no re-init.
+ *  - Hard stop raised to 8s (getUser() is a single network call, should be
+ *    well under 3s on any reasonable connection).
  */
 
 import {
@@ -24,8 +25,6 @@ import {
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export type AppRole = "admin" | "kitchen";
 
 interface AuthState {
@@ -33,240 +32,148 @@ interface AuthState {
   session: Session | null;
   roles: AppRole[];
   loading: boolean;
-  /** True while a background token refresh is in progress */
-  refreshing: boolean;
-  /** Non-null when auth/role fetch failed and user should be prompted to retry */
   error: string | null;
 }
 
 interface AuthContextValue extends AuthState {
   hasRole: (role: AppRole) => boolean;
   signOut: () => Promise<void>;
-  /** Force a fresh role fetch (clears cache) */
   refetchRoles: () => Promise<void>;
 }
 
-// ─── Cache helpers ─────────────────────────────────────────────────────────────
-
+// ─── sessionStorage role cache (5 min TTL) ────────────────────────────────────
 const CACHE_KEY = "rt_roles_cache";
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 5 * 60 * 1000;
 
-interface RoleCache {
-  userId: string;
-  roles: AppRole[];
-  fetchedAt: number;
-}
-
-function readRoleCache(userId: string): AppRole[] | null {
+function readCache(userId: string): AppRole[] | null {
   try {
     const raw = sessionStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    const cache: RoleCache = JSON.parse(raw);
-    if (cache.userId !== userId) return null;
-    if (Date.now() - cache.fetchedAt > CACHE_TTL_MS) return null;
-    return cache.roles;
-  } catch {
-    return null;
-  }
+    const c = JSON.parse(raw);
+    if (c.userId !== userId || Date.now() - c.fetchedAt > CACHE_TTL) return null;
+    return c.roles;
+  } catch { return null; }
 }
 
-function writeRoleCache(userId: string, roles: AppRole[]) {
-  try {
-    const cache: RoleCache = { userId, roles, fetchedAt: Date.now() };
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-  } catch {
-    // sessionStorage unavailable — silently ignore
-  }
+function writeCache(userId: string, roles: AppRole[]) {
+  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ userId, roles, fetchedAt: Date.now() })); } catch {}
 }
 
-function clearRoleCache() {
-  try {
-    sessionStorage.removeItem(CACHE_KEY);
-  } catch {}
+function clearCache() {
+  try { sessionStorage.removeItem(CACHE_KEY); } catch {}
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
-
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AuthState>({
-    user: null,
-    session: null,
-    roles: [],
-    loading: true,
-    refreshing: false,
-    error: null,
+    user: null, session: null, roles: [], loading: true, error: null,
   });
 
-  // Prevent concurrent initializations
   const initInProgress = useRef(false);
 
-  // ── Role fetch (Fix 2 + Fix 4) ──────────────────────────────────────────────
-  const fetchRoles = useCallback(async (userId: string, forceRefresh = false): Promise<AppRole[]> => {
-    // Fix 4: serve from cache when available
-    if (!forceRefresh) {
-      const cached = readRoleCache(userId);
+  // ── Fetch roles from DB (with cache) ─────────────────────────────────────────
+  const fetchRoles = useCallback(async (userId: string, force = false): Promise<AppRole[]> => {
+    if (!force) {
+      const cached = readCache(userId);
       if (cached) return cached;
     }
-
     try {
-      const rolesPromise = supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
-
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Role fetch timeout after 8s")), 8000)
-      );
-
-      const { data, error } = await Promise.race([rolesPromise, timeoutPromise]) as any;
-
-      if (error) {
-        console.error("[AuthContext] Role fetch error:", error.message);
-        return [];
-      }
-
-      const roles: AppRole[] = (data || []).map((r: any) => r.role as AppRole);
-      writeRoleCache(userId, roles);
+      const { data, error } = await Promise.race([
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+        new Promise<never>((_, r) => setTimeout(() => r(new Error("role timeout")), 8000)),
+      ]) as any;
+      if (error) { console.error("[Auth] role fetch error:", error.message); return []; }
+      const roles: AppRole[] = (data || []).map((r: any) => r.role);
+      writeCache(userId, roles);
       return roles;
-    } catch (err: any) {
-      console.error("[AuthContext] Role fetch failed:", err.message);
+    } catch (e: any) {
+      console.error("[Auth] role fetch failed:", e.message);
       return [];
     }
   }, []);
 
-  // ── Main initializer (Fix 1 + Fix 2) ────────────────────────────────────────
-  const initialize = useCallback(async (forceRoleRefresh = false) => {
+  // ── Initialize from current session ──────────────────────────────────────────
+  const initialize = useCallback(async (session: Session | null, forceRoles = false) => {
     if (initInProgress.current) return;
     initInProgress.current = true;
 
-    // Fix 3: 5s hard stop instead of 15s
+    // 8s hard stop — getUser() is a single network round-trip
     const hardStop = setTimeout(() => {
-      console.warn("[AuthContext] Hard stop after 5s — session/token refresh hung");
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        refreshing: false,
-        error: "Session check timed out. Please sign in again.",
-      }));
+      console.warn("[Auth] Hard stop after 8s");
+      setState(prev => ({ ...prev, loading: false, error: "Session check timed out. Please sign in again." }));
       initInProgress.current = false;
-    }, 5000);
+    }, 8000);
 
     try {
-      setState(prev => ({ ...prev, loading: true, error: null }));
-
-      // Fix 2: Attempt a token refresh first (5s timeout) so we always have a
-      // fresh JWT before querying user_roles. If refresh fails, fall through to
-      // getUser() which will still work if the token is valid.
-      setState(prev => ({ ...prev, refreshing: true }));
-      try {
-        await Promise.race([
-          supabase.auth.refreshSession(),
-          new Promise<never>((_, r) =>
-            setTimeout(() => r(new Error("refresh timeout")), 5000)
-          ),
-        ]);
-      } catch (refreshErr: any) {
-        // Non-fatal — log and continue; getUser() will tell us if we're truly logged out
-        console.warn("[AuthContext] Token refresh skipped:", refreshErr.message);
-      }
-
-      // Fix 1: getUser() validates the token server-side — no hanging refresh race
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-      if (userError || !user) {
+      if (!session) {
+        // No session in localStorage — verify with server to be sure
+        const { data: { user }, error } = await supabase.auth.getUser();
         clearTimeout(hardStop);
-        setState({
-          user: null,
-          session: null,
-          roles: [],
-          loading: false,
-          refreshing: false,
-          error: null, // Not an error — just not logged in
-        });
-        initInProgress.current = false;
-        return;
+        if (error || !user) {
+          setState({ user: null, session: null, roles: [], loading: false, error: null });
+          initInProgress.current = false;
+          return;
+        }
+        // Server says we have a user — get the full session
+        const { data: { session: freshSession } } = await supabase.auth.getSession();
+        const roles = await fetchRoles(user.id, forceRoles);
+        setState({ user, session: freshSession ?? null, roles, loading: false, error: null });
+      } else {
+        // We already have a session object from onAuthStateChange — use it directly
+        clearTimeout(hardStop);
+        const roles = await fetchRoles(session.user.id, forceRoles);
+        setState({ user: session.user, session, roles, loading: false, error: null });
       }
-
-      // Get session for components that need it (e.g. JWT token)
-      const { data: { session } } = await supabase.auth.getSession();
-
-      // Fetch roles (Fix 4: uses cache when available)
-      const roles = await fetchRoles(user.id, forceRoleRefresh);
-
+    } catch (e: any) {
       clearTimeout(hardStop);
-      setState({
-        user,
-        session: session ?? null,
-        roles,
-        loading: false,
-        refreshing: false,
-        error: null,
-      });
-    } catch (err: any) {
-      clearTimeout(hardStop);
-      console.error("[AuthContext] Initialization error:", err.message);
-      setState({
-        user: null,
-        session: null,
-        roles: [],
-        loading: false,
-        refreshing: false,
-        error: "Authentication error. Please try signing in again.",
-      });
+      console.error("[Auth] init error:", e.message);
+      setState({ user: null, session: null, roles: [], loading: false, error: "Authentication error. Please sign in again." });
     } finally {
       initInProgress.current = false;
     }
   }, [fetchRoles]);
 
-  // ── Bootstrap on mount + listen for auth changes ─────────────────────────────
+  // ── Mount: read existing session from localStorage ────────────────────────────
   useEffect(() => {
-    initialize();
+    // getSession() reads localStorage synchronously — no network call unless token needs refresh
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      initialize(session, false);
+    });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log("[AuthContext] Auth event:", event);
-
-        if (event === "SIGNED_OUT") {
-          clearRoleCache();
-          setState({
-            user: null,
-            session: null,
-            roles: [],
-            loading: false,
-            refreshing: false,
-            error: null,
-          });
-          return;
-        }
-
-        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-          // Re-initialize with fresh data; force role refresh on sign-in
-          await initialize(event === "SIGNED_IN");
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[Auth] event:", event);
+      if (event === "SIGNED_OUT") {
+        clearCache();
+        setState({ user: null, session: null, roles: [], loading: false, error: null });
+        return;
       }
-    );
+      if (event === "SIGNED_IN") {
+        // Force fresh role fetch on new sign-in
+        initialize(session, true);
+        return;
+      }
+      if (event === "TOKEN_REFRESHED" && session) {
+        // Token refreshed in background — update session silently, keep existing roles
+        setState(prev => ({ ...prev, session, user: session.user }));
+        return;
+      }
+    });
 
     return () => subscription.unsubscribe();
   }, [initialize]);
 
-  // ── Public API ────────────────────────────────────────────────────────────────
-  const hasRole = useCallback(
-    (role: AppRole) => state.roles.includes(role),
-    [state.roles]
-  );
+  const hasRole = useCallback((role: AppRole) => state.roles.includes(role), [state.roles]);
 
   const signOut = useCallback(async () => {
-    clearRoleCache();
+    clearCache();
     await supabase.auth.signOut();
   }, []);
 
   const refetchRoles = useCallback(async () => {
     if (!state.user) return;
-    clearRoleCache();
+    clearCache();
     const roles = await fetchRoles(state.user.id, true);
     setState(prev => ({ ...prev, roles }));
   }, [state.user, fetchRoles]);
@@ -277,8 +184,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export const useAuth = (): AuthContextValue => {
   const ctx = useContext(AuthContext);
