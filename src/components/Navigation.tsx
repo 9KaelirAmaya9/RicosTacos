@@ -70,15 +70,15 @@ export const Navigation = () => {
             className="flex items-center gap-3 group flex-shrink-0"
             aria-label="Ricos Tacos — Home"
           >
-            {/* Sign photo thumbnail */}
+            {/* Sign photo thumbnail — height matches the text lockup panel */}
             <div
               className="relative flex-shrink-0 rounded-lg overflow-hidden shadow-md border-2 border-[#E31E24] bg-[#8BC34A] transition-transform duration-300 origin-left group-hover:scale-105"
-              style={{ height: 'clamp(2.75rem, 5vw, 4rem)', width: 'clamp(2.75rem, 5vw, 4rem)' }}
+              style={{ height: 'clamp(3.5rem, 7vw, 5.5rem)', width: 'clamp(3.5rem, 7vw, 5.5rem)' }}
             >
               <img
                 src={logoGreen}
                 alt="Ricos Tacos sign"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
               />
             </div>
 
