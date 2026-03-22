@@ -74,17 +74,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const initInProgress = useRef(false);
 
   // ── Fetch roles from DB (with cache) ─────────────────────────────────────────
+  // Uses raw fetch() instead of supabase.from() to bypass the GoTrueClient
+  // internal lock (_acquireLock). On mount, getSession() and onAuthStateChange
+  // both hold the auth lock, causing supabase.from() to queue behind them and
+  // hang indefinitely. Raw fetch() goes directly to the REST API — no lock.
   const fetchRoles = useCallback(async (userId: string, force = false): Promise<AppRole[]> => {
     if (!force) {
       const cached = readCache(userId);
       if (cached) return cached;
     }
     try {
-      const { data, error } = await Promise.race([
-        supabase.from("user_roles").select("role").eq("user_id", userId),
-        new Promise<never>((_, r) => setTimeout(() => r(new Error("role timeout")), 8000)),
-      ]) as any;
-      if (error) { console.error("[Auth] role fetch error:", error.message); return []; }
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
+      const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '';
+
+      // Get the user's JWT for the Authorization header (RLS requires it)
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeader = session?.access_token
+        ? `Bearer ${session.access_token}`
+        : `Bearer ${SUPABASE_KEY}`;
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/user_roles?select=role&user_id=eq.${userId}`,
+        {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': authHeader,
+          },
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        console.error("[Auth] role fetch HTTP error:", response.status);
+        return [];
+      }
+      const data = await response.json();
       const roles: AppRole[] = (data || []).map((r: any) => r.role);
       writeCache(userId, roles);
       return roles;
