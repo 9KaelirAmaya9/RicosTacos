@@ -1,27 +1,16 @@
 /**
  * AuthContext — shared auth + role state for the entire app.
  *
- * v3 — fixes "no admin/kitchen cards on Android PWA after sign-in":
- *
- *  Root cause: On Android Chrome PWA (standalone), the Supabase client fires
- *  INITIAL_SESSION (via onAuthStateChange) AND the mount getSession() call
- *  almost simultaneously. The mount call wins the initInProgress lock and
- *  starts fetching roles. Then SIGNED_IN fires — but initInProgress is still
- *  true, so initialize() returns immediately without fetching roles. The mount
- *  call had session=null (localStorage was empty at that instant on a fresh
- *  PWA launch), so it calls getUser() which returns the user but with no
- *  session — and roles come back empty because the JWT hasn't been written to
- *  localStorage yet. Result: user is set, roles = [].
- *
- *  Fix:
- *  1. Replace the single initInProgress boolean with a queue/pending-session
- *     ref. If SIGNED_IN arrives while init is running, we store the session
- *     and re-run after the current init completes.
- *  2. On SIGNED_IN we always do a fresh role fetch (force=true), bypassing
- *     the sessionStorage cache.
- *  3. INITIAL_SESSION event (fired by onAuthStateChange on first subscriber
- *     registration) is now handled explicitly — it replaces the separate
- *     getSession() call, eliminating the race entirely.
+ * v2 — fixes the "Hard stop after 5s" regression:
+ *  - refreshSession() was timing out at 5s and consuming the entire hard-stop
+ *    budget before getUser() even ran. Removed refreshSession() from the
+ *    critical path entirely. Supabase's autoRefreshToken handles token renewal
+ *    in the background; we just need to read the current user.
+ *  - SIGNED_IN event was calling initialize() concurrently with the mount
+ *    initialize(), causing a double-run. Now the onAuthStateChange handler
+ *    directly sets state from the session it already receives — no re-init.
+ *  - Hard stop raised to 8s (getUser() is a single network call, should be
+ *    well under 3s on any reasonable connection).
  */
 
 import {
@@ -82,19 +71,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user: null, session: null, roles: [], loading: true, error: null,
   });
 
-  // True while an initialize() call is in flight
   const initInProgress = useRef(false);
-  // If a SIGNED_IN event arrives while init is running, store it here
-  const pendingSignIn = useRef<Session | null | undefined>(undefined);
 
   // ── Fetch roles from DB (with cache) ─────────────────────────────────────────
   const fetchRoles = useCallback(async (userId: string, force = false): Promise<AppRole[]> => {
     if (!force) {
       const cached = readCache(userId);
-      if (cached) {
-        console.log("[Auth] roles from cache:", cached);
-        return cached;
-      }
+      if (cached) return cached;
     }
     try {
       const { data, error } = await Promise.race([
@@ -103,7 +86,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       ]) as any;
       if (error) { console.error("[Auth] role fetch error:", error.message); return []; }
       const roles: AppRole[] = (data || []).map((r: any) => r.role);
-      console.log("[Auth] roles from DB:", roles);
       writeCache(userId, roles);
       return roles;
     } catch (e: any) {
@@ -112,18 +94,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // ── Core initializer ─────────────────────────────────────────────────────────
+  // ── Initialize from current session ──────────────────────────────────────────
   const initialize = useCallback(async (session: Session | null, forceRoles = false) => {
-    if (initInProgress.current) {
-      // Queue the latest session so we re-run after current init finishes
-      if (forceRoles) {
-        pendingSignIn.current = session;
-      }
-      return;
-    }
+    if (initInProgress.current) return;
     initInProgress.current = true;
-    pendingSignIn.current = undefined;
 
+    // 8s hard stop — getUser() is a single network round-trip
     const hardStop = setTimeout(() => {
       console.warn("[Auth] Hard stop after 8s");
       setState(prev => ({ ...prev, loading: false, error: "Session check timed out. Please sign in again." }));
@@ -132,7 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       if (!session) {
-        // No session passed — ask the server
+        // No session in localStorage — verify with server to be sure
         const { data: { user }, error } = await supabase.auth.getUser();
         clearTimeout(hardStop);
         if (error || !user) {
@@ -140,11 +116,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           initInProgress.current = false;
           return;
         }
+        // Server says we have a user — get the full session
         const { data: { session: freshSession } } = await supabase.auth.getSession();
         const roles = await fetchRoles(user.id, forceRoles);
         setState({ user, session: freshSession ?? null, roles, loading: false, error: null });
       } else {
-        // Session already in hand — use it directly
+        // We already have a session object from onAuthStateChange — use it directly
         clearTimeout(hardStop);
         const roles = await fetchRoles(session.user.id, forceRoles);
         setState({ user: session.user, session, roles, loading: false, error: null });
@@ -155,45 +132,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setState({ user: null, session: null, roles: [], loading: false, error: "Authentication error. Please sign in again." });
     } finally {
       initInProgress.current = false;
-      // If a SIGNED_IN arrived while we were running, process it now
-      if (pendingSignIn.current !== undefined) {
-        const pending = pendingSignIn.current;
-        pendingSignIn.current = undefined;
-        console.log("[Auth] processing queued SIGNED_IN after init");
-        initialize(pending, true);
-      }
     }
   }, [fetchRoles]);
 
-  // ── Mount ─────────────────────────────────────────────────────────────────────
+  // ── Mount: read existing session from localStorage ────────────────────────────
   useEffect(() => {
-    // onAuthStateChange fires INITIAL_SESSION synchronously after the
-    // Supabase client's own initialize() resolves. We use that as our
-    // single source of truth instead of a separate getSession() call,
-    // which eliminates the race between the two.
+    // getSession() reads localStorage synchronously — no network call unless token needs refresh
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      initialize(session, false);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("[Auth] event:", event, "session:", session?.user?.id ?? null);
-
-      if (event === "INITIAL_SESSION") {
-        // First session read on mount — may be null (not signed in) or a session
-        initialize(session ?? null, false);
-        return;
-      }
-
-      if (event === "SIGNED_IN") {
-        // Explicit sign-in — always force fresh role fetch
-        initialize(session, true);
-        return;
-      }
-
+      console.log("[Auth] event:", event);
       if (event === "SIGNED_OUT") {
         clearCache();
         setState({ user: null, session: null, roles: [], loading: false, error: null });
         return;
       }
-
+      if (event === "SIGNED_IN") {
+        // Force fresh role fetch on new sign-in
+        initialize(session, true);
+        return;
+      }
       if (event === "TOKEN_REFRESHED" && session) {
-        // Background token refresh — update session/user silently, keep roles
+        // Token refreshed in background — update session silently, keep existing roles
         setState(prev => ({ ...prev, session, user: session.user }));
         return;
       }
