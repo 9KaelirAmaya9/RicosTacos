@@ -1,16 +1,23 @@
 /**
  * AuthContext — shared auth + role state for the entire app.
  *
- * v2 — fixes the "Hard stop after 5s" regression:
- *  - refreshSession() was timing out at 5s and consuming the entire hard-stop
- *    budget before getUser() even ran. Removed refreshSession() from the
- *    critical path entirely. Supabase's autoRefreshToken handles token renewal
- *    in the background; we just need to read the current user.
- *  - SIGNED_IN event was calling initialize() concurrently with the mount
- *    initialize(), causing a double-run. Now the onAuthStateChange handler
- *    directly sets state from the session it already receives — no re-init.
- *  - Hard stop raised to 8s (getUser() is a single network call, should be
- *    well under 3s on any reasonable connection).
+ * v4 — fixes PWA infinite spinner after sign-in:
+ *
+ *  Problem 1: fetchRoles() called supabase.auth.getSession() internally to
+ *  get the JWT. In PWA/standalone mode, getSession() deadlocks when called
+ *  while the GoTrueClient lock is held by the auth state change handler.
+ *  Fix: fetchRoles() now accepts an optional accessToken parameter. The
+ *  caller (initialize) passes the token it already has — no extra getSession().
+ *
+ *  Problem 2: SIGNED_IN fires twice in PWA mode (once from the auth state
+ *  change subscription, once from the initial session check). The second call
+ *  hits the initInProgress guard and returns immediately, leaving loading=true
+ *  forever if the first call is still running.
+ *  Fix: add a pendingSignIn ref. If SIGNED_IN arrives while initInProgress is
+ *  true, store the session and re-run initialize() after the current one ends.
+ *
+ *  Problem 3 (original): supabase.from('user_roles') deadlocks under the same
+ *  GoTrueClient lock. Fix retained from v3: use raw fetch() to the REST API.
  */
 
 import {
@@ -72,13 +79,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const initInProgress = useRef(false);
+  // If SIGNED_IN fires while init is running, store the session here and
+  // re-run initialize() after the current one completes.
+  const pendingSignIn = useRef<{ session: Session | null; force: boolean } | null>(null);
 
-  // ── Fetch roles from DB (with cache) ─────────────────────────────────────────
-  // Uses raw fetch() instead of supabase.from() to bypass the GoTrueClient
-  // internal lock (_acquireLock). On mount, getSession() and onAuthStateChange
-  // both hold the auth lock, causing supabase.from() to queue behind them and
-  // hang indefinitely. Raw fetch() goes directly to the REST API — no lock.
-  const fetchRoles = useCallback(async (userId: string, force = false): Promise<AppRole[]> => {
+  // ── Fetch roles via raw fetch() — bypasses GoTrueClient lock entirely ────────
+  // supabase.from() deadlocks when the GoTrueClient lock is held on mount.
+  // Raw fetch() goes directly to the REST API with no lock dependency.
+  // accessToken: pass the JWT from the session you already have — avoids
+  // calling getSession() (which also acquires the lock) inside this function.
+  const fetchRoles = useCallback(async (
+    userId: string,
+    force = false,
+    accessToken?: string
+  ): Promise<AppRole[]> => {
     if (!force) {
       const cached = readCache(userId);
       if (cached) return cached;
@@ -87,10 +101,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
       const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '';
 
-      // Get the user's JWT for the Authorization header (RLS requires it)
-      const { data: { session } } = await supabase.auth.getSession();
-      const authHeader = session?.access_token
-        ? `Bearer ${session.access_token}`
+      // Use the provided token if available; otherwise fall back to anon key.
+      // Do NOT call getSession() here — it acquires the GoTrueClient lock.
+      const authHeader = accessToken
+        ? `Bearer ${accessToken}`
         : `Bearer ${SUPABASE_KEY}`;
 
       const controller = new AbortController();
@@ -122,12 +136,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // ── Initialize from current session ──────────────────────────────────────────
+  // ── Core initializer ─────────────────────────────────────────────────────────
   const initialize = useCallback(async (session: Session | null, forceRoles = false) => {
-    if (initInProgress.current) return;
+    if (initInProgress.current) {
+      // Queue this sign-in so we process it after the current init finishes
+      if (forceRoles) {
+        pendingSignIn.current = { session, force: true };
+      }
+      return;
+    }
     initInProgress.current = true;
+    pendingSignIn.current = null;
 
-    // 8s hard stop — getUser() is a single network round-trip
     const hardStop = setTimeout(() => {
       console.warn("[Auth] Hard stop after 8s");
       setState(prev => ({ ...prev, loading: false, error: "Session check timed out. Please sign in again." }));
@@ -136,7 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       if (!session) {
-        // No session in localStorage — verify with server to be sure
+        // No session passed — ask the server (only on initial mount with no localStorage session)
         const { data: { user }, error } = await supabase.auth.getUser();
         clearTimeout(hardStop);
         if (error || !user) {
@@ -144,14 +164,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           initInProgress.current = false;
           return;
         }
-        // Server says we have a user — get the full session
+        // Get the full session to extract the access token for fetchRoles
         const { data: { session: freshSession } } = await supabase.auth.getSession();
-        const roles = await fetchRoles(user.id, forceRoles);
+        const roles = await fetchRoles(user.id, forceRoles, freshSession?.access_token);
         setState({ user, session: freshSession ?? null, roles, loading: false, error: null });
       } else {
-        // We already have a session object from onAuthStateChange — use it directly
+        // Session already in hand — pass its access_token directly to fetchRoles
         clearTimeout(hardStop);
-        const roles = await fetchRoles(session.user.id, forceRoles);
+        const roles = await fetchRoles(session.user.id, forceRoles, session.access_token);
         setState({ user: session.user, session, roles, loading: false, error: null });
       }
     } catch (e: any) {
@@ -160,12 +180,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setState({ user: null, session: null, roles: [], loading: false, error: "Authentication error. Please sign in again." });
     } finally {
       initInProgress.current = false;
+      // Process any SIGNED_IN that arrived while we were running
+      if (pendingSignIn.current) {
+        const { session: pendingSession, force } = pendingSignIn.current;
+        pendingSignIn.current = null;
+        console.log("[Auth] processing queued SIGNED_IN");
+        initialize(pendingSession, force);
+      }
     }
   }, [fetchRoles]);
 
-  // ── Mount: read existing session from localStorage ────────────────────────────
+  // ── Mount ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    // getSession() reads localStorage synchronously — no network call unless token needs refresh
+    // getSession() reads localStorage — no network call unless token needs refresh
     supabase.auth.getSession().then(({ data: { session } }) => {
       initialize(session, false);
     });
@@ -178,12 +205,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       if (event === "SIGNED_IN") {
-        // Force fresh role fetch on new sign-in
+        // Force fresh role fetch — queue if init is already running
         initialize(session, true);
         return;
       }
       if (event === "TOKEN_REFRESHED" && session) {
-        // Token refreshed in background — update session silently, keep existing roles
+        // Background token refresh — update session/user silently, keep roles
         setState(prev => ({ ...prev, session, user: session.user }));
         return;
       }
@@ -202,9 +229,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refetchRoles = useCallback(async () => {
     if (!state.user) return;
     clearCache();
-    const roles = await fetchRoles(state.user.id, true);
+    const roles = await fetchRoles(state.user.id, true, state.session?.access_token);
     setState(prev => ({ ...prev, roles }));
-  }, [state.user, fetchRoles]);
+  }, [state.user, state.session, fetchRoles]);
 
   return (
     <AuthContext.Provider value={{ ...state, hasRole, signOut, refetchRoles }}>
