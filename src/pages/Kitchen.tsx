@@ -63,7 +63,7 @@ const Kitchen = () => {
 
   const syncAlarmState = useCallback((nextOrders: Order[]) => {
     const hasUnacceptedOrders = nextOrders.some(
-      (o) => o.status === "pending" || o.status === "paid"
+      (o) => o.status === "pending" || o.status === "paid" || o.status === "confirmed"
     );
 
     if (hasUnacceptedOrders) {
@@ -90,7 +90,7 @@ const Kitchen = () => {
     const ordersPromise = supabase
       .from("orders")
       .select("*")
-      .in("status", ["pending", "preparing", "paid"])
+      .in("status", ["pending", "preparing", "paid", "confirmed"])
       .order("created_at", { ascending: true });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
@@ -158,7 +158,8 @@ const Kitchen = () => {
           (order) =>
             order.status === "pending" ||
             order.status === "preparing" ||
-            order.status === "paid"
+            order.status === "paid" ||
+            order.status === "confirmed"
         );
       });
 
@@ -173,7 +174,8 @@ const Kitchen = () => {
         if (
           newStatus !== "pending" &&
           newStatus !== "preparing" &&
-          newStatus !== "paid"
+          newStatus !== "paid" &&
+          newStatus !== "confirmed"
         ) {
           fetchOrders();
         }
@@ -273,7 +275,7 @@ const Kitchen = () => {
           event: "*",
           schema: "public",
           table: "orders",
-          filter: `status=in.(pending,preparing,paid)`,
+          filter: `status=in.(pending,preparing,paid,confirmed)`,
         },
         (payload) => {
           if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
@@ -291,13 +293,13 @@ const Kitchen = () => {
   }, [clearStopTimeout, fetchOrders, stopAlarm]);
 
   const getStatusColor = (status: string) => {
-    if (status === "paid") return "bg-green-600";
+    if (status === "paid" || status === "confirmed") return "bg-green-600";
     if (status === "pending") return "bg-yellow-500";
     return "bg-blue-500"; // preparing
   };
 
   const getStatusLabel = (status: string) => {
-    if (status === "paid") return "PAID — New";
+    if (status === "paid" || status === "confirmed") return "PAID — New";
     if (status === "pending") return "PENDING";
     return "PREPARING";
   };
@@ -312,7 +314,7 @@ const Kitchen = () => {
   }, []);
 
   const hasActiveAlarm = orders.some(
-    (o) => o.status === "pending" || o.status === "paid"
+    (o) => o.status === "pending" || o.status === "paid" || o.status === "confirmed"
   );
 
   return (
@@ -497,7 +499,7 @@ const Kitchen = () => {
                         Start Preparing
                       </Button>
                     )}
-                    {order.status === "paid" && (
+                    {(order.status === "paid" || order.status === "confirmed") && (
                       <Button
                         onClick={() => updateStatus(order.id, "preparing")}
                         className="w-full text-2xl md:text-3xl font-semibold h-16 md:h-20 bg-green-600 hover:bg-green-700"

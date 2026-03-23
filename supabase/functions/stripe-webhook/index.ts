@@ -50,18 +50,19 @@ serve(async (req) => {
       if (orderNumber) {
         console.log('Payment succeeded for order:', orderNumber);
 
-        // Update order status to 'confirmed' — this is the authoritative
+        // Update order status to 'paid' — this is the authoritative
         // server-side confirmation that payment has been collected.
+        // Kitchen dashboard queries for "pending", "preparing", and "paid" statuses.
         const { error: updateError } = await supabase
           .from('orders')
-          .update({ status: 'confirmed' })
+          .update({ status: 'paid' })
           .eq('order_number', orderNumber)
           .eq('status', 'pending'); // only update if still pending (idempotent)
 
         if (updateError) {
           console.error('Failed to update order status:', updateError);
         } else {
-          console.log('Order status set to confirmed:', orderNumber);
+          console.log('Order status set to paid:', orderNumber);
         }
       }
     }
