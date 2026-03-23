@@ -1,5 +1,8 @@
 // Ricos Tacos — Service Worker for Web Push Notifications
 // Handles background push events even when the browser tab is closed.
+//
+// v2 — adds postMessage to Kitchen page clients so the audio alarm fires
+// immediately when a push arrives, even if the tab is open in the background.
 
 const KITCHEN_URL = '/kitchen';
 
@@ -57,7 +60,20 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    Promise.all([
+      // 1. Show the OS notification
+      self.registration.showNotification(data.title, options),
+
+      // 2. postMessage all open Kitchen/Admin tabs so the audio alarm fires
+      //    immediately — even if the tab is in the background.
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+        for (const client of windowClients) {
+          if (client.url.includes('/kitchen') || client.url.includes('/admin')) {
+            client.postMessage({ type: 'NEW_ORDER_PUSH', payload: data });
+          }
+        }
+      }),
+    ])
   );
 });
 
@@ -73,13 +89,14 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // If kitchen tab is already open, focus it
+      // If kitchen tab is already open, focus it and tell it to start the alarm
       for (const client of windowClients) {
         if (client.url.includes('/kitchen') && 'focus' in client) {
+          client.postMessage({ type: 'NEW_ORDER_PUSH', payload: {} });
           return client.focus();
         }
       }
-      // Otherwise open a new tab
+      // Otherwise open a new tab — Kitchen page will detect pending orders on load
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }

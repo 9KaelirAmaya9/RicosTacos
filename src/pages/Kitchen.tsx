@@ -9,6 +9,12 @@ import { printReceipt } from "@/utils/printReceipt";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { useOrderAlarm } from "@/hooks/useOrderAlarm";
 
+// ── SW postMessage listener type ──────────────────────────────────────────────
+interface SwMessage {
+  type: string;
+  payload?: unknown;
+}
+
 interface Order {
   id: string;
   order_number: string;
@@ -234,6 +240,27 @@ const Kitchen = () => {
       document.removeEventListener("touchstart", handleInteraction);
     };
   }, [audioEnabled]);
+
+  // ── Listen for SW postMessage (push arrived while tab was in background) ────
+  // When the service worker receives a push event, it sends a NEW_ORDER_PUSH
+  // message to all open Kitchen/Admin tabs. This triggers fetchOrders() which
+  // will detect the new order and start the audio alarm — even if the tab was
+  // in the background and the Supabase real-time subscription was throttled.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handleSwMessage = (event: MessageEvent<SwMessage>) => {
+      if (event.data?.type === 'NEW_ORDER_PUSH') {
+        console.log('[Kitchen] SW push received — refreshing orders');
+        void fetchOrders();
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleSwMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+    };
+  }, [fetchOrders]);
 
   useEffect(() => {
     fetchOrders();

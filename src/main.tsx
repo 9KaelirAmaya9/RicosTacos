@@ -45,4 +45,20 @@ window.addEventListener('error', (event) => {
   }
 });
 
+// ── Service Worker Registration ───────────────────────────────────────────────
+// Register the service worker on every app load so push notifications work
+// even before staff click "Enable Notifications". The SW handles background
+// push events and postMessages the Kitchen page to trigger the audio alarm.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+      .then((reg) => {
+        console.log('[SW] Registered, scope:', reg.scope);
+      })
+      .catch((err) => {
+        console.warn('[SW] Registration failed (non-critical):', err);
+      });
+  });
+}
+
 createRoot(document.getElementById("root")!).render(<App />);
