@@ -44,7 +44,7 @@ export default function AdminOrders() {
   }, []);
 
   const syncAlarmState = useCallback((nextOrders: Order[]) => {
-    const hasUnacceptedOrders = nextOrders.some((o) => o.status === "pending" || o.status === "paid");
+    const hasUnacceptedOrders = nextOrders.some((o) => o.status === "pending" || o.status === "paid" || o.status === "confirmed");
 
     if (hasUnacceptedOrders) {
       clearStopTimeout();

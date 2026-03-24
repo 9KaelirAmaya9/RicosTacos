@@ -93,11 +93,11 @@ const Admin = () => {
         supabase
           .from("orders")
           .select("id", { count: "exact", head: true }),
-        // Pending orders count
+        // Pending orders count (includes paid/confirmed — all unprocessed orders)
         supabase
           .from("orders")
           .select("id", { count: "exact", head: true })
-          .eq("status", "pending"),
+          .in("status", ["pending", "paid", "confirmed"]),
         // Recent orders
         supabase
           .from("orders")
