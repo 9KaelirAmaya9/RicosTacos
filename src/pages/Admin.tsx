@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   DollarSign,
@@ -34,88 +36,100 @@ import {
   ChefHat,
 } from "lucide-react";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface AdminMetrics {
+  todayOrders: number;
+  todayRevenue: number;
+  pendingOrders: number;
+  totalOrders: number;
+  recentOrders: any[];
+}
+
+// ── Data fetcher (used by React Query) ────────────────────────────────────────
+async function fetchAdminMetrics(): Promise<AdminMetrics> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISO = today.toISOString();
+
+  const [todayResult, allResult, pendingResult, recentResult] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id, total, created_at")
+      .gte("created_at", todayISO)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true }),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["pending", "paid", "confirmed"]),
+    supabase
+      .from("orders")
+      .select("id, order_number, customer_name, customer_phone, status, total, created_at, order_type")
+      .order("created_at", { ascending: false })
+      .limit(10),
+  ]);
+
+  if (todayResult.error) throw todayResult.error;
+  if (allResult.error) throw allResult.error;
+  if (pendingResult.error) throw pendingResult.error;
+  if (recentResult.error) throw recentResult.error;
+
+  const ordersToday = todayResult.data || [];
+  return {
+    todayOrders: ordersToday.length,
+    todayRevenue: ordersToday.reduce((sum, o) => sum + Number(o.total || 0), 0),
+    pendingOrders: pendingResult.count || 0,
+    totalOrders: allResult.count || 0,
+    recentOrders: recentResult.data || [],
+  };
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 const Admin = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  // ── Auth from shared context — no duplicate getSession() calls ──────────────
+  // Auth from shared context — resolves instantly, no extra fetch
   const { user, roles: userRoles } = useAuth();
   const userEmail = user?.email || "";
 
-  // ── Local UI state ──────────────────────────────────────────────────────────
-  const [todayOrders, setTodayOrders] = useState(0);
-  const [todayRevenue, setTodayRevenue] = useState(0);
-  const [pendingOrders, setPendingOrders] = useState(0);
-  const [totalOrders, setTotalOrders] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  // Dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // ── Metrics loader ──────────────────────────────────────────────────────────
-  const loadMetrics = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayISO = today.toISOString();
+  // ── React Query — caches metrics across navigations ───────────────────────
+  // staleTime: 30s — shows cached data instantly on remount, refetches in bg
+  // gcTime: 5min — keeps data in memory while navigating between pages
+  const {
+    data: metrics,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<AdminMetrics>({
+    queryKey: ["admin-metrics"],
+    queryFn: fetchAdminMetrics,
+    staleTime: 30 * 1000,       // show cached data for 30s before background refetch
+    gcTime: 5 * 60 * 1000,      // keep in memory for 5 min
+    refetchOnWindowFocus: true,  // refresh when tab regains focus
+    refetchOnMount: "always",    // always refetch on mount but show stale data immediately
+  });
 
-      const [todayOrdersResult, allOrdersResult, pendingOrdersResult, recentOrdersResult] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("id, total, created_at")
-          .gte("created_at", todayISO)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true }),
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .in("status", ["pending", "paid", "confirmed"]),
-        supabase
-          .from("orders")
-          .select("id, order_number, customer_name, customer_phone, status, total, created_at, order_type")
-          .order("created_at", { ascending: false })
-          .limit(10),
-      ]);
-
-      if (todayOrdersResult.error) throw todayOrdersResult.error;
-      if (allOrdersResult.error) throw allOrdersResult.error;
-      if (pendingOrdersResult.error) throw pendingOrdersResult.error;
-      if (recentOrdersResult.error) throw recentOrdersResult.error;
-
-      const ordersToday = todayOrdersResult.data || [];
-      setTodayOrders(ordersToday.length);
-      setTodayRevenue(ordersToday.reduce((sum, order) => sum + Number(order.total || 0), 0));
-      setPendingOrders(pendingOrdersResult.count || 0);
-      setTotalOrders(allOrdersResult.count || 0);
-      setRecentOrders(recentOrdersResult.data || []);
-      setError(null);
-    } catch (err: any) {
-      console.error("Failed to load metrics:", err);
-      const msg = err?.message || "Failed to load metrics";
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
+  // ── Real-time subscription — invalidates cache on any order change ─────────
   useEffect(() => {
-    loadMetrics();
-
     const channel = supabase
-      .channel("admin-orders")
+      .channel("admin-orders-rt")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
-        loadMetrics();
+        // Invalidate so React Query refetches in the background
+        queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [loadMetrics]);
+  }, [queryClient]);
 
-  // ── Delete all orders ───────────────────────────────────────────────────────
+  // ── Delete all orders ──────────────────────────────────────────────────────
   const handleDeleteAllOrders = useCallback(async () => {
     setIsDeleting(true);
     try {
@@ -126,17 +140,23 @@ const Admin = () => {
       if (error) throw error;
       toast.success("All orders deleted successfully!");
       setShowDeleteDialog(false);
-      await loadMetrics();
+      queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
     } catch (err: any) {
       console.error("Failed to delete orders:", err);
       toast.error(err?.message || "Failed to delete orders");
     } finally {
       setIsDeleting(false);
     }
-  }, [loadMetrics]);
+  }, [queryClient]);
 
-  // ── Metrics cards ───────────────────────────────────────────────────────────
-  const metrics = useMemo(() => [
+  // ── Derived values ─────────────────────────────────────────────────────────
+  const todayOrders = metrics?.todayOrders ?? 0;
+  const todayRevenue = metrics?.todayRevenue ?? 0;
+  const pendingOrders = metrics?.pendingOrders ?? 0;
+  const totalOrders = metrics?.totalOrders ?? 0;
+  const recentOrders = metrics?.recentOrders ?? [];
+
+  const metricCards = useMemo(() => [
     {
       title: "Today's Orders",
       value: todayOrders,
@@ -167,7 +187,6 @@ const Admin = () => {
     },
   ], [todayOrders, todayRevenue, pendingOrders, totalOrders]);
 
-  // ── Quick Actions — navigate directly to dedicated pages ───────────────────
   const quickActions = useMemo(() => [
     {
       title: "All Orders",
@@ -222,7 +241,7 @@ const Admin = () => {
             </Button>
           </div>
 
-          {/* Auth Status Badge — reads from AuthContext, resolves instantly */}
+          {/* Auth Status Badge */}
           <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
             <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <AlertDescription className="flex items-center gap-4 flex-wrap">
@@ -258,8 +277,8 @@ const Admin = () => {
           </Alert>
         </div>
 
-        {/* Loading indicator */}
-        {isLoading && (
+        {/* Loading — only shown on very first load (no cached data yet) */}
+        {isLoading && !metrics && (
           <Alert>
             <Loader2 className="h-4 w-4 animate-spin" />
             <AlertDescription>Loading dashboard data…</AlertDescription>
@@ -273,9 +292,9 @@ const Admin = () => {
             <AlertDescription className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Failed to load dashboard metrics</p>
-                <p className="text-sm mt-1">{error}</p>
+                <p className="text-sm mt-1">{(error as Error).message}</p>
               </div>
-              <Button onClick={loadMetrics} variant="outline" size="sm" className="ml-4">
+              <Button onClick={() => refetch()} variant="outline" size="sm" className="ml-4">
                 Retry
               </Button>
             </AlertDescription>
@@ -284,7 +303,7 @@ const Admin = () => {
 
         {/* Metrics Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {metrics.map((metric) => (
+          {metricCards.map((metric) => (
             <Card key={metric.title} className="relative overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
@@ -345,14 +364,21 @@ const Admin = () => {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Recent Orders</CardTitle>
-              <CardDescription>Latest orders — updates in real-time</CardDescription>
+              <CardDescription>
+                Latest orders — updates in real-time
+                {isLoading && metrics && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> refreshing…
+                  </span>
+                )}
+              </CardDescription>
             </div>
             <Button onClick={() => navigate("/admin/orders")} variant="outline" size="sm">
               View All
             </Button>
           </CardHeader>
           <CardContent>
-            {recentOrders.length === 0 ? (
+            {recentOrders.length === 0 && !isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No orders yet</p>
