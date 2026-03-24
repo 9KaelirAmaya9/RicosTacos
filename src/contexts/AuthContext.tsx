@@ -101,11 +101,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
       const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '';
 
-      // Use the provided token if available; otherwise fall back to anon key.
-      // Do NOT call getSession() here — it acquires the GoTrueClient lock.
-      const authHeader = accessToken
-        ? `Bearer ${accessToken}`
-        : `Bearer ${SUPABASE_KEY}`;
+      // If no accessToken is provided, we cannot make an authenticated request.
+      // Falling back to the anon key returns [] due to RLS (anon can't read user_roles).
+      // Return empty and let the auth state change handler retry with the real token.
+      if (!accessToken) {
+        console.warn("[Auth] fetchRoles called without accessToken — skipping to avoid anon fallback");
+        return [];
+      }
+      const authHeader = `Bearer ${accessToken}`;
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
