@@ -43,10 +43,24 @@ serve(async (req) => {
     // checkoutSessionId is used as the Stripe idempotency key so retries reuse the same PI.
     const { items, orderType, customerInfo, orderNumber: clientOrderNumber, couponCode, discountAmount, checkoutSessionId } = await req.json();
 
-    // Generate order number server-side if not provided by client (new flow)
+    // Generate a human-readable order number server-side.
+    // Format: RT-YYYYMMDD-XXXX  (e.g. RT-20260324-4F2A)
+    //   RT       = Ricos Tacos brand prefix
+    //   YYYYMMDD = UTC date — helps staff identify which day an order is from
+    //   XXXX     = 4 random uppercase hex chars (65,536 combos/day — plenty for a restaurant)
+    //
+    // Falls back to a client-supplied orderNumber only if one was explicitly passed
+    // (legacy path — no current callers send one, but kept for safety).
+    function generateOrderNumber(): string {
+      const now = new Date();
+      const date = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+      const rand = Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+      return `RT-${date}-${rand}`;
+    }
+
     const orderNumber: string = (clientOrderNumber && typeof clientOrderNumber === 'string')
       ? clientOrderNumber
-      : crypto.randomUUID();
+      : generateOrderNumber();
 
     // Validate input parameters (allows guest checkout)
     if (!items || !Array.isArray(items) || items.length === 0) {

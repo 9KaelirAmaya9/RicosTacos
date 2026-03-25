@@ -273,6 +273,7 @@ const Kitchen = () => {
   useEffect(() => {
     fetchOrders();
 
+    // ── Real-time subscription ────────────────────────────────────────────────
     const channel = supabase
       .channel("kitchen-orders")
       .on(
@@ -291,9 +292,18 @@ const Kitchen = () => {
       )
       .subscribe();
 
+    // ── Polling fallback — every 15s ──────────────────────────────────────────
+    // If the WebSocket drops silently (common on mobile/PWA after screen lock),
+    // polling catches new orders within 15 seconds and fires the alarm.
+    // This is the safety net that guarantees the kitchen never misses an order.
+    const pollInterval = window.setInterval(() => {
+      fetchOrders();
+    }, 15 * 1000);
+
     return () => {
       clearStopTimeout();
       stopAlarm();
+      window.clearInterval(pollInterval);
       supabase.removeChannel(channel).catch(console.error);
     };
   }, [clearStopTimeout, fetchOrders, stopAlarm]);

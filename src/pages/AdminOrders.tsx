@@ -115,7 +115,7 @@ export default function AdminOrders() {
   useEffect(() => {
     fetchOrders();
 
-    // Subscribe to real-time updates
+    // ── Real-time subscription ────────────────────────────────────────────────
     const channel = supabase
       .channel("orders-changes")
       .on(
@@ -126,7 +126,6 @@ export default function AdminOrders() {
           table: "orders",
         },
         (payload) => {
-          // Only refetch if it's an insert or update that affects our filters
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             fetchOrders();
           }
@@ -134,9 +133,16 @@ export default function AdminOrders() {
       )
       .subscribe();
 
+    // ── Polling fallback — every 15s ──────────────────────────────────────────
+    // Safety net if WebSocket drops silently (mobile/PWA screen lock).
+    const pollInterval = window.setInterval(() => {
+      fetchOrders();
+    }, 15 * 1000);
+
     return () => {
       clearStopTimeout();
       stopAlarm();
+      window.clearInterval(pollInterval);
       supabase.removeChannel(channel).catch(console.error);
     };
   }, [clearStopTimeout, fetchOrders, stopAlarm]);

@@ -127,7 +127,7 @@ const Admin = () => {
     // gcTime: 24h inherited from global default — keep in memory all day
     refetchOnWindowFocus: true,   // refresh when admin switches back to the tab
     refetchOnMount: true,         // always refetch on mount (shows cached data first)
-    refetchInterval: 60 * 1000,   // poll every 60s as safety net if real-time drops
+    refetchInterval: 15 * 1000,   // poll every 15s — catches orders if WebSocket drops
   });
 
   // ── Real-time subscription — invalidates cache on any order change ─────────
