@@ -2,9 +2,13 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Support both VITE_ prefixed and non-prefixed variables (for Lovable compatibility)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY;
+// Support both VITE_ prefixed and non-prefixed variables (for Lovable compatibility).
+// .trim() removes any trailing newline (\n) or whitespace that Vercel/CI may inject
+// into environment variable values. A trailing \n in the anon key corrupts the
+// WebSocket URL (%0A appended) and Authorization headers, breaking real-time
+// subscriptions and REST calls silently.
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
+const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
 
 // Validate environment variables
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {

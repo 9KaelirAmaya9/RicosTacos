@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,7 @@ interface Order {
 }
 
 const Kitchen = () => {
+  const queryClient = useQueryClient();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(false);
@@ -144,9 +146,13 @@ const Kitchen = () => {
       knownOrderIdsRef.current = nextIds;
       setOrders(nextOrders);
       syncAlarmState(nextOrders);
+
+      // Invalidate the admin-metrics React Query cache so the admin dashboard
+      // reflects the latest orders immediately when kitchen fetches new data.
+      queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
     }
     setLoading(false);
-  }, [startAlarm, syncAlarmState]);
+  }, [startAlarm, syncAlarmState, queryClient]);
 
   const updateStatus = useCallback(
     async (orderId: string, newStatus: string) => {

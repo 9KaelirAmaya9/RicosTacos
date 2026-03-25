@@ -393,8 +393,8 @@ const Cart = () => {
       // supabaseAnon.functions.invoke() still calls auth.getSession() internally which
       // hangs 45s when the Supabase auth server is slow. Raw fetch has no such dependency.
       const paymentIntentPromise = (async () => {
-        const _SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
-        const _SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '';
+        const _SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
+        const _SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
         try {
           const response = await fetch(`${_SUPABASE_URL}/functions/v1/create-payment-intent`, {
             method: 'POST',
@@ -547,8 +547,8 @@ const Cart = () => {
       // A raw fetch() bypasses the GoTrueClient entirely — no JWT refresh, no auth state,
       // no second GoTrueClient instance. The anon key is used directly, which is allowed
       // by the RLS INSERT policy on the orders table. The user_id is passed explicitly.
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
-      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '';
+      const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
+      const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
 
       const orderInsertPromise = (async () => {
         try {

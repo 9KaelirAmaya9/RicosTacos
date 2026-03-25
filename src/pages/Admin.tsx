@@ -99,21 +99,35 @@ const Admin = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // ── React Query — caches metrics across navigations ───────────────────────
-  // staleTime: 30s — shows cached data instantly on remount, refetches in bg
-  // gcTime: 5min — keeps data in memory while navigating between pages
+  // ── React Query — caches metrics across navigations AND tab close/reopen ──
+  //
+  // How this works with PersistQueryClientProvider (App.tsx):
+  //   1. On first load: no cache → isLoading=true → fetch runs → data appears.
+  //   2. Navigate away and back: cache hit (staleTime=0 means stale, but data
+  //      is shown immediately while background refetch runs).
+  //   3. Close tab / PWA / browser → reopen: PersistQueryClientProvider
+  //      hydrates from localStorage BEFORE this component renders, so `metrics`
+  //      is already populated — orders appear instantly, no blank state.
+  //   4. Background refetch fires immediately (staleTime=0) to get fresh data.
+  //   5. Real-time subscription below fires invalidateQueries on any DB change.
+  //   6. refetchInterval: 60s — safety net if real-time WebSocket drops.
+  //
+  // isLoading is only true on the very first load (no cache at all).
+  // While a background refetch runs, `metrics` still holds the previous data.
   const {
     data: metrics,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useQuery<AdminMetrics>({
     queryKey: ["admin-metrics"],
     queryFn: fetchAdminMetrics,
-    staleTime: 30 * 1000,       // show cached data for 30s before background refetch
-    gcTime: 5 * 60 * 1000,      // keep in memory for 5 min
-    refetchOnWindowFocus: true,  // refresh when tab regains focus
-    refetchOnMount: "always",    // always refetch on mount but show stale data immediately
+    // staleTime: 0 inherited from global default — always refetch in background
+    // gcTime: 24h inherited from global default — keep in memory all day
+    refetchOnWindowFocus: true,   // refresh when admin switches back to the tab
+    refetchOnMount: true,         // always refetch on mount (shows cached data first)
+    refetchInterval: 60 * 1000,   // poll every 60s as safety net if real-time drops
   });
 
   // ── Real-time subscription — invalidates cache on any order change ─────────
@@ -366,7 +380,7 @@ const Admin = () => {
               <CardTitle>Recent Orders</CardTitle>
               <CardDescription>
                 Latest orders — updates in real-time
-                {isLoading && metrics && (
+                {isFetching && metrics && (
                   <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" /> refreshing…
                   </span>
