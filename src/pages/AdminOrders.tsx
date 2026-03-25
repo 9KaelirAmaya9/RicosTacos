@@ -26,11 +26,18 @@ export default function AdminOrders() {
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const alarmMinimumUntilRef = useRef<number>(0);
   const stopTimeoutRef = useRef<number | null>(null);
+  // Prevent concurrent fetchOrders() calls from piling up and causing timeouts.
+  const fetchInProgressRef = useRef(false);
+  // Only show the loading spinner on the very first fetch.
+  const initialLoadDoneRef = useRef(false);
+  // Debounce timer for real-time triggered fetches.
+  const rtDebounceRef = useRef<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const hardStop = window.setTimeout(() => {
       setLoading(false);
+      initialLoadDoneRef.current = true;
     }, 8000);
 
     return () => window.clearTimeout(hardStop);
@@ -67,16 +74,23 @@ export default function AdminOrders() {
   }, [clearStopTimeout, startAlarm, stopAlarm]);
 
   const fetchOrders = useCallback(async () => {
+    // Guard: skip if a fetch is already in flight to prevent pileup / timeouts.
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
+
+    // Only show the loading spinner on the initial page load.
+    if (!initialLoadDoneRef.current) setLoading(true);
+
     try {
-      setLoading(true);
       const ordersPromise = supabase
         .from("orders")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(1000); // Limit to prevent memory issues
+        .limit(1000);
 
+      // 10 s timeout — short enough to resolve before the 15 s poll fires again.
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Orders request timed out")), 20000)
+        setTimeout(() => reject(new Error("Orders request timed out")), 10000)
       );
 
       const { data, error } = await Promise.race([
@@ -103,11 +117,16 @@ export default function AdminOrders() {
       syncAlarmState(ordersData);
     } catch (error) {
       console.error("Error fetching orders:", error);
-      toast.error("Failed to load orders");
-      setOrders([]);
-      setFilteredOrders([]);
-      syncAlarmState([]);
+      // On error/timeout: keep existing orders on screen — do NOT blank the table.
+      // The next poll (15 s) or real-time event will retry automatically.
+      if (!initialLoadDoneRef.current) {
+        // First load failed — show empty state so the page isn't stuck on spinner.
+        setOrders([]);
+        setFilteredOrders([]);
+      }
     } finally {
+      fetchInProgressRef.current = false;
+      initialLoadDoneRef.current = true;
       setLoading(false);
     }
   }, [startAlarm, syncAlarmState]);
@@ -127,7 +146,16 @@ export default function AdminOrders() {
         },
         (payload) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            fetchOrders();
+            // Debounce: if multiple RT events fire in quick succession (e.g.
+            // an INSERT immediately followed by an UPDATE), collapse them into
+            // a single fetch 300 ms after the last event.
+            if (rtDebounceRef.current !== null) {
+              window.clearTimeout(rtDebounceRef.current);
+            }
+            rtDebounceRef.current = window.setTimeout(() => {
+              rtDebounceRef.current = null;
+              fetchOrders();
+            }, 300);
           }
         }
       )
@@ -142,6 +170,7 @@ export default function AdminOrders() {
     return () => {
       clearStopTimeout();
       stopAlarm();
+      if (rtDebounceRef.current !== null) window.clearTimeout(rtDebounceRef.current);
       window.clearInterval(pollInterval);
       supabase.removeChannel(channel).catch(console.error);
     };

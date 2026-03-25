@@ -42,6 +42,12 @@ const Kitchen = () => {
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const alarmMinimumUntilRef = useRef<number>(0);
   const stopTimeoutRef = useRef<number | null>(null);
+  // Prevent concurrent fetchOrders() calls from piling up and causing timeouts.
+  const fetchInProgressRef = useRef(false);
+  // Only show the loading spinner on the very first fetch.
+  const initialLoadDoneRef = useRef(false);
+  // Debounce timer for real-time triggered fetches.
+  const rtDebounceRef = useRef<number | null>(null);
 
   // Live clock — ticks every second
   useEffect(() => {
@@ -52,6 +58,7 @@ const Kitchen = () => {
   useEffect(() => {
     const hardStop = window.setTimeout(() => {
       setLoading(false);
+      initialLoadDoneRef.current = true;
     }, 8000);
     return () => window.clearTimeout(hardStop);
   }, []);
@@ -89,25 +96,32 @@ const Kitchen = () => {
   }, [clearStopTimeout, startAlarm, stopAlarm]);
 
   const fetchOrders = useCallback(async () => {
-    const ordersPromise = supabase
-      .from("orders")
-      .select("*")
-      .in("status", ["pending", "preparing", "paid", "confirmed"])
-      .order("created_at", { ascending: true });
+    // Guard: skip if a fetch is already in flight to prevent pileup / timeouts.
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Kitchen orders request timed out")), 20000)
-    );
+    // Only show the loading spinner on the initial page load.
+    if (!initialLoadDoneRef.current) setLoading(true);
 
-    const { data, error } = await Promise.race([
-      ordersPromise,
-      timeoutPromise,
-    ]) as Awaited<typeof ordersPromise>;
+    try {
+      const ordersPromise = supabase
+        .from("orders")
+        .select("*")
+        .in("status", ["pending", "preparing", "paid", "confirmed"])
+        .order("created_at", { ascending: true });
 
-    if (error) {
-      toast.error("Failed to fetch orders");
-      console.error(error);
-    } else {
+      // 10 s timeout — short enough to resolve before the 15 s poll fires again.
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Kitchen orders request timed out")), 10000)
+      );
+
+      const { data, error } = await Promise.race([
+        ordersPromise,
+        timeoutPromise,
+      ]) as Awaited<typeof ordersPromise>;
+
+      if (error) throw error;
+
       const nextOrders = (data || []) as unknown as Order[];
       const nextIds = new Set(nextOrders.map((order) => order.id));
       const newUnacceptedOrders = nextOrders.filter(
@@ -150,8 +164,18 @@ const Kitchen = () => {
       // Invalidate the admin-metrics React Query cache so the admin dashboard
       // reflects the latest orders immediately when kitchen fetches new data.
       queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
+    } catch (error) {
+      console.error("Error fetching kitchen orders:", error);
+      // On error/timeout: keep existing orders on screen so the kitchen display
+      // doesn't go blank. The next poll or real-time event will retry.
+      if (!initialLoadDoneRef.current) {
+        setOrders([]);
+      }
+    } finally {
+      fetchInProgressRef.current = false;
+      initialLoadDoneRef.current = true;
+      setLoading(false);
     }
-    setLoading(false);
   }, [startAlarm, syncAlarmState, queryClient]);
 
   const updateStatus = useCallback(
@@ -274,6 +298,10 @@ const Kitchen = () => {
     fetchOrders();
 
     // ── Real-time subscription ────────────────────────────────────────────────
+    // NOTE: We intentionally omit a status filter here. The `in` operator is
+    // NOT reliably supported for postgres_changes realtime subscriptions and
+    // was silently dropping INSERT events for new orders. We receive ALL order
+    // events and the fetchOrders() query filters to active statuses server-side.
     const channel = supabase
       .channel("kitchen-orders")
       .on(
@@ -282,11 +310,18 @@ const Kitchen = () => {
           event: "*",
           schema: "public",
           table: "orders",
-          filter: `status=in.(pending,preparing,paid,confirmed)`,
         },
         (payload) => {
           if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-            fetchOrders();
+            // Debounce: collapse rapid consecutive events (INSERT + UPDATE)
+            // into a single fetch 300 ms after the last event.
+            if (rtDebounceRef.current !== null) {
+              window.clearTimeout(rtDebounceRef.current);
+            }
+            rtDebounceRef.current = window.setTimeout(() => {
+              rtDebounceRef.current = null;
+              fetchOrders();
+            }, 300);
           }
         }
       )
@@ -303,6 +338,7 @@ const Kitchen = () => {
     return () => {
       clearStopTimeout();
       stopAlarm();
+      if (rtDebounceRef.current !== null) window.clearTimeout(rtDebounceRef.current);
       window.clearInterval(pollInterval);
       supabase.removeChannel(channel).catch(console.error);
     };
