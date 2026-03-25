@@ -1,9 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/contexts/CartContext";
@@ -36,42 +34,19 @@ import DebugAuth from "./pages/DebugAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // ── QueryClient ───────────────────────────────────────────────────────────────
-// staleTime: 0  — data is always stale so background refetches run immediately
-//               on mount/focus. The persisted cache is shown first (instant),
-//               then the fresh fetch replaces it silently.
-// gcTime: 24h   — keep cache in memory for a full day (persister handles disk)
+// staleTime: 0  — always refetch in background on mount/focus
+// gcTime: 5min  — keep in memory for 5 minutes (no disk persistence)
 // refetchOnWindowFocus: true — refresh when admin/kitchen tab regains focus
 // retry: 1      — one retry on network errors
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 0,
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      gcTime: 1000 * 60 * 5, // 5 minutes in memory only
       refetchOnWindowFocus: true,
       retry: 1,
     },
   },
-});
-
-// ── localStorage persister ────────────────────────────────────────────────────
-// Writes the React Query cache to localStorage after every successful fetch.
-// On tab reopen / PWA relaunch, PersistQueryClientProvider hydrates the
-// QueryClient from localStorage BEFORE rendering children — so admin-metrics
-// and kitchen-orders are available on the very first render with no blank state.
-//
-// key: "rt-query-cache-v1"
-//   Bump the version suffix (v2, v3…) whenever the cached data shape changes
-//   to force all clients to discard the old cache and start fresh.
-//
-// maxAge: 24h — discard localStorage cache older than 24 hours so yesterday's
-//   data never shows as today's orders.
-//
-// throttleTime: 1000ms — at most one localStorage write per second to avoid
-//   performance issues on rapid real-time updates.
-const persister = createSyncStoragePersister({
-  storage: window.localStorage,
-  key: "rt-query-cache-v1",
-  throttleTime: 1000,
 });
 
 const App = () => (
@@ -86,14 +61,7 @@ const App = () => (
       persistOptions.buster: bump this string to force a full cache clear across
       all clients (e.g. after a breaking schema change).
     */}
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{
-        persister,
-        maxAge: 1000 * 60 * 60 * 24, // 24 hours
-        buster: "rt-v1",
-      }}
-    >
+    <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <CartProvider>
           <AuthProvider>
@@ -133,7 +101,7 @@ const App = () => (
           </AuthProvider>
         </CartProvider>
       </LanguageProvider>
-    </PersistQueryClientProvider>
+    </QueryClientProvider>
   </ErrorBoundary>
 );
 
