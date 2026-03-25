@@ -51,38 +51,27 @@ async function fetchAdminMetrics(): Promise<AdminMetrics> {
   today.setHours(0, 0, 0, 0);
   const todayISO = today.toISOString();
 
-  const [todayResult, allResult, pendingResult, recentResult] = await Promise.all([
-    supabase
-      .from("orders")
-      .select("id, total, created_at")
-      .gte("created_at", todayISO)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true }),
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .in("status", ["pending", "paid", "confirmed"]),
-    supabase
-      .from("orders")
-      .select("id, order_number, customer_name, customer_phone, status, total, created_at, order_type")
-      .order("created_at", { ascending: false })
-      .limit(10),
-  ]);
+  // Use a single query to get all orders — avoids 4 parallel round trips
+  // each taking ~1.5s. One query = one round trip = much faster.
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id, total, created_at, status, order_number, customer_name, customer_phone, order_type")
+    .order("created_at", { ascending: false })
+    .limit(200); // enough for metrics + recent orders
 
-  if (todayResult.error) throw todayResult.error;
-  if (allResult.error) throw allResult.error;
-  if (pendingResult.error) throw pendingResult.error;
-  if (recentResult.error) throw recentResult.error;
+  if (error) throw error;
 
-  const ordersToday = todayResult.data || [];
+  const allOrders = data || [];
+  const ordersToday = allOrders.filter(o => o.created_at >= todayISO);
+  const pendingOrders = allOrders.filter(o => ["pending", "paid", "confirmed"].includes(o.status));
+  const recentOrders = allOrders.slice(0, 10);
+
   return {
     todayOrders: ordersToday.length,
     todayRevenue: ordersToday.reduce((sum, o) => sum + Number(o.total || 0), 0),
-    pendingOrders: pendingResult.count || 0,
-    totalOrders: allResult.count || 0,
-    recentOrders: recentResult.data || [],
+    pendingOrders: pendingOrders.length,
+    totalOrders: allOrders.length,
+    recentOrders,
   };
 }
 
@@ -128,6 +117,8 @@ const Admin = () => {
     refetchOnWindowFocus: true,   // refresh when admin switches back to the tab
     refetchOnMount: true,         // always refetch on mount (shows cached data first)
     refetchInterval: 15 * 1000,   // poll every 15s — catches orders if WebSocket drops
+    retry: 3,                     // retry up to 3 times on timeout
+    retryDelay: 2000,             // wait 2s between retries
   });
 
   // ── Real-time subscription — invalidates cache on any order change ─────────

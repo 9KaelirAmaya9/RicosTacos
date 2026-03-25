@@ -96,7 +96,7 @@ const Kitchen = () => {
       .order("created_at", { ascending: true });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Kitchen orders request timed out")), 7000)
+      setTimeout(() => reject(new Error("Kitchen orders request timed out")), 20000)
     );
 
     const { data, error } = await Promise.race([
