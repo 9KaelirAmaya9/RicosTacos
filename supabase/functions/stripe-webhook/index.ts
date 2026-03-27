@@ -21,7 +21,7 @@ serve(async (req) => {
   }
 
   const signature = req.headers.get('stripe-signature');
-  
+
   if (!signature) {
     return new Response(
       JSON.stringify({ error: 'No signature provided' }),
@@ -32,23 +32,36 @@ serve(async (req) => {
   try {
     const body = await req.text();
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
-    
+
+    // FIX: Fail fast if STRIPE_WEBHOOK_SECRET is not configured.
+    // Previously this passed '' to constructEventAsync which throws a
+    // "No signatures found" error on EVERY webhook call — silently returning
+    // HTTP 400 and never processing any payment event.
+    if (!webhookSecret) {
+      console.error('[WEBHOOK] STRIPE_WEBHOOK_SECRET is not set — cannot verify signature');
+      return new Response(
+        JSON.stringify({ error: 'Webhook secret not configured' }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
     // Verify webhook signature using async method
     const event = await stripe.webhooks.constructEventAsync(
       body,
       signature,
-      webhookSecret || ''
+      webhookSecret
     );
 
     console.log('Webhook event type:', event.type);
 
     // Handle payment_intent.succeeded (for PaymentIntent flow)
+    // This is the primary flow used by the app (SecurePaymentModal / create-payment-intent)
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       const orderNumber = paymentIntent.metadata?.order_number;
 
       if (orderNumber) {
-        console.log('Payment succeeded for order:', orderNumber);
+        console.log('[WEBHOOK] Payment succeeded for order:', orderNumber);
 
         // Update order status to 'paid' — this is the authoritative
         // server-side confirmation that payment has been collected.
@@ -60,61 +73,74 @@ serve(async (req) => {
           .eq('status', 'pending'); // only update if still pending (idempotent)
 
         if (updateError) {
-          console.error('Failed to update order status:', updateError);
+          console.error('[WEBHOOK] Failed to update order status:', updateError);
         } else {
-          console.log('Order status set to paid:', orderNumber);
+          console.log('[WEBHOOK] Order status set to paid:', orderNumber);
         }
+
+        // Fire push notification to kitchen/admin staff
+        try {
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              title: '🚨 New Order Received',
+              body: `Order #${orderNumber} — payment confirmed`,
+              data: { url: '/kitchen' },
+              targetRoles: ['admin', 'kitchen'],
+            },
+          });
+        } catch (pushErr) {
+          console.warn('[WEBHOOK] Push notification failed (non-critical):', pushErr);
+        }
+      } else {
+        console.warn('[WEBHOOK] payment_intent.succeeded has no order_number in metadata');
       }
     }
 
     // Handle the checkout.session.completed event (for Checkout Session flow)
+    // FIX: Also update order status to 'paid' here — previously this handler
+    // only tried to send a notification but never updated the order status.
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const orderNumber = session.metadata?.order_number;
 
       if (!orderNumber) {
-        console.error('No order number in session metadata');
+        console.error('[WEBHOOK] No order number in session metadata');
         return new Response(
           JSON.stringify({ error: 'No order number found' }),
           { status: 400, headers: corsHeaders }
         );
       }
 
-      // Order is already created with status 'pending', keep it as pending for kitchen workflow
-      // The order will be processed by kitchen staff
-      console.log('Checkout session completed for order:', orderNumber);
+      console.log('[WEBHOOK] Checkout session completed for order:', orderNumber);
 
-      // Get order details for notification
-      const { data: order } = await supabase
+      // Update order status to 'paid' (idempotent — only if still pending)
+      const { error: updateError } = await supabase
         .from('orders')
-        .select('*')
+        .update({ status: 'paid' })
         .eq('order_number', orderNumber)
-        .single();
+        .eq('status', 'pending');
 
-      if (order) {
-        // Send notification (internal call - no auth needed)
-        try {
-          await supabase.functions.invoke('send-order-notification', {
-            body: {
-              orderNumber: order.order_number,
-              customerName: order.customer_name,
-              customerEmail: order.customer_email,
-              customerPhone: order.customer_phone,
-              orderType: order.order_type,
-              total: order.total,
-              items: order.items,
-            },
-            headers: {
-              'x-internal-call': 'true'
-            }
-          });
-          console.log('Notification sent for order:', orderNumber);
-        } catch (notifError) {
-          console.error('Failed to send notification:', notifError);
-        }
+      if (updateError) {
+        console.error('[WEBHOOK] Failed to update order status:', updateError);
+      } else {
+        console.log('[WEBHOOK] Order status set to paid:', orderNumber);
       }
 
-      console.log('Order updated successfully:', orderNumber);
+      // Fire push notification to kitchen/admin staff
+      try {
+        await supabase.functions.invoke('send-push-notification', {
+          body: {
+            title: '🚨 New Order Received',
+            body: `Order #${orderNumber} — payment confirmed`,
+            data: { url: '/kitchen' },
+            targetRoles: ['admin', 'kitchen'],
+          },
+        });
+      } catch (pushErr) {
+        console.warn('[WEBHOOK] Push notification failed (non-critical):', pushErr);
+      }
+
+      console.log('[WEBHOOK] Order pipeline complete for:', orderNumber);
     }
 
     return new Response(
@@ -123,7 +149,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('[WEBHOOK] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
       JSON.stringify({ error: errorMessage }),

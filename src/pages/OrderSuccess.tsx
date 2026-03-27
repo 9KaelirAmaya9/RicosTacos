@@ -3,7 +3,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CheckCircle2, Download, Home, Phone, Mail, MapPin } from "lucide-react";
+import { CheckCircle2, Home, Phone, Mail, MapPin, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,11 +23,41 @@ interface OrderDetails {
   created_at: string;
 }
 
+// FIX: Retry polling for webhook delay.
+// The Stripe webhook fires 1-10s after the user lands on this page.
+// Without retries, the single fetch returns nothing and the page shows
+// "Order Not Found" even though the order was successfully created.
+const MAX_RETRIES = 8;
+const RETRY_DELAY_MS = 1500;
+
+async function fetchOrderWithRetry(
+  orderNumber: string,
+  attempt = 0
+): Promise<OrderDetails | null> {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("order_number", orderNumber)
+    .single();
+
+  if (error || !data) {
+    if (attempt >= MAX_RETRIES) {
+      console.error("[OrderSuccess] Order not found after", MAX_RETRIES, "retries:", error);
+      return null;
+    }
+    console.log(`[OrderSuccess] Order not found yet, retrying in ${RETRY_DELAY_MS}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+    await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    return fetchOrderWithRetry(orderNumber, attempt + 1);
+  }
+  return data as OrderDetails;
+}
+
 const OrderSuccess = () => {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
 
   const orderNumber = searchParams.get("order_number");
 
@@ -39,18 +69,14 @@ const OrderSuccess = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("order_number", orderNumber)
-          .single();
-
-        if (error) throw error;
+        setRetrying(true);
+        const data = await fetchOrderWithRetry(orderNumber);
         setOrderDetails(data);
       } catch (error) {
-        console.error("Error fetching order:", error);
+        console.error("[OrderSuccess] Error fetching order:", error);
       } finally {
         setLoading(false);
+        setRetrying(false);
       }
     };
 
@@ -64,7 +90,12 @@ const OrderSuccess = () => {
         <div className="pt-32 pb-16">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
-              <p className="text-muted-foreground">Loading order details...</p>
+              <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4 text-primary" />
+              <p className="text-muted-foreground">
+                {retrying
+                  ? "Confirming your order… this may take a few seconds."
+                  : "Loading order details..."}
+              </p>
             </div>
           </div>
         </div>
@@ -80,7 +111,15 @@ const OrderSuccess = () => {
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
               <h1 className="font-serif text-4xl font-bold mb-4">Order Not Found</h1>
-              <p className="text-muted-foreground mb-8">We couldn't find this order. Please check your order number.</p>
+              <p className="text-muted-foreground mb-4">
+                We couldn't find this order. Your payment may have been processed — please
+                check your email for a confirmation, or call us at (718) 633-4816.
+              </p>
+              {orderNumber && (
+                <p className="text-sm text-muted-foreground mb-8 font-mono">
+                  Order reference: {orderNumber}
+                </p>
+              )}
               <Link to="/">
                 <Button size="lg" className="gap-2">
                   <Home className="h-5 w-5" />
@@ -97,7 +136,7 @@ const OrderSuccess = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <Navigation />
-      
+
       <div className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
@@ -163,8 +202,8 @@ const OrderSuccess = () => {
                 {(orderDetails.items as any[]).map((item: any, index: number) => (
                   <div key={index} className="flex gap-4 pb-4 border-b border-border last:border-0">
                     {item.image && (
-                      <img 
-                        src={item.image} 
+                      <img
+                        src={item.image}
                         alt={item.name}
                         className="w-16 h-16 object-cover rounded-lg"
                       />

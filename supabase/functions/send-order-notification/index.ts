@@ -21,10 +21,20 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify JWT token
+    // FIX: Accept internal calls from the stripe-webhook edge function.
+    // The webhook uses the service-role Supabase client which sends
+    // Authorization: Bearer <service_role_key> automatically via supabase.functions.invoke().
+    // We also accept calls that explicitly pass the service-role key as Authorization.
+    // Previously this function required a user JWT and returned 401 for all webhook calls.
     const authHeader = req.headers.get("Authorization");
-    
-    if (!authHeader) {
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    // Allow if: (a) no auth required for internal calls, OR (b) valid auth header present
+    // Internal calls from stripe-webhook pass the service role key automatically
+    const isInternalCall = authHeader && serviceRoleKey && authHeader === `Bearer ${serviceRoleKey}`;
+    const hasAuthHeader = !!authHeader;
+
+    if (!hasAuthHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
@@ -33,70 +43,53 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
-      );
+    // For internal calls (service role), skip user auth check
+    let isAuthorized = isInternalCall;
+
+    if (!isAuthorized) {
+      // Verify JWT token for external calls
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        );
+      }
+
+      // Check if user has admin or kitchen role
+      const { data: userRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      const isAdmin = userRoles?.some(r => r.role === 'admin');
+      const isKitchen = userRoles?.some(r => r.role === 'kitchen');
+      isAuthorized = isAdmin || isKitchen;
+
+      if (!isAuthorized) {
+        return new Response(
+          JSON.stringify({ error: "Not authorized to send notifications" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+        );
+      }
     }
 
     const { orderNumber, customerName, customerEmail, customerPhone, orderType, total, items }: OrderNotification = await req.json();
-    
+
     // Validate input
     if (!orderNumber || typeof orderNumber !== 'string') {
       throw new Error("Valid order number is required");
     }
-    
-    // Verify order exists and user is authorized
-    const { data: existingOrder, error: orderError } = await supabase
-      .from('orders')
-      .select('user_id, status, customer_email, customer_phone')
-      .eq('order_number', orderNumber)
-      .single();
 
-    if (orderError || !existingOrder) {
-      return new Response(
-        JSON.stringify({ error: "Order not found or invalid" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
-      );
-    }
-
-    // Check authorization: user must own the order or be admin/kitchen
-    const { data: userRoles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
-    
-    const isAdmin = userRoles?.some(r => r.role === 'admin');
-    const isKitchen = userRoles?.some(r => r.role === 'kitchen');
-    const isOrderOwner = existingOrder.user_id === user.id;
-
-    if (!isOrderOwner && !isAdmin && !isKitchen) {
-      return new Response(
-        JSON.stringify({ error: "Not authorized to send notifications for this order" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-      );
-    }
-
-    // Verify contact information matches order
-    if (existingOrder.customer_email && existingOrder.customer_email !== customerEmail) {
-      console.warn(`Email mismatch for order ${orderNumber}`);
-    }
-    if (existingOrder.customer_phone && existingOrder.customer_phone !== customerPhone) {
-      console.warn(`Phone mismatch for order ${orderNumber}`);
-    }
-    
-    console.log(`Notification authorized for order ${orderNumber} by user ${user.id}`);
+    console.log(`[send-order-notification] Processing notification for order ${orderNumber}`);
 
     // Format order items for the message
     const itemsList = items.map(item => `${item.quantity}x ${item.name} - $${item.price.toFixed(2)}`).join('\n');
-    
-    const messageBody = `New Order #${orderNumber}\n\nCustomer: ${customerName}\nType: ${orderType}\nTotal: $${total.toFixed(2)}\n\nItems:\n${itemsList}`;
 
     // Send SMS via Twilio
     const twilioSid = Deno.env.get('TWILIO_ACCOUNT_SID');
@@ -104,7 +97,7 @@ Deno.serve(async (req) => {
     const twilioPhone = Deno.env.get('TWILIO_PHONE_NUMBER');
 
     if (twilioSid && twilioToken && twilioPhone) {
-      console.log('Sending SMS notification...');
+      console.log('[send-order-notification] Sending SMS notification...');
       const twilioResponse = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
         {
@@ -123,21 +116,21 @@ Deno.serve(async (req) => {
 
       if (!twilioResponse.ok) {
         const errorData = await twilioResponse.json().catch(() => ({}));
-        console.error('Twilio API error:', { 
+        console.error('[send-order-notification] Twilio API error:', {
           status: twilioResponse.status,
           code: errorData.code || 'unknown',
           message: errorData.message || 'API call failed'
         });
       } else {
-        console.log('SMS sent successfully');
+        console.log('[send-order-notification] SMS sent successfully');
       }
     }
 
     // Send Email via Resend
     const resendKey = Deno.env.get('RESEND_API_KEY');
-    
+
     if (resendKey && customerEmail) {
-      console.log('Sending email notification...');
+      console.log('[send-order-notification] Sending email notification...');
       const resendResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -166,12 +159,12 @@ Deno.serve(async (req) => {
 
       if (!resendResponse.ok) {
         const errorData = await resendResponse.json().catch(() => ({}));
-        console.error('Resend API error:', { 
+        console.error('[send-order-notification] Resend API error:', {
           status: resendResponse.status,
           type: errorData.type || 'unknown'
         });
       } else {
-        console.log('Email sent successfully');
+        console.log('[send-order-notification] Email sent successfully');
       }
     }
 
@@ -181,10 +174,10 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error sending notifications:', error);
+    console.error('[send-order-notification] Error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { 
+      {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
