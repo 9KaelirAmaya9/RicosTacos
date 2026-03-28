@@ -21,8 +21,22 @@ BEGIN
   END IF;
 END $$;
 
--- 2. Add stripe_session_id index for confirmation page lookups
---    (OrderSuccess.tsx queries by order_number, but this covers session_id if needed)
+-- 2. Add stripe_session_id column and index if they don't exist
+--    (Needed for confirmation page to look up orders by Stripe session)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'orders'
+    AND column_name = 'stripe_session_id'
+  ) THEN
+    ALTER TABLE orders ADD COLUMN stripe_session_id TEXT;
+    RAISE NOTICE 'Added stripe_session_id column to orders';
+  ELSE
+    RAISE NOTICE 'stripe_session_id column already exists';
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_orders_stripe_session_id
   ON orders(stripe_session_id)
   WHERE stripe_session_id IS NOT NULL;
