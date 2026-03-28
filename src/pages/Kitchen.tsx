@@ -89,6 +89,7 @@ const Kitchen = () => {
   }, [clearStopTimeout, startAlarm, stopAlarm]);
 
   const fetchOrders = useCallback(async () => {
+    console.log('[Kitchen] fetchOrders: starting query...');
     const ordersPromise = supabase
       .from("orders")
       .select("*")
@@ -104,9 +105,10 @@ const Kitchen = () => {
       timeoutPromise,
     ]) as Awaited<typeof ordersPromise>;
 
+    console.log('[Kitchen] fetchOrders result — count:', data?.length ?? 'null', '| error:', error?.message ?? 'null');
     if (error) {
+      console.error('[Kitchen] fetchOrders ERROR:', error.message, (error as any).details, (error as any).hint);
       toast.error("Failed to fetch orders");
-      console.error(error);
     } else {
       const nextOrders = (data || []) as unknown as Order[];
       const nextIds = new Set(nextOrders.map((order) => order.id));
@@ -274,6 +276,13 @@ const Kitchen = () => {
     fetchOrders();
 
     // ── Real-time subscription ────────────────────────────────────────────────
+    // NO filter here — fetchOrders() applies the correct status filter
+    // server-side.  A client-side Realtime filter using the `in` operator
+    // can silently drop UPDATE events when an order transitions OUT of the
+    // filtered set (e.g. pending → ready skipping preparing), causing the
+    // kitchen display to miss the change entirely.  Without the filter every
+    // order mutation reaches the handler; fetchOrders() then returns only the
+    // statuses the kitchen cares about — safe, correct, and reliable.
     const channel = supabase
       .channel("kitchen-orders")
       .on(
@@ -282,7 +291,6 @@ const Kitchen = () => {
           event: "*",
           schema: "public",
           table: "orders",
-          filter: `status=in.(pending,preparing,paid,confirmed)`,
         },
         (payload) => {
           if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {

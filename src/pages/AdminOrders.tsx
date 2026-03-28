@@ -69,6 +69,7 @@ export default function AdminOrders() {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
+      console.log('[AdminOrders] fetchOrders: starting query...');
       const ordersPromise = supabase
         .from("orders")
         .select("*")
@@ -84,7 +85,11 @@ export default function AdminOrders() {
         timeoutPromise,
       ]) as Awaited<typeof ordersPromise>;
 
-      if (error) throw error;
+      console.log('[AdminOrders] fetchOrders result — count:', data?.length ?? 'null', '| error:', error?.message ?? 'null');
+      if (error) {
+        console.error('[AdminOrders] fetchOrders ERROR:', error.message, error.details, error.hint);
+        throw error;
+      }
       const ordersData = (data as Order[]) || [];
       const nextIds = new Set(ordersData.map((order) => order.id));
       const newUnacceptedOrders = ordersData.filter(
@@ -202,6 +207,9 @@ export default function AdminOrders() {
     switch (status) {
       case "pending":
         return "bg-yellow-500";
+      case "paid":
+      case "confirmed":
+        return "bg-green-600";
       case "preparing":
         return "bg-blue-500";
       case "ready":
@@ -262,6 +270,8 @@ export default function AdminOrders() {
                 <SelectContent>
                   <SelectItem value="all">All Orders</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="preparing">Preparing</SelectItem>
                   <SelectItem value="ready">Ready</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
@@ -325,6 +335,8 @@ export default function AdminOrders() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
                             <SelectItem value="preparing">Preparing</SelectItem>
                             <SelectItem value="ready">Ready</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>

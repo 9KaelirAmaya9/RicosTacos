@@ -53,13 +53,18 @@ async function fetchAdminMetrics(): Promise<AdminMetrics> {
 
   // Use a single query to get all orders — avoids 4 parallel round trips
   // each taking ~1.5s. One query = one round trip = much faster.
+  console.log('[Admin] fetchAdminMetrics: starting query...');
   const { data, error } = await supabase
     .from("orders")
     .select("id, total, created_at, status, order_number, customer_name, customer_phone, order_type")
     .order("created_at", { ascending: false })
     .limit(200); // enough for metrics + recent orders
 
-  if (error) throw error;
+  console.log('[Admin] fetchAdminMetrics result — data:', data?.length ?? 'null', '| error:', error?.message ?? 'null');
+  if (error) {
+    console.error('[Admin] fetchAdminMetrics ERROR:', error.message, error.details, error.hint);
+    throw error;
+  }
 
   const allOrders = data || [];
   const ordersToday = allOrders.filter(o => o.created_at >= todayISO);
