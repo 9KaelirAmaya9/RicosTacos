@@ -34,22 +34,53 @@ async function fetchOrderWithRetry(
   orderNumber: string,
   attempt = 0
 ): Promise<OrderDetails | null> {
-  const { data, error } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("order_number", orderNumber)
-    .single();
+  // Use raw fetch() to the Supabase REST API so the anon RLS policy
+  // ("Anonymous can view own order by number") is applied correctly.
+  // The supabase JS client may try to refresh the JWT on every call which
+  // can hang; raw fetch() bypasses GoTrueClient entirely.
+  const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
+  const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
 
-  if (error || !data) {
-    if (attempt >= MAX_RETRIES) {
-      console.error("[OrderSuccess] Order not found after", MAX_RETRIES, "retries:", error);
-      return null;
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&select=*&limit=1`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Accept': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      console.error("[OrderSuccess] REST error:", response.status, errBody);
+      if (attempt >= MAX_RETRIES) return null;
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      return fetchOrderWithRetry(orderNumber, attempt + 1);
     }
-    console.log(`[OrderSuccess] Order not found yet, retrying in ${RETRY_DELAY_MS}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+
+    const rows = await response.json();
+    const data = Array.isArray(rows) ? rows[0] : null;
+
+    if (!data) {
+      if (attempt >= MAX_RETRIES) {
+        console.error("[OrderSuccess] Order not found after", MAX_RETRIES, "retries");
+        return null;
+      }
+      console.log(`[OrderSuccess] Order not found yet, retrying in ${RETRY_DELAY_MS}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      return fetchOrderWithRetry(orderNumber, attempt + 1);
+    }
+
+    return data as OrderDetails;
+  } catch (err) {
+    console.error("[OrderSuccess] fetch error:", err);
+    if (attempt >= MAX_RETRIES) return null;
     await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
     return fetchOrderWithRetry(orderNumber, attempt + 1);
   }
-  return data as OrderDetails;
 }
 
 const OrderSuccess = () => {

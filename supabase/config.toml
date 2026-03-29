@@ -43,3 +43,7 @@ verify_jwt = false
 [functions.send-push-notification]
 verify_jwt = false
 # Local/dev behavior: allow guest checkout flow to trigger kitchen/admin push alerts
+
+[functions.send-order-confirmation]
+verify_jwt = false
+# Called from SecurePaymentModal after payment succeeds — no user JWT available at that point
