@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +17,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   DollarSign,
@@ -45,40 +44,8 @@ interface AdminMetrics {
   recentOrders: any[];
 }
 
-// ── Data fetcher (used by React Query) ────────────────────────────────────────
-async function fetchAdminMetrics(): Promise<AdminMetrics> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayISO = today.toISOString();
-
-  // Use a single query to get all orders — avoids 4 parallel round trips
-  // each taking ~1.5s. One query = one round trip = much faster.
-  console.log('[Admin] fetchAdminMetrics: starting query...');
-  const { data, error } = await supabase
-    .from("orders")
-    .select("id, total, created_at, status, order_number, customer_name, customer_phone, order_type")
-    .order("created_at", { ascending: false })
-    .limit(200); // enough for metrics + recent orders
-
-  console.log('[Admin] fetchAdminMetrics result — data:', data?.length ?? 'null', '| error:', error?.message ?? 'null');
-  if (error) {
-    console.error('[Admin] fetchAdminMetrics ERROR:', error.message, error.details, error.hint);
-    throw error;
-  }
-
-  const allOrders = data || [];
-  const ordersToday = allOrders.filter(o => o.created_at >= todayISO);
-  const pendingOrders = allOrders.filter(o => ["pending", "paid", "confirmed"].includes(o.status));
-  const recentOrders = allOrders.slice(0, 10);
-
-  return {
-    todayOrders: ordersToday.length,
-    todayRevenue: ordersToday.reduce((sum, o) => sum + Number(o.total || 0), 0),
-    pendingOrders: pendingOrders.length,
-    totalOrders: allOrders.length,
-    recentOrders,
-  };
-}
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
+const SUPABASE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
 
 // ── Component ─────────────────────────────────────────────────────────────────
 const Admin = () => {
@@ -86,8 +53,60 @@ const Admin = () => {
   const queryClient = useQueryClient();
 
   // Auth from shared context — resolves instantly, no extra fetch
-  const { user, roles: userRoles } = useAuth();
+  const { user, session, roles: userRoles } = useAuth();
+  const sessionRef = useRef(session);
+  useEffect(() => { sessionRef.current = session; }, [session]);
   const userEmail = user?.email || "";
+
+  // ── Component-scoped fetchAdminMetrics — raw fetch() bypasses GoTrueClient lock
+  const fetchAdminMetrics = useCallback(async (): Promise<AdminMetrics> => {
+    const accessToken = sessionRef.current?.access_token;
+    if (!accessToken) {
+      console.warn('[Admin] fetchAdminMetrics: no session token yet');
+      throw new Error('No session token');
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayISO = today.toISOString();
+
+    console.log('[Admin] fetchAdminMetrics: starting query...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/orders?select=id,total,created_at,status,order_number,customer_name,customer_phone,order_type&order=created_at.desc&limit=200`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(`HTTP ${response.status}: ${body}`);
+    }
+
+    const allOrders: any[] = await response.json();
+    console.log('[Admin] fetchAdminMetrics result — count:', allOrders.length);
+
+    const ordersToday = allOrders.filter(o => o.created_at >= todayISO);
+    const pendingOrders = allOrders.filter(o => ["pending", "paid", "confirmed"].includes(o.status));
+    const recentOrders = allOrders.slice(0, 10);
+
+    return {
+      todayOrders: ordersToday.length,
+      todayRevenue: ordersToday.reduce((sum, o) => sum + Number(o.total || 0), 0),
+      pendingOrders: pendingOrders.length,
+      totalOrders: allOrders.length,
+      recentOrders,
+    };
+  }, []);
 
   // Dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -117,11 +136,12 @@ const Admin = () => {
   } = useQuery<AdminMetrics>({
     queryKey: ["admin-metrics"],
     queryFn: fetchAdminMetrics,
+    enabled: !!session,           // don't run until auth is ready
     // staleTime: 0 inherited from global default — always refetch in background
     // gcTime: 24h inherited from global default — keep in memory all day
     refetchOnWindowFocus: true,   // refresh when admin switches back to the tab
     refetchOnMount: true,         // always refetch on mount (shows cached data first)
-    refetchInterval: 15 * 1000,   // poll every 15s — catches orders if WebSocket drops
+    refetchInterval: 5 * 1000,    // poll every 5s — catches orders if WebSocket drops
     retry: 3,                     // retry up to 3 times on timeout
     retryDelay: 2000,             // wait 2s between retries
   });
@@ -137,6 +157,18 @@ const Admin = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
+  // ── Service Worker push listener — refresh on push-triggered new orders ────
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'NEW_ORDER_PUSH') {
+        queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', handler);
+    return () => navigator.serviceWorker.removeEventListener('message', handler);
   }, [queryClient]);
 
   // ── Delete all orders ──────────────────────────────────────────────────────

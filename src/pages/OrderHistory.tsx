@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,24 +19,14 @@ interface Order {
 }
 
 const OrderHistory = () => {
+  const { session, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
-
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
+    if (!session) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast.error("Please sign in to view your order history");
-        navigate("/signin");
-        return;
-      }
-
       const { data, error } = await supabase
         .from("orders")
         .select("*")
@@ -43,7 +34,6 @@ const OrderHistory = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      
       setOrders((data || []) as any as Order[]);
     } catch (error: any) {
       console.error("Error loading orders:", error);
@@ -51,16 +41,35 @@ const OrderHistory = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!session) {
+      toast.error("Please sign in to view your order history");
+      navigate("/signin");
+      return;
+    }
+    loadOrders();
+
+    // Poll every 30s — keeps status up-to-date (e.g. pending → ready)
+    const interval = window.setInterval(loadOrders, 30 * 1000);
+    return () => window.clearInterval(interval);
+  }, [authLoading, session, navigate, loadOrders]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "paid":
-        return "bg-green-500";
-      case "completed":
-        return "bg-blue-500";
       case "pending":
         return "bg-yellow-500";
+      case "paid":
+      case "confirmed":
+        return "bg-green-600";
+      case "preparing":
+        return "bg-blue-500";
+      case "ready":
+        return "bg-green-500";
+      case "completed":
+        return "bg-gray-500";
       case "cancelled":
         return "bg-red-500";
       default:
@@ -68,7 +77,7 @@ const OrderHistory = () => {
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
         <Navigation />

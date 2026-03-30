@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,16 +33,58 @@ interface Order {
   created_at: string;
 }
 
+// ── localStorage cache helpers ────────────────────────────────────────────────
+const LS_KITCHEN = "rt_kitchen_orders";
+const LS_TTL = 5 * 60 * 1000; // 5 min — stale after this, but still shown while re-fetching
+
+function readKitchenCache(): Order[] {
+  try {
+    const raw = localStorage.getItem(LS_KITCHEN);
+    if (!raw) return [];
+    const { data, ts } = JSON.parse(raw);
+    if (Array.isArray(data) && Date.now() - ts < LS_TTL) return data as Order[];
+  } catch {}
+  return [];
+}
+
+function writeKitchenCache(orders: Order[]) {
+  try { localStorage.setItem(LS_KITCHEN, JSON.stringify({ data: orders, ts: Date.now() })); } catch {}
+}
+
+// Read env vars once at module level — same pattern as AuthContext.tsx
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
+const SUPABASE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
+
 const Kitchen = () => {
   const queryClient = useQueryClient();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { session } = useAuth();
+  // Keep session in a ref so fetchOrders always uses the latest token
+  // without needing to be recreated on every token refresh
+  const sessionRef = useRef(session);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+
+  // Seed priority: React Query in-memory cache → localStorage → empty
+  // This prevents blank state on both navigation-back AND hard refresh.
+  const [orders, setOrders] = useState<Order[]>(() =>
+    queryClient.getQueryData<Order[]>(["kitchen-orders"])?.length
+      ? queryClient.getQueryData<Order[]>(["kitchen-orders"])!
+      : readKitchenCache()
+  );
+  // Only show loading spinner if we have no data at all to display
+  const [loading, setLoading] = useState<boolean>(() => {
+    const hasCache =
+      (queryClient.getQueryData<Order[]>(["kitchen-orders"]) ?? []).length > 0 ||
+      readKitchenCache().length > 0;
+    return !hasCache;
+  });
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const { startAlarm, stopAlarm } = useOrderAlarm();
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const alarmMinimumUntilRef = useRef<number>(0);
   const stopTimeoutRef = useRef<number | null>(null);
+  // Prevent concurrent fetches — 5s poll + 20s timeout = up to 4 in-flight at once without this
+  const fetchInProgressRef = useRef(false);
 
   // Live clock — ticks every second
   useEffect(() => {
@@ -89,71 +132,102 @@ const Kitchen = () => {
   }, [clearStopTimeout, startAlarm, stopAlarm]);
 
   const fetchOrders = useCallback(async () => {
+    // Guard: skip if a fetch is already in-flight.
+    // Without this, 5s polling + 20s timeout = 4 concurrent DB connections piling up.
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
+
     console.log('[Kitchen] fetchOrders: starting query...');
-    const ordersPromise = supabase
-      .from("orders")
-      .select("*")
-      .in("status", ["pending", "preparing", "paid", "confirmed"])
-      .order("created_at", { ascending: true });
-
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Kitchen orders request timed out")), 20000)
-    );
-
-    const { data, error } = await Promise.race([
-      ordersPromise,
-      timeoutPromise,
-    ]) as Awaited<typeof ordersPromise>;
-
-    console.log('[Kitchen] fetchOrders result — count:', data?.length ?? 'null', '| error:', error?.message ?? 'null');
-    if (error) {
-      console.error('[Kitchen] fetchOrders ERROR:', error.message, (error as any).details, (error as any).hint);
-      toast.error("Failed to fetch orders");
-    } else {
-      const nextOrders = (data || []) as unknown as Order[];
-      const nextIds = new Set(nextOrders.map((order) => order.id));
-      const newUnacceptedOrders = nextOrders.filter(
-        (order) =>
-          !knownOrderIdsRef.current.has(order.id) &&
-          (order.status === "pending" || order.status === "paid")
-      );
-
-      if (newUnacceptedOrders.length > 0) {
-        alarmMinimumUntilRef.current = Math.max(
-          alarmMinimumUntilRef.current,
-          Date.now() + 10000
-        );
-        void startAlarm();
-        toast.info(
-          `🔔 ${newUnacceptedOrders.length} new order${newUnacceptedOrders.length > 1 ? "s" : ""} received`
-        );
-
-        // Fire Web Push so the tablet gets alerted even when the tab is closed
-        const orderWord = newUnacceptedOrders.length === 1 ? "order" : "orders";
-        const names = newUnacceptedOrders.map((o) => o.customer_name).join(", ");
-        supabase.functions
-          .invoke("send-push-notification", {
-            body: {
-              title: `🌮 ${newUnacceptedOrders.length} New ${orderWord.charAt(0).toUpperCase() + orderWord.slice(1)}!`,
-              body: `From: ${names}`,
-              data: { url: "/kitchen" },
-              targetRoles: ["kitchen", "admin"],
-            },
-          })
-          .catch((err) =>
-            console.warn("Push notification failed (non-critical):", err)
-          );
+    try {
+      // Use raw fetch() to bypass the GoTrueClient lock.
+      // supabase.from() calls getSession() internally which waits for the lock —
+      // on hard refresh this lock can be held during token refresh, causing a 20s hang.
+      // Raw fetch with the token we already have from AuthContext is instant.
+      const accessToken = sessionRef.current?.access_token;
+      if (!accessToken) {
+        console.warn('[Kitchen] No session token yet — will retry on next poll');
+        return;
       }
 
-      knownOrderIdsRef.current = nextIds;
-      setOrders(nextOrders);
-      syncAlarmState(nextOrders);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-      // Invalidate the admin-metrics React Query cache so the admin dashboard
-      // reflects the latest orders immediately when kitchen fetches new data.
-      queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/orders?select=*&status=in.(pending,preparing,paid,confirmed)&order=created_at.asc`,
+        {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        throw new Error(`HTTP ${response.status}: ${body}`);
+      }
+
+      const data: Order[] = await response.json();
+      console.log('[Kitchen] fetchOrders result — count:', data.length);
+      {
+        const nextOrders = data;
+        const nextIds = new Set(nextOrders.map((order) => order.id));
+        const newUnacceptedOrders = nextOrders.filter(
+          (order) =>
+            !knownOrderIdsRef.current.has(order.id) &&
+            (order.status === "pending" || order.status === "paid")
+        );
+
+        if (newUnacceptedOrders.length > 0) {
+          alarmMinimumUntilRef.current = Math.max(
+            alarmMinimumUntilRef.current,
+            Date.now() + 10000
+          );
+          void startAlarm();
+          toast.info(
+            `🔔 ${newUnacceptedOrders.length} new order${newUnacceptedOrders.length > 1 ? "s" : ""} received`
+          );
+
+          // Fire Web Push so the tablet gets alerted even when the tab is closed
+          const orderWord = newUnacceptedOrders.length === 1 ? "order" : "orders";
+          const names = newUnacceptedOrders.map((o) => o.customer_name).join(", ");
+          supabase.functions
+            .invoke("send-push-notification", {
+              body: {
+                title: `🌮 ${newUnacceptedOrders.length} New ${orderWord.charAt(0).toUpperCase() + orderWord.slice(1)}!`,
+                body: `From: ${names}`,
+                data: { url: "/kitchen" },
+                targetRoles: ["kitchen", "admin"],
+              },
+            })
+            .catch((err) =>
+              console.warn("Push notification failed (non-critical):", err)
+            );
+        }
+
+        knownOrderIdsRef.current = nextIds;
+        setOrders(nextOrders);
+        // Persist to localStorage (survives hard refresh) and React Query cache (survives navigation)
+        writeKitchenCache(nextOrders);
+        queryClient.setQueryData(["kitchen-orders"], nextOrders);
+        syncAlarmState(nextOrders);
+
+        // Invalidate the admin-metrics React Query cache so the admin dashboard
+        // reflects the latest orders immediately when kitchen fetches new data.
+        queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
+      }
+    } catch (e: any) {
+      // Catches timeout rejection and any other unexpected throws
+      console.error('[Kitchen] fetchOrders EXCEPTION:', e.message);
+      toast.error("Failed to fetch orders — retrying…");
+      // Do NOT clear orders — keep showing last known data
+    } finally {
+      fetchInProgressRef.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   }, [startAlarm, syncAlarmState, queryClient]);
 
   const updateStatus = useCallback(
@@ -300,13 +374,13 @@ const Kitchen = () => {
       )
       .subscribe();
 
-    // ── Polling fallback — every 15s ──────────────────────────────────────────
+    // ── Polling fallback — every 5s ───────────────────────────────────────────
     // If the WebSocket drops silently (common on mobile/PWA after screen lock),
-    // polling catches new orders within 15 seconds and fires the alarm.
+    // polling catches new orders within 5 seconds and fires the alarm.
     // This is the safety net that guarantees the kitchen never misses an order.
     const pollInterval = window.setInterval(() => {
       fetchOrders();
-    }, 15 * 1000);
+    }, 5 * 1000);
 
     return () => {
       clearStopTimeout();

@@ -42,7 +42,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 0,
-      gcTime: 1000 * 60 * 5, // 5 minutes in memory only
+      gcTime: 1000 * 60 * 30, // 30 minutes — survives longer navigation gaps
       refetchOnWindowFocus: true,
       retry: 1,
     },

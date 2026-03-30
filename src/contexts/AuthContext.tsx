@@ -50,7 +50,7 @@ interface AuthContextValue extends AuthState {
 
 // ─── sessionStorage role cache (5 min TTL) ────────────────────────────────────
 const CACHE_KEY = "rt_roles_cache";
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 90 * 1000; // 90s — stale empty-role state self-heals quickly
 
 function readCache(userId: string): AppRole[] | null {
   try {

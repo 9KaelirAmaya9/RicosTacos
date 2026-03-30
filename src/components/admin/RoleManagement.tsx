@@ -7,6 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, UserCog, Shield, ChefHat } from "lucide-react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -26,6 +36,7 @@ interface UserWithRoles {
 export const RoleManagement = () => {
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [removeTarget, setRemoveTarget] = useState<{ userId: string; role: string } | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -210,7 +221,7 @@ export const RoleManagement = () => {
                         {getRoleIcon(role)}
                         {role}
                         <button
-                          onClick={() => handleRemoveRole(user.id, role)}
+                          onClick={() => setRemoveTarget({ userId: user.id, role })}
                           className="ml-1 hover:text-destructive"
                         >
                           ×
@@ -241,6 +252,31 @@ export const RoleManagement = () => {
           )}
         </div>
       </CardContent>
+
+      <AlertDialog open={!!removeTarget} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove role "{removeTarget?.role}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will immediately revoke {removeTarget?.role} access for this user. They will be redirected on their next action.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => {
+                if (removeTarget) {
+                  handleRemoveRole(removeTarget.userId, removeTarget.role);
+                  setRemoveTarget(null);
+                }
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

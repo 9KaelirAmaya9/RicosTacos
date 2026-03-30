@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,16 +18,54 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Order = Tables<"orders">;
 
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
+const SUPABASE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
+
+// ── localStorage cache helpers ────────────────────────────────────────────────
+const LS_ADMIN = "rt_admin_orders";
+const LS_TTL = 5 * 60 * 1000;
+
+function readAdminCache(): Order[] {
+  try {
+    const raw = localStorage.getItem(LS_ADMIN);
+    if (!raw) return [];
+    const { data, ts } = JSON.parse(raw);
+    if (Array.isArray(data) && Date.now() - ts < LS_TTL) return data as Order[];
+  } catch {}
+  return [];
+}
+
+function writeAdminCache(orders: Order[]) {
+  try { localStorage.setItem(LS_ADMIN, JSON.stringify({ data: orders, ts: Date.now() })); } catch {}
+}
+
 export default function AdminOrders() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { session } = useAuth();
+  const sessionRef = useRef(session);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+
+  // Seed priority: React Query in-memory cache → localStorage → empty
+  const [orders, setOrders] = useState<Order[]>(() =>
+    queryClient.getQueryData<Order[]>(["admin-orders"])?.length
+      ? queryClient.getQueryData<Order[]>(["admin-orders"])!
+      : readAdminCache()
+  );
+  // Only show loading spinner if we have no data at all
+  const [loading, setLoading] = useState<boolean>(() => {
+    const hasCache =
+      (queryClient.getQueryData<Order[]>(["admin-orders"]) ?? []).length > 0 ||
+      readAdminCache().length > 0;
+    return !hasCache;
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const { startAlarm, stopAlarm } = useOrderAlarm();
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const alarmMinimumUntilRef = useRef<number>(0);
   const stopTimeoutRef = useRef<number | null>(null);
+  // Prevent concurrent fetches stacking up with 5s poll + long timeout
+  const fetchInProgressRef = useRef(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -67,30 +107,41 @@ export default function AdminOrders() {
   }, [clearStopTimeout, startAlarm, stopAlarm]);
 
   const fetchOrders = useCallback(async () => {
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
+
     try {
-      setLoading(true);
-      console.log('[AdminOrders] fetchOrders: starting query...');
-      const ordersPromise = supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(1000); // Limit to prevent memory issues
-
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Orders request timed out")), 20000)
-      );
-
-      const { data, error } = await Promise.race([
-        ordersPromise,
-        timeoutPromise,
-      ]) as Awaited<typeof ordersPromise>;
-
-      console.log('[AdminOrders] fetchOrders result — count:', data?.length ?? 'null', '| error:', error?.message ?? 'null');
-      if (error) {
-        console.error('[AdminOrders] fetchOrders ERROR:', error.message, error.details, error.hint);
-        throw error;
+      // Raw fetch bypasses the GoTrueClient lock — same fix as AuthContext + Cart.tsx
+      const accessToken = sessionRef.current?.access_token;
+      if (!accessToken) {
+        console.warn('[AdminOrders] No session token yet — will retry on next poll');
+        return;
       }
-      const ordersData = (data as Order[]) || [];
+
+      console.log('[AdminOrders] fetchOrders: starting query...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc&limit=1000`,
+        {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        throw new Error(`HTTP ${response.status}: ${body}`);
+      }
+
+      const ordersData: Order[] = await response.json();
+      console.log('[AdminOrders] fetchOrders result — count:', ordersData.length);
       const nextIds = new Set(ordersData.map((order) => order.id));
       const newUnacceptedOrders = ordersData.filter(
         (order) => !knownOrderIdsRef.current.has(order.id) && (order.status === "pending" || order.status === "paid")
@@ -104,18 +155,19 @@ export default function AdminOrders() {
 
       knownOrderIdsRef.current = nextIds;
       setOrders(ordersData);
-      setFilteredOrders(ordersData);
+      // Persist to localStorage (survives hard refresh) and React Query cache (survives navigation)
+      writeAdminCache(ordersData);
+      queryClient.setQueryData(["admin-orders"], ordersData);
       syncAlarmState(ordersData);
     } catch (error) {
       console.error("Error fetching orders:", error);
       toast.error("Failed to load orders");
-      setOrders([]);
-      setFilteredOrders([]);
-      syncAlarmState([]);
+      // Do NOT clear orders — keep showing last known data on transient errors
     } finally {
+      fetchInProgressRef.current = false;
       setLoading(false);
     }
-  }, [startAlarm, syncAlarmState]);
+  }, [startAlarm, syncAlarmState, queryClient]);
 
   useEffect(() => {
     fetchOrders();
@@ -138,11 +190,11 @@ export default function AdminOrders() {
       )
       .subscribe();
 
-    // ── Polling fallback — every 15s ──────────────────────────────────────────
+    // ── Polling fallback — every 5s ───────────────────────────────────────────
     // Safety net if WebSocket drops silently (mobile/PWA screen lock).
     const pollInterval = window.setInterval(() => {
       fetchOrders();
-    }, 15 * 1000);
+    }, 5 * 1000);
 
     return () => {
       clearStopTimeout();
@@ -152,9 +204,9 @@ export default function AdminOrders() {
     };
   }, [clearStopTimeout, fetchOrders, stopAlarm]);
 
-  useEffect(() => {
+  // Derived — no state needed; updates instantly when orders/filters change
+  const filteredOrders = useMemo(() => {
     let filtered = orders;
-
     if (searchTerm) {
       filtered = filtered.filter(
         (order) =>
@@ -163,12 +215,10 @@ export default function AdminOrders() {
           order.customer_phone.includes(searchTerm)
       );
     }
-
     if (statusFilter !== "all") {
       filtered = filtered.filter((order) => order.status === statusFilter);
     }
-
-    setFilteredOrders(filtered);
+    return filtered;
   }, [searchTerm, statusFilter, orders]);
 
   const updateOrderStatus = useCallback(async (orderId: string, newStatus: string) => {
@@ -181,12 +231,6 @@ export default function AdminOrders() {
         syncAlarmState(updated);
         return updated;
       });
-      setFilteredOrders(prevFiltered =>
-        prevFiltered.map(order =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        )
-      );
-
       const { error } = await supabase
         .from("orders")
         .update({ status: newStatus })

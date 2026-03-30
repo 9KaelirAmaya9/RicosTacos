@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,9 +12,9 @@ import { Navigation } from "@/components/Navigation";
 import { Textarea } from "@/components/ui/textarea";
 
 const Profile = () => {
+  const { user, session, loading: authLoading, signOut } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [profileData, setProfileData] = useState({
     name: "",
     phone: "",
@@ -22,43 +23,31 @@ const Profile = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    checkUser();
-  }, []);
-
-  const checkUser = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
-
-      setUser(session.user);
-      
-      // Load profile data
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error loading profile:", error);
-      } else if (profile) {
-        setProfileData({
-          name: profile.name || "",
-          phone: profile.phone || "",
-          address: profile.default_delivery_address || "",
-        });
-      }
-    } catch (error) {
-      console.error("Error checking user:", error);
+    if (authLoading) return; // wait for auth to resolve
+    if (!session) {
       navigate("/auth");
-    } finally {
-      setIsLoading(false);
+      return;
     }
-  };
+
+    // Load profile data once session is confirmed
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .maybeSingle()
+      .then(({ data: profile, error }) => {
+        if (error) {
+          console.error("Error loading profile:", error);
+        } else if (profile) {
+          setProfileData({
+            name: profile.name || "",
+            phone: profile.phone || "",
+            address: profile.default_delivery_address || "",
+          });
+        }
+      })
+      .finally(() => setIsLoading(false));
+  }, [authLoading, session, navigate]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,7 +77,7 @@ const Profile = () => {
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut(); // uses AuthContext.signOut — clears role cache properly
       toast.success("Signed out successfully");
       navigate("/");
     } catch (error: any) {
@@ -96,7 +85,7 @@ const Profile = () => {
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
         <Navigation />
