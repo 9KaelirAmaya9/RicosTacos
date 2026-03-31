@@ -7,6 +7,7 @@
 import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -16,13 +17,21 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const isDev = import.meta.env.DEV;
   const { user, loading, hasRole } = useAuth();
+  const [timedOut, setTimedOut] = useState(false);
+
+  // Safety net: if AuthContext loading is stuck past 10s, treat as unauthenticated
+  useEffect(() => {
+    if (!loading) return;
+    const t = window.setTimeout(() => setTimedOut(true), 10000);
+    return () => window.clearTimeout(t);
+  }, [loading]);
 
   // In local development, bypass route protection to unblock UI testing.
   if (isDev) {
     return <>{children}</>;
   }
 
-  if (loading) {
+  if (loading && !timedOut) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

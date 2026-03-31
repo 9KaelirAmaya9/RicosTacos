@@ -151,7 +151,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initInProgress.current = true;
     pendingSignIn.current = null;
 
+    let settled = false;
     const hardStop = setTimeout(() => {
+      if (settled) return; // setState already called — don't overwrite good state
       console.warn("[Auth] Hard stop after 8s");
       setState(prev => ({ ...prev, loading: false, error: "Session check timed out. Please sign in again." }));
       initInProgress.current = false;
@@ -161,8 +163,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!session) {
         // No session passed — ask the server (only on initial mount with no localStorage session)
         const { data: { user }, error } = await supabase.auth.getUser();
-        clearTimeout(hardStop);
         if (error || !user) {
+          settled = true;
           setState({ user: null, session: null, roles: [], loading: false, error: null });
           initInProgress.current = false;
           return;
@@ -170,18 +172,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Get the full session to extract the access token for fetchRoles
         const { data: { session: freshSession } } = await supabase.auth.getSession();
         const roles = await fetchRoles(user.id, forceRoles, freshSession?.access_token);
+        settled = true;
         setState({ user, session: freshSession ?? null, roles, loading: false, error: null });
       } else {
+        // Fresh sign-in: set user+session immediately (loading=true) so ProtectedRoute
+        // shows spinner instead of redirecting with stale user=null state
+        if (forceRoles) {
+          setState(prev => ({ ...prev, loading: true, user: session.user, session }));
+        }
         // Session already in hand — pass its access_token directly to fetchRoles
-        clearTimeout(hardStop);
+        // NOTE: hardStop stays active until fetchRoles completes (not cleared early)
         const roles = await fetchRoles(session.user.id, forceRoles, session.access_token);
+        settled = true;
         setState({ user: session.user, session, roles, loading: false, error: null });
       }
     } catch (e: any) {
-      clearTimeout(hardStop);
+      settled = true;
       console.error("[Auth] init error:", e.message);
       setState({ user: null, session: null, roles: [], loading: false, error: "Authentication error. Please sign in again." });
     } finally {
+      clearTimeout(hardStop);
       initInProgress.current = false;
       // Process any SIGNED_IN that arrived while we were running
       if (pendingSignIn.current) {
