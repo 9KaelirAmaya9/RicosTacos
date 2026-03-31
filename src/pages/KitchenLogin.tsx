@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,83 +13,15 @@ const KitchenLogin = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { session, roles, loading: authLoading } = useAuth();
 
-  // Auto-redirect if already authenticated and has required role
+  // Auto-redirect if already authenticated and has kitchen or admin role
   useEffect(() => {
-    let mounted = true;
-
-    const redirectIfAuthorized = async (userId: string) => {
-      try {
-        // Use RPC instead of direct query to avoid RLS recursion/deadlocks
-        const { data: isKitchen, error: kitchenError } = await supabase.rpc('has_role', {
-          _user_id: userId,
-          _role: 'kitchen'
-        });
-
-        if (!mounted) return;
-
-        if (isKitchen) {
-          navigate("/kitchen", { replace: true });
-          return;
-        }
-
-        // Also check if admin (admins can access kitchen)
-        const { data: isAdmin, error: adminError } = await supabase.rpc('has_role', {
-          _user_id: userId,
-          _role: 'admin'
-        });
-
-        if (!mounted) return;
-
-        if (isAdmin) {
-          navigate("/kitchen", { replace: true });
-        }
-      } catch (e) {
-        console.error("Auth check failed:", e);
-      }
-    };
-
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
-
-        if (session?.user) {
-          setLoading(true);
-          // Add timeout to prevent infinite loading
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000));
-
-          try {
-            await Promise.race([
-              redirectIfAuthorized(session.user.id),
-              timeoutPromise
-            ]);
-          } catch (e) {
-            console.error("Auth check timed out or failed");
-          } finally {
-            if (mounted) setLoading(false);
-          }
-        }
-      } catch (e) {
-        console.error("Session check failed:", e);
-      }
-    };
-
-    checkSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      if (session?.user) {
-        setLoading(true);
-        checkSession();
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
+    if (authLoading) return;
+    if (session && (roles.includes("kitchen") || roles.includes("admin"))) {
+      navigate("/kitchen", { replace: true });
+    }
+  }, [authLoading, session, roles, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

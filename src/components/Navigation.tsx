@@ -1,11 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Menu, X, ShoppingCart, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import logoGreen from "@/assets/logo-header-green.png";
 import {
   NavigationMenu,
@@ -32,19 +32,10 @@ const SerapeStripe = ({ className = "" }: { className?: string }) => (
 export const Navigation = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { t } = useLanguage();
   const { cartCount } = useCart();
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  const { session } = useAuth();
+  const isAuthenticated = !!session;
 
   const isActive = (path: string) => location.pathname === path;
 

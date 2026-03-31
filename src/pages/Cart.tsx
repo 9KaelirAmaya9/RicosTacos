@@ -273,47 +273,56 @@ const Cart = () => {
       setCustomerInfo(prev => ({ ...prev, address: selectedPlace.formatted_address }));
     }
 
-    // Validate delivery zone with Google Maps (non-blocking for guest checkout)
-    // Make delivery validation completely non-blocking - never return early
+    // Validate delivery zone — BLOCKING. Orders outside the 20-min zone must not proceed.
     if (orderType === "delivery") {
+      const isTimeout = (msg?: string) =>
+        msg?.includes("timeout") || msg?.includes("taking longer than expected") || msg?.includes("temporarily unavailable");
+
+      let deliveryBlocked = false;
+
       if (selectedPlace?.place_id) {
-        if (isDev) console.log("🔍 Cart: Validating delivery address with Google Maps");
+        if (isDev) console.log("🔍 Cart: Validating delivery address with Google Maps (blocking)");
+        toast.loading("Checking delivery zone…", { id: "delivery-check" });
 
-        validateDeliveryAddressGoogle(
-          selectedPlace.place_id,
-          selectedPlace.formatted_address
-        ).then((deliveryValidation) => {
-          if (isDev) console.log("✅ Cart: Delivery validation completed");
+        try {
+          const dv = await validateDeliveryAddressGoogle(selectedPlace.place_id, selectedPlace.formatted_address);
+          toast.dismiss("delivery-check");
 
-          if (deliveryValidation && !deliveryValidation.isValid &&
-              !deliveryValidation.message?.includes("timeout") &&
-              !deliveryValidation.message?.includes("taking longer than expected")) {
-            if (deliveryValidation.suggestPickup) {
-              toast.error(deliveryValidation.message || "We apologize, but delivery isn't available to this location. Pickup is always available!", {
-                duration: 6000,
-                action: { label: "Switch to Pickup", onClick: () => setOrderType("pickup") }
-              });
-            }
-          } else if (deliveryValidation?.isValid && deliveryValidation.estimatedMinutes) {
-            toast.success(deliveryValidation.message || `Estimated delivery: ${deliveryValidation.estimatedMinutes} min`, {
-              duration: 4000
+          if (!dv.isValid && !isTimeout(dv.message)) {
+            // Hard rejection — outside zone
+            toast.error(dv.message || "Sorry, we can't deliver to that address. Please switch to pickup.", {
+              duration: 8000,
+              action: { label: "Switch to Pickup", onClick: () => setOrderType("pickup") },
             });
+            deliveryBlocked = true;
+          } else if (dv.isValid && dv.estimatedMinutes) {
+            toast.success(`✓ Delivery zone confirmed — estimated ${dv.estimatedMinutes} min`, { duration: 4000 });
           }
-        }).catch((deliveryError: any) => {
-          console.warn("⚠️ Delivery validation failed (non-blocking):", deliveryError);
-        });
+        } catch (err: any) {
+          toast.dismiss("delivery-check");
+          console.warn("⚠️ Delivery validation error (allowing through):", err);
+          // Service error — allow through rather than blocking the customer
+        }
       } else if (customerInfo.address.trim()) {
-        validateDeliveryAddress(customerInfo.address).then((deliveryValidation) => {
-          if (deliveryValidation && !deliveryValidation.isValid && deliveryValidation.suggestPickup) {
-            toast.error(deliveryValidation.message || "We apologize, but delivery isn't available to this location. Pickup is always available!", {
-              duration: 6000,
-              action: { label: "Switch to Pickup", onClick: () => setOrderType("pickup") }
+        toast.loading("Checking delivery zone…", { id: "delivery-check" });
+        try {
+          const dv = await validateDeliveryAddress(customerInfo.address);
+          toast.dismiss("delivery-check");
+
+          if (!dv.isValid && !isTimeout(dv.message)) {
+            toast.error(dv.message || "Sorry, we can't deliver to that address. Please switch to pickup.", {
+              duration: 8000,
+              action: { label: "Switch to Pickup", onClick: () => setOrderType("pickup") },
             });
+            deliveryBlocked = true;
           }
-        }).catch((error) => {
-          console.warn("⚠️ Fallback validation failed (non-blocking):", error);
-        });
+        } catch (err: any) {
+          toast.dismiss("delivery-check");
+          console.warn("⚠️ Fallback delivery validation error (allowing through):", err);
+        }
       }
+
+      if (deliveryBlocked) return;
     } else {
       if (isDev) console.log("Pickup order - skipping delivery validation");
     }
