@@ -6,8 +6,20 @@ const ALARM_INTERVAL_MS = 1200;
 
 export const useOrderAlarm = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<number | null>(null);
   const isPlayingRef = useRef(false);
+
+  // Pre-load the alarm WAV so it's ready to play instantly
+  const getAudioElement = useCallback((): HTMLAudioElement => {
+    if (!audioElementRef.current) {
+      const audio = new Audio('/alarm.wav');
+      audio.preload = 'auto';
+      audio.loop = false;
+      audioElementRef.current = audio;
+    }
+    return audioElementRef.current;
+  }, []);
 
   const canUseAudio = () =>
     typeof window !== "undefined" &&
@@ -61,52 +73,68 @@ export const useOrderAlarm = () => {
    * staff even if the AudioContext is temporarily suspended.
    */
   const playAlarmChime = useCallback(async () => {
-    // ── Android / Android PWA vibration ──────────────────────────────────────
-    // Three short pulses — hard to miss even in a noisy kitchen.
-    // Pattern: [vibrate, pause, vibrate, pause, vibrate] ms
+    // ── Vibration (Android PWA) ───────────────────────────────────────────────
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      try {
-        navigator.vibrate([250, 100, 250, 100, 250]);
-      } catch {
-        // vibrate() can throw on some Android WebViews — safe to ignore.
-      }
+      try { navigator.vibrate([250, 100, 250, 100, 250]); } catch { /* ignore */ }
     }
 
-    // ── Web Audio chime ───────────────────────────────────────────────────────
+    // ── Primary: Web Audio API oscillators (unlocked context) ────────────────
     const ctx = await ensureAudioContext();
-    if (!ctx) return;
+    if (ctx) {
+      const now = ctx.currentTime;
+      const playTone = (freq: number, startOffset: number, duration: number, peakGain: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + startOffset);
+        gain.gain.setValueAtTime(0.0001, now + startOffset);
+        gain.gain.exponentialRampToValueAtTime(peakGain, now + startOffset + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + startOffset + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + startOffset);
+        osc.stop(now + startOffset + duration + 0.01);
+      };
+      playTone(880, 0, 0.22, 0.55);
+      playTone(660, 0.20, 0.28, 0.45);
+      return;
+    }
 
-    const now = ctx.currentTime;
+    // ── Fallback: HTML Audio element (works even if AudioContext is suspended) ─
+    try {
+      const audio = getAudioElement();
+      audio.currentTime = 0;
+      await audio.play();
+    } catch {
+      // Browser blocked even HTML audio — nothing more we can do without gesture
+    }
+  }, [ensureAudioContext, getAudioElement]);
 
-    const playTone = (
-      freq: number,
-      startOffset: number,
-      duration: number,
-      peakGain: number,
-    ) => {
+  // ── Unlock audio context during a user gesture ───────────────────────────
+  // Call this once on tap/click so the AudioContext is already "running" when
+  // the alarm fires asynchronously. Without this, browsers suspend new contexts
+  // created outside a user activation window and resume() silently fails.
+  const unlockAudio = useCallback(async (): Promise<boolean> => {
+    // Pre-load the HTML Audio fallback regardless of Web Audio support
+    try { getAudioElement().load(); } catch { /* ignore */ }
+
+    if (!canUseAudio()) return true; // HTML audio still available
+    try {
+      const ctx = await ensureAudioContext();
+      if (!ctx) return true; // fallback still works
+      // Play a silent tone to unlock the context for future async calls
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, now + startOffset);
-
-      // Smooth attack + decay envelope
-      gain.gain.setValueAtTime(0.0001, now + startOffset);
-      gain.gain.exponentialRampToValueAtTime(peakGain, now + startOffset + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + startOffset + duration);
-
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
       osc.connect(gain);
       gain.connect(ctx.destination);
-
-      osc.start(now + startOffset);
-      osc.stop(now + startOffset + duration + 0.01);
-    };
-
-    // High note: 880 Hz (A5)
-    playTone(880, 0, 0.22, 0.55);
-    // Low note: 660 Hz (E5) — starts 0.20 s after high note
-    playTone(660, 0.20, 0.28, 0.45);
-  }, [ensureAudioContext]);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.001);
+      return true;
+    } catch {
+      return true; // HTML audio fallback still available
+    }
+  }, [ensureAudioContext, getAudioElement]);
 
   // ── Start / stop ──────────────────────────────────────────────────────────
   const startAlarm = useCallback(async () => {
@@ -157,14 +185,15 @@ export const useOrderAlarm = () => {
   useEffect(() => {
     return () => {
       stopAlarm();
-      if (
-        audioContextRef.current &&
-        audioContextRef.current.state !== "closed"
-      ) {
+      if (audioContextRef.current && audioContextRef.current.state !== "closed") {
         audioContextRef.current.close().catch(() => undefined);
+      }
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
+        audioElementRef.current = null;
       }
     };
   }, [stopAlarm]);
 
-  return { startAlarm, stopAlarm };
+  return { startAlarm, stopAlarm, unlockAudio };
 };

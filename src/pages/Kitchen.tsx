@@ -79,7 +79,7 @@ const Kitchen = () => {
   });
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const { startAlarm, stopAlarm } = useOrderAlarm();
+  const { startAlarm, stopAlarm, unlockAudio } = useOrderAlarm();
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const alarmMinimumUntilRef = useRef<number>(0);
   const stopTimeoutRef = useRef<number | null>(null);
@@ -304,32 +304,21 @@ const Kitchen = () => {
     }
   };
 
-  // Initialize audio on first user interaction
+  // Unlock audio on first user interaction — warms up the real AudioContext
+  // that useOrderAlarm uses, so the alarm plays reliably when triggered async.
   useEffect(() => {
-    const initAudio = async () => {
-      if (!audioEnabled) {
-        try {
-          const AudioCtx = (
-            window.AudioContext || (window as any).webkitAudioContext
-          ) as typeof AudioContext;
-          const ctx = new AudioCtx();
-          if (ctx.state === "suspended") await ctx.resume();
-          await ctx.close();
-          setAudioEnabled(true);
-        } catch (error) {
-          console.warn("⚠️ Audio initialization failed:", error);
-        }
-      }
+    if (audioEnabled) return;
+    const handleInteraction = async () => {
+      const ok = await unlockAudio();
+      setAudioEnabled(ok);
     };
-
-    const handleInteraction = () => void initAudio();
     document.addEventListener("click", handleInteraction, { once: true });
     document.addEventListener("touchstart", handleInteraction, { once: true });
     return () => {
       document.removeEventListener("click", handleInteraction);
       document.removeEventListener("touchstart", handleInteraction);
     };
-  }, [audioEnabled]);
+  }, [audioEnabled, unlockAudio]);
 
   // ── Listen for SW postMessage (push arrived while tab was in background) ────
   // When the service worker receives a push event, it sends a NEW_ORDER_PUSH
