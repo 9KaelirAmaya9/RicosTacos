@@ -83,6 +83,8 @@ const Kitchen = () => {
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const alarmMinimumUntilRef = useRef<number>(0);
   const stopTimeoutRef = useRef<number | null>(null);
+  // Manual snooze: set when user hits Silence. Cleared when a brand-new order arrives.
+  const snoozedUntilRef = useRef<number>(0);
   // Prevent concurrent fetches — 5s poll + 20s timeout = up to 4 in-flight at once without this
   const fetchInProgressRef = useRef(false);
 
@@ -112,6 +114,8 @@ const Kitchen = () => {
     );
 
     if (hasUnacceptedOrders) {
+      // Respect manual snooze — don't re-arm until snooze expires or a new order arrives
+      if (Date.now() < snoozedUntilRef.current) return;
       clearStopTimeout();
       void startAlarm();
       return;
@@ -186,6 +190,7 @@ const Kitchen = () => {
             alarmMinimumUntilRef.current,
             Date.now() + 10000
           );
+          snoozedUntilRef.current = 0; // new order overrides any manual snooze
           void startAlarm();
           toast.info(
             `🔔 ${newUnacceptedOrders.length} new order${newUnacceptedOrders.length > 1 ? "s" : ""} received`
@@ -272,9 +277,10 @@ const Kitchen = () => {
 
   const handleStopAlarm = useCallback(() => {
     alarmMinimumUntilRef.current = 0;
+    snoozedUntilRef.current = Date.now() + 5 * 60 * 1000; // snooze 5 min
     clearStopTimeout();
     stopAlarm();
-    toast.info("Alarm silenced");
+    toast.info("Alarm silenced for 5 minutes");
   }, [clearStopTimeout, stopAlarm]);
 
   const handlePrintReceipt = (order: Order) => {

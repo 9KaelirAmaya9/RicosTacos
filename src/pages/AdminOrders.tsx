@@ -64,6 +64,7 @@ export default function AdminOrders() {
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const alarmMinimumUntilRef = useRef<number>(0);
   const stopTimeoutRef = useRef<number | null>(null);
+  const snoozedUntilRef = useRef<number>(0);
   // Prevent concurrent fetches stacking up with 5s poll + long timeout
   const fetchInProgressRef = useRef(false);
   const navigate = useNavigate();
@@ -87,6 +88,7 @@ export default function AdminOrders() {
     const hasUnacceptedOrders = nextOrders.some((o) => o.status === "pending" || o.status === "paid" || o.status === "confirmed");
 
     if (hasUnacceptedOrders) {
+      if (Date.now() < snoozedUntilRef.current) return;
       clearStopTimeout();
       void startAlarm();
       return;
@@ -149,6 +151,7 @@ export default function AdminOrders() {
 
       if (newUnacceptedOrders.length > 0) {
         alarmMinimumUntilRef.current = Math.max(alarmMinimumUntilRef.current, Date.now() + 10000);
+        snoozedUntilRef.current = 0; // new order overrides any manual snooze
         void startAlarm();
         toast.info(`🔔 ${newUnacceptedOrders.length} new order${newUnacceptedOrders.length > 1 ? "s" : ""} received`);
       }
