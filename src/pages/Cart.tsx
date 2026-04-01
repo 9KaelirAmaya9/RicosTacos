@@ -276,7 +276,7 @@ const Cart = () => {
     // Validate delivery zone — BLOCKING. Orders outside the 20-min zone must not proceed.
     if (orderType === "delivery") {
       const isTimeout = (msg?: string) =>
-        msg?.includes("timeout") || msg?.includes("taking longer than expected") || msg?.includes("temporarily unavailable");
+        msg?.includes("timeout") || msg?.includes("taking longer than expected");
 
       let deliveryBlocked = false;
 
@@ -300,8 +300,12 @@ const Cart = () => {
           }
         } catch (err: any) {
           toast.dismiss("delivery-check");
-          console.warn("⚠️ Delivery validation error (allowing through):", err);
-          // Service error — allow through rather than blocking the customer
+          console.warn("⚠️ Delivery validation error (blocking for safety):", err);
+          toast.error("We couldn't verify your delivery address. Please try again or switch to pickup.", {
+            duration: 8000,
+            action: { label: "Switch to Pickup", onClick: () => setOrderType("pickup") },
+          });
+          deliveryBlocked = true;
         }
       } else if (customerInfo.address.trim()) {
         toast.loading("Checking delivery zone…", { id: "delivery-check" });
@@ -318,7 +322,12 @@ const Cart = () => {
           }
         } catch (err: any) {
           toast.dismiss("delivery-check");
-          console.warn("⚠️ Fallback delivery validation error (allowing through):", err);
+          console.warn("⚠️ Fallback delivery validation error (blocking for safety):", err);
+          toast.error("We couldn't verify your delivery address. Please try again or switch to pickup.", {
+            duration: 8000,
+            action: { label: "Switch to Pickup", onClick: () => setOrderType("pickup") },
+          });
+          deliveryBlocked = true;
         }
       }
 
