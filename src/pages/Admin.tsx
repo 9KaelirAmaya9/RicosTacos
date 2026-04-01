@@ -173,14 +173,39 @@ const Admin = () => {
 
   // ── Delete all orders ──────────────────────────────────────────────────────
   const handleDeleteAllOrders = useCallback(async () => {
+    const accessToken = sessionRef.current?.access_token;
+    if (!accessToken) {
+      toast.error("Not authenticated — please refresh and try again.");
+      return;
+    }
     setIsDeleting(true);
     try {
-      const { error } = await supabase
-        .from("orders")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-      if (error) throw error;
-      toast.success("All orders deleted successfully!");
+      // Raw fetch bypasses GoTrueClient lock; neq filter satisfies RLS requirement
+      // for a WHERE clause (Supabase requires at least one filter on DELETE).
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/orders?id=neq.00000000-0000-0000-0000-000000000000`,
+        {
+          method: "DELETE",
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'count=exact',
+          },
+        }
+      );
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        throw new Error(`HTTP ${response.status}: ${body}`);
+      }
+      // Content-Range: */N tells us how many rows were deleted
+      const contentRange = response.headers.get('Content-Range') || '';
+      console.log('[Admin] DELETE orders response:', response.status, 'Content-Range:', contentRange);
+      const deleted = parseInt(contentRange.replace('*/', ''), 10);
+      if (!isNaN(deleted) && deleted === 0) {
+        throw new Error('No orders were deleted — you may not have admin permissions. Check console for details.');
+      }
+      toast.success(`Deleted ${isNaN(deleted) ? 'all' : deleted} orders successfully!`);
       setShowDeleteDialog(false);
       queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
     } catch (err: any) {
