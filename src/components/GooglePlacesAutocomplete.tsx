@@ -196,9 +196,9 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
         </p>
       )}
       {placeSelected && (
-        <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-          <CheckCircle className="h-3 w-3 shrink-0" />
-          Address confirmed — delivery zone will be validated at checkout.
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <MapPin className="h-3 w-3 shrink-0" />
+          Address selected — delivery availability will be checked at checkout.
         </p>
       )}
 
