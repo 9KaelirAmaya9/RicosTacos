@@ -87,6 +87,10 @@ const Kitchen = () => {
   const snoozedUntilRef = useRef<number>(0);
   // Prevent concurrent fetches — 5s poll + 20s timeout = up to 4 in-flight at once without this
   const fetchInProgressRef = useRef(false);
+  // Queue a fetch to run immediately after the current one finishes (used by updateStatus)
+  const pendingFetchRef = useRef(false);
+  // Track orders removed optimistically so a stale in-flight poll can't re-add them
+  const optimisticallyRemovedRef = useRef<Set<string>>(new Set());
 
   // Live clock — ticks every second
   useEffect(() => {
@@ -214,11 +218,23 @@ const Kitchen = () => {
         }
 
         knownOrderIdsRef.current = nextIds;
-        setOrders(nextOrders);
+
+        // Confirm which optimistic removals the server has acknowledged (order no longer returned)
+        // and clear those from our tracking set.
+        for (const id of optimisticallyRemovedRef.current) {
+          if (!nextIds.has(id)) optimisticallyRemovedRef.current.delete(id);
+        }
+        // Filter out orders we've optimistically removed but whose DB write hasn't committed yet.
+        // This prevents a stale poll response from re-adding an order the user just dismissed.
+        const displayOrders = nextOrders.filter(
+          (o) => !optimisticallyRemovedRef.current.has(o.id)
+        );
+
+        setOrders(displayOrders);
         // Persist to localStorage (survives hard refresh) and React Query cache (survives navigation)
-        writeKitchenCache(nextOrders);
-        queryClient.setQueryData(["kitchen-orders"], nextOrders);
-        syncAlarmState(nextOrders);
+        writeKitchenCache(displayOrders);
+        queryClient.setQueryData(["kitchen-orders"], displayOrders);
+        syncAlarmState(displayOrders);
 
         // Invalidate the admin-metrics React Query cache so the admin dashboard
         // reflects the latest orders immediately when kitchen fetches new data.
@@ -232,11 +248,28 @@ const Kitchen = () => {
     } finally {
       fetchInProgressRef.current = false;
       setLoading(false);
+      // If updateStatus queued a fetch while we were in-flight, run it now.
+      if (pendingFetchRef.current) {
+        pendingFetchRef.current = false;
+        void fetchOrders();
+      }
     }
   }, [startAlarm, syncAlarmState, queryClient]);
 
   const updateStatus = useCallback(
     async (orderId: string, newStatus: string) => {
+      // Determine if this status removes the order from the kitchen display
+      const kitchenVisible =
+        newStatus === "pending" ||
+        newStatus === "preparing" ||
+        newStatus === "paid" ||
+        newStatus === "confirmed";
+
+      // Optimistic update — immediately reflect the change in UI
+      if (!kitchenVisible) {
+        // Mark as optimistically removed so any in-flight poll doesn't re-add it
+        optimisticallyRemovedRef.current.add(orderId);
+      }
       setOrders((prevOrders) => {
         const updated = prevOrders.map((order) =>
           order.id === orderId ? { ...order, status: newStatus } : order
@@ -258,18 +291,18 @@ const Kitchen = () => {
 
         if (error) throw error;
         toast.success("Order status updated");
-        if (
-          newStatus !== "pending" &&
-          newStatus !== "preparing" &&
-          newStatus !== "paid" &&
-          newStatus !== "confirmed"
-        ) {
-          fetchOrders();
-        }
       } catch (error) {
         console.error("Error updating status:", error);
         toast.error("Failed to update status");
-        fetchOrders();
+        // Undo optimistic removal — DB write failed
+        optimisticallyRemovedRef.current.delete(orderId);
+      } finally {
+        // Always re-fetch after a status change: use pendingFetchRef if one is already in-flight
+        if (fetchInProgressRef.current) {
+          pendingFetchRef.current = true;
+        } else {
+          void fetchOrders();
+        }
       }
     },
     [fetchOrders]
@@ -463,17 +496,27 @@ const Kitchen = () => {
 
       <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         {!audioEnabled && (
-          <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="text-3xl">🔊</div>
-              <div>
-                <h3 className="font-semibold text-base">Audio Alerts Disabled</h3>
-                <p className="text-sm text-muted-foreground">
-                  Tap anywhere on the page to enable order notification sounds
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <button
+            className="w-full text-left cursor-pointer"
+            onClick={async () => {
+              const ok = await unlockAudio();
+              setAudioEnabled(ok);
+            }}
+          >
+            <Card className="bg-yellow-400 dark:bg-yellow-500 border-yellow-500 dark:border-yellow-400 animate-pulse hover:animate-none">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="text-4xl">🔔</div>
+                <div>
+                  <h3 className="font-bold text-lg text-yellow-900 dark:text-yellow-950">
+                    TAP HERE to Enable Order Alarms
+                  </h3>
+                  <p className="text-sm text-yellow-800 dark:text-yellow-900">
+                    Audio alerts are off — tap this banner before orders arrive
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </button>
         )}
 
         <NotificationSettings />
