@@ -273,11 +273,9 @@ const Cart = () => {
       setCustomerInfo(prev => ({ ...prev, address: selectedPlace.formatted_address }));
     }
 
-    // Validate delivery zone — BLOCKING. Orders outside the 20-min zone must not proceed.
+    // Validate delivery zone — BLOCKING. Any result other than explicit isValid:true is rejected.
+    // No bypass for timeouts or service errors — an unverifiable address is an unacceptable address.
     if (orderType === "delivery") {
-      const isTimeout = (msg?: string) =>
-        msg?.includes("timeout") || msg?.includes("taking longer than expected");
-
       let deliveryBlocked = false;
 
       if (selectedPlace?.place_id) {
@@ -288,14 +286,13 @@ const Cart = () => {
           const dv = await validateDeliveryAddressGoogle(selectedPlace.place_id, selectedPlace.formatted_address);
           toast.dismiss("delivery-check");
 
-          if (!dv.isValid && !isTimeout(dv.message)) {
-            // Hard rejection — outside zone
+          if (!dv.isValid) {
             toast.error(dv.message || "Sorry, we can't deliver to that address. Please switch to pickup.", {
               duration: 8000,
               action: { label: "Switch to Pickup", onClick: () => setOrderType("pickup") },
             });
             deliveryBlocked = true;
-          } else if (dv.isValid && dv.estimatedMinutes) {
+          } else {
             toast.success(`✓ Delivery zone confirmed — estimated ${dv.estimatedMinutes} min`, { duration: 4000 });
           }
         } catch (err: any) {
@@ -313,7 +310,7 @@ const Cart = () => {
           const dv = await validateDeliveryAddress(customerInfo.address);
           toast.dismiss("delivery-check");
 
-          if (!dv.isValid && !isTimeout(dv.message)) {
+          if (!dv.isValid) {
             toast.error(dv.message || "Sorry, we can't deliver to that address. Please switch to pickup.", {
               duration: 8000,
               action: { label: "Switch to Pickup", onClick: () => setOrderType("pickup") },
