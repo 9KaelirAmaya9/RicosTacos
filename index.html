@@ -10,27 +10,32 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
+
+    <!-- Primary SEO — per-page title/description/canonical injected by react-helmet-async -->
     <title>Ricos Tacos Brooklyn - Authentic Mexican Street Tacos | Order Online</title>
-    <meta name="description" content="Authentic Mexican street tacos in Brooklyn, NY. Order al pastor, birria, carnitas & more for pickup or delivery. Fresh ingredients, traditional recipes. 505 51st Street. Call (718) 633-4816." />
-    <meta name="keywords" content="mexican food brooklyn, street tacos brooklyn, tacos near me, al pastor tacos, birria tacos, brooklyn mexican restaurant, authentic tacos, mexican delivery brooklyn" />
+    <meta name="description" content="Authentic Mexican street tacos in Sunset Park, Brooklyn NY. Order al pastor, birria, carnitas & more for pickup or delivery. Fresh ingredients, traditional recipes from Puebla. 505 51st Street. Call (718) 633-4816." />
+    <meta name="keywords" content="mexican food brooklyn, street tacos brooklyn, tacos sunset park brooklyn, al pastor tacos brooklyn, birria tacos brooklyn, brooklyn mexican restaurant, authentic tacos, mexican delivery brooklyn, tacos 11220" />
     <meta name="author" content="Ricos Tacos" />
-    <link rel="canonical" href="https://losricostacos.com/" />
-    
+
     <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="restaurant" />
+    <meta property="og:type" content="website" />
     <meta property="og:url" content="https://losricostacos.com/" />
     <meta property="og:title" content="Ricos Tacos Brooklyn - Authentic Mexican Street Tacos" />
-    <meta property="og:description" content="Brooklyn's best authentic Mexican street tacos. Order al pastor, birria, carnitas & more. Fresh ingredients, traditional recipes from Puebla." />
-    <meta property="og:image" content="https://losricostacos.com/logo.png" />
+    <meta property="og:description" content="Brooklyn's best authentic Mexican street tacos in Sunset Park. Order al pastor, birria, carnitas & more online. Fresh ingredients, traditional recipes from Puebla." />
+    <meta property="og:image" content="https://losricostacos.com/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="es_US" />
+    <meta property="og:site_name" content="Ricos Tacos" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://losricostacos.com/" />
     <meta name="twitter:title" content="Ricos Tacos Brooklyn - Authentic Mexican Street Tacos" />
-    <meta name="twitter:description" content="Brooklyn's best authentic Mexican street tacos. Order online for pickup or delivery." />
-    <meta name="twitter:image" content="https://losricostacos.com/logo.png" />
+    <meta name="twitter:description" content="Brooklyn's best authentic Mexican street tacos in Sunset Park. Order online for pickup or delivery." />
+    <meta name="twitter:image" content="https://losricostacos.com/og-image.jpg" />
 
     <!-- Local Business Schema -->
     <script type="application/ld+json">
@@ -38,8 +43,9 @@
       "@context": "https://schema.org",
       "@type": "Restaurant",
       "name": "Ricos Tacos",
-      "image": "https://losricostacos.com/logo.png",
-      "description": "Authentic Mexican street tacos restaurant in Brooklyn serving traditional recipes from Puebla, Mexico.",
+      "image": "https://losricostacos.com/og-image.jpg",
+      "logo": "https://losricostacos.com/logo.png",
+      "description": "Authentic Mexican street tacos restaurant in Sunset Park, Brooklyn NY, serving traditional recipes from Puebla, Mexico.",
       "address": {
         "@type": "PostalAddress",
         "streetAddress": "505 51st Street",
@@ -56,7 +62,11 @@
       "url": "https://losricostacos.com",
       "telephone": "+17186334816",
       "priceRange": "$$",
-      "servesCuisine": ["Mexican", "Street Food"],
+      "servesCuisine": ["Mexican", "Street Food", "Tacos"],
+      "areaServed": {
+        "@type": "City",
+        "name": "Brooklyn, NY"
+      },
       "openingHoursSpecification": [
         {
           "@type": "OpeningHoursSpecification",
@@ -66,22 +76,86 @@
         }
       ],
       "menu": "https://losricostacos.com/menu",
+      "hasMenu": "https://losricostacos.com/menu",
       "acceptsReservations": "False",
-      "hasMenu": "https://losricostacos.com/menu"
+      "paymentAccepted": "Credit Card, Cash",
+      "currenciesAccepted": "USD",
+      "sameAs": []
     }
+    </script>
+
+    <!-- FAQ Schema — triggers expandable answers in Google Search results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Do you deliver?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! We offer delivery to addresses within 20 minutes of our restaurant at 505 51st Street, Brooklyn NY 11220. You can order delivery or pickup at losricostacos.com/order."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Where is Ricos Tacos located?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We are located at 505 51st Street, Brooklyn, NY 11220 in the Sunset Park neighborhood. Call us at (718) 633-4816."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are your hours?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We are open 7 days a week from 11:00 AM to 10:00 PM."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What kind of tacos do you serve?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We serve authentic Mexican street tacos including al pastor, birria, carnitas, barbacoa, lengua, suadero, and more — all made with traditional recipes from Puebla, Mexico."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do you do catering?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, we offer catering for events in the Brooklyn area. Contact us at (718) 633-4816 to discuss your event."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=REPLACE_WITH_GA4_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'REPLACE_WITH_GA4_ID', {
+        page_title: document.title,
+        page_location: window.location.href
+      });
     </script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Chewy&family=Bebas+Neue&family=Fredoka+One&family=Boogaloo&family=Lilita+One&family=Titan+One&family=Righteous&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700;900&family=Dancing+Script:wght@700&family=Pacifico&family=Lobster+Two:ital,wght@1,700&display=swap" rel="stylesheet">
-    
+
     <!-- Google Maps API will be loaded dynamically from React component -->
   </head>
- 
+
   <body>
     <div id="root"></div>
-    
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

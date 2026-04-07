@@ -1,3 +1,4 @@
+import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { SerapeStripe } from "@/components/SerapeStripe";
 import { ConfettiBackground } from "@/components/ConfettiBackground";
@@ -77,6 +78,12 @@ const Menu = () => {
   }, []);
 
   return (
+    <>
+    <SEO
+      title="Full Menu - Tacos, Tortas & More | Ricos Tacos Brooklyn"
+      description="Browse our full menu of authentic Mexican street tacos, tortas, quesadillas, and more. Al pastor, birria, carnitas, barbacoa & more. Order online at Ricos Tacos in Sunset Park, Brooklyn."
+      canonicalPath="/menu"
+    />
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 festive-pattern relative">
       <ConfettiBackground />
       <SerapeStripe />
@@ -200,6 +207,7 @@ const Menu = () => {
         itemName={pendingItem?.name || ""}
       />
     </div>
+    </>
   );
 };
 

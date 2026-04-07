@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { SerapeStripe } from "@/components/SerapeStripe";
 import { FloatingIngredients } from "@/components/FloatingIngredients";
@@ -39,6 +40,12 @@ const Index = () => {
   }, []);
 
   return (
+    <>
+    <SEO
+      title="Ricos Tacos Brooklyn - Authentic Mexican Street Tacos | Order Online"
+      description="Authentic Mexican street tacos in Sunset Park, Brooklyn NY. Order al pastor, birria, carnitas & more for pickup or delivery. 505 51st Street. (718) 633-4816."
+      canonicalPath="/"
+    />
     <div className="min-h-screen">
       {/* Skip to content link for accessibility */}
       <a 
@@ -307,6 +314,7 @@ const Index = () => {
       </footer>
       <SerapeStripe />
     </div>
+    </>
   );
 };
 

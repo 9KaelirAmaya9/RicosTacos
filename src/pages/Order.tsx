@@ -1,3 +1,4 @@
+import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { menuItems } from "@/data/menuData";
 import { getMenuItemName, getMenuItemDescription } from "@/data/menuTranslations";
@@ -88,6 +89,12 @@ const Order = () => {
     }, {} as Record<string, Record<string, typeof menuItems>>);
 
   return (
+    <>
+    <SEO
+      title="Order Online - Pickup & Delivery | Ricos Tacos Brooklyn"
+      description="Order authentic Mexican street tacos online for pickup or delivery. Al pastor, birria, carnitas & more. Fast pickup from 505 51st Street, Sunset Park, Brooklyn NY."
+      canonicalPath="/order"
+    />
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 relative">
       <Navigation />
       
@@ -359,6 +366,7 @@ const Order = () => {
         />
       )}
     </div>
+    </>
   );
 };
 

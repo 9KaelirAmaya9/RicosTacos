@@ -1,3 +1,4 @@
+import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { MapPin, Clock, Phone } from "lucide-react";
@@ -9,6 +10,12 @@ const Location = () => {
   const { t } = useLanguage();
 
   return (
+    <>
+    <SEO
+      title="Hours & Location - 505 51st St, Sunset Park Brooklyn | Ricos Tacos"
+      description="Visit Ricos Tacos at 505 51st Street, Brooklyn NY 11220 in Sunset Park. Open 7 days a week 11am–10pm. Pickup and delivery available. Call (718) 633-4816."
+      canonicalPath="/location"
+    />
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <Navigation />
       
@@ -165,6 +172,7 @@ const Location = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

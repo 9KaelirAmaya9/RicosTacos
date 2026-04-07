@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SEO } from "@/components/SEO";
 import { useSearchParams, Link } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -136,6 +137,8 @@ const OrderSuccess = () => {
 
   if (!orderNumber || !orderDetails) {
     return (
+      <>
+      <SEO title="Order Confirmed | Ricos Tacos Brooklyn" description="Your order has been placed." canonicalPath="/order-success" noindex={true} />
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
         <Navigation />
         <div className="pt-32 pb-16">
@@ -161,10 +164,13 @@ const OrderSuccess = () => {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+    <SEO title="Order Confirmed | Ricos Tacos Brooklyn" description="Your order has been placed." canonicalPath="/order-success" noindex={true} />
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <Navigation />
 
@@ -308,6 +314,7 @@ const OrderSuccess = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

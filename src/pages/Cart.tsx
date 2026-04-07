@@ -1,3 +1,4 @@
+import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -726,6 +727,13 @@ const Cart = () => {
   const { tax: uiTax, deliveryFee: uiDeliveryFee, total: uiTotal } = calculateTotals(cartTotal, discountAmount, orderType);
 
   return (
+    <>
+    <SEO
+      title="Your Cart | Ricos Tacos Brooklyn"
+      description="Review your order and checkout."
+      canonicalPath="/cart"
+      noindex={true}
+    />
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <Navigation />
 
@@ -1114,6 +1122,7 @@ const Cart = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
