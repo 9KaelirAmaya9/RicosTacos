@@ -17,13 +17,13 @@ export const translations: Record<"en" | "es", Translations> = {
     // Homepage
     "home.hero.title1": "Auténtica Cocina",
     "home.hero.title2": "Mexicana",
-    "home.hero.subtitle": "Puebla's rich, savory heritage lives on in Sunset Park. Every dish honors centuries of poblano tradition with bold flavors and authentic techniques.",
+    "home.hero.subtitle": "Puebla's rich, savory heritage lives on in Sunset Park, Brooklyn. Authentic al pastor, birria, and carnitas tacos — made the traditional way.",
     "home.hero.orderNow": "Order Now",
     "home.hero.viewMenu": "View Menu",
     
     "home.about.title1": "A Taste of",
     "home.about.title2": "Tradition",
-    "home.about.p1": "At Ricos Tacos, we honor the rich culinary heritage of Puebla, Mexico. Each dish is crafted from authentic recipes passed down through generations, featuring natural, locally sourced ingredients that bring out the delectable, savory flavors of traditional poblano cuisine.",
+    "home.about.p1": "At Ricos Tacos in Sunset Park, Brooklyn, we honor the rich culinary heritage of Puebla, Mexico. Each dish is crafted from authentic recipes passed down through generations, featuring natural, locally sourced ingredients that bring out the delectable, savory flavors of traditional poblano cuisine.",
     "home.about.p2": "From our handmade mole poblano with its intricate blend of chiles and spices, to our succulent tacos árabes and chalupas, every bite celebrates the time-honored techniques and fresh ingredients that make Puebla's gastronomy world-renowned.",
     "home.about.exploreMenu": "Explore Our Menu",
     
@@ -35,7 +35,7 @@ export const translations: Record<"en" | "es", Translations> = {
     "home.feature1.desc": "Traditional Mexican recipes made with love and the finest ingredients, bringing you genuine flavors from our kitchen to your table.",
     
     "home.feature2.title": "Fast Delivery",
-    "home.feature2.desc": "Quick pickup and delivery options to enjoy our delicious food wherever you are in Brooklyn. Order online for convenience.",
+    "home.feature2.desc": "Quick pickup and delivery options to enjoy our delicious tacos anywhere in Brooklyn. Order birria, al pastor, carnitas & more online.",
     
     "home.feature3.title": "Catering Available",
     "home.feature3.desc": "Planning an event? We offer full catering services with authentic Mexican dishes perfect for any celebration.",
