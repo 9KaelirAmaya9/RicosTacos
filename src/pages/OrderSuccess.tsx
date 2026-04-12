@@ -4,7 +4,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CheckCircle2, Home, Phone, Mail, MapPin, Loader2 } from "lucide-react";
+import { CheckCircle2, Home, Phone, Mail, MapPin, Loader2, Star } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -295,6 +295,19 @@ const OrderSuccess = () => {
                 <p className="pt-2">Need help? Call us at (718) 633-4816</p>
               </div>
             </Card>
+
+            {/* Google Review CTA */}
+            <a
+              href="https://search.google.com/local/writereview?placeid=ChIJ83ydO7RawokRnSEKeICgR1M"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full"
+            >
+              <Button variant="outline" size="lg" className="w-full gap-2 border-yellow-400 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-950/20">
+                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                Enjoyed your order? Leave us a Google review!
+              </Button>
+            </a>
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
