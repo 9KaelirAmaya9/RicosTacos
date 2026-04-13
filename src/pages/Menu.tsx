@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { SerapeStripe } from "@/components/SerapeStripe";
@@ -57,6 +58,30 @@ const Menu = () => {
     }
   }, [pendingItem, addToCart]);
 
+  // Build Menu structured data schema for Google rich results
+  const menuSchema = useMemo(() => ({
+    "@context": "https://schema.org",
+    "@type": "Menu",
+    "name": "Ricos Tacos Full Menu",
+    "url": "https://losricostacos.com/menu",
+    "hasMenuSection": menuCategories.map(category => ({
+      "@type": "MenuSection",
+      "name": category,
+      "hasMenuItem": menuItems
+        .filter(item => item.category === category)
+        .map(item => ({
+          "@type": "MenuItem",
+          "name": item.name,
+          ...(item.description ? { "description": item.description } : {}),
+          "offers": {
+            "@type": "Offer",
+            "price": item.price.toFixed(2),
+            "priceCurrency": "USD",
+          },
+        })),
+    })).filter(section => section.hasMenuItem.length > 0),
+  }), []);
+
   // Memoize filtered categories for performance
   const filteredCategories = useMemo(() => {
     return menuCategories.filter(
@@ -84,6 +109,9 @@ const Menu = () => {
       description="Browse our full menu of authentic Mexican street tacos, tortas, quesadillas, and more. Al pastor, birria, carnitas, barbacoa & more. Order online at Ricos Tacos in Sunset Park, Brooklyn."
       canonicalPath="/menu"
     />
+    <Helmet>
+      <script type="application/ld+json">{JSON.stringify(menuSchema)}</script>
+    </Helmet>
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 festive-pattern relative">
       <ConfettiBackground />
       <SerapeStripe />
@@ -139,10 +167,12 @@ const Menu = () => {
                        <Card key={item.id} className="overflow-hidden hover:shadow-elegant transition-all duration-300 group border-2 border-transparent hover:border-serape-red/30 bg-card relative before:absolute before:inset-0 before:opacity-0 hover:before:opacity-100 before:bg-gradient-to-br before:from-serape-cyan/5 before:via-serape-pink/5 before:to-serape-yellow/5 before:transition-opacity before:duration-500 before:pointer-events-none">
                          {item.image && (
                            <div className="relative h-48 overflow-hidden">
-                             <img 
-                               src={item.image} 
-                               alt={item.name}
+                             <img
+                               src={item.image}
+                               alt={`${getMenuItemName(item.id, language, item.name)} at Ricos Tacos Brooklyn`}
                                loading="lazy"
+                               width="400"
+                               height="192"
                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                              />
                              <div className="absolute inset-0 bg-gradient-to-t from-serape-red/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
