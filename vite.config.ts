@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => ({
   ].filter(Boolean),
   build: {
     rollupOptions: {
-      plugins: mode === "production"
+      plugins: mode === "production" && !process.env.VERCEL
         ? [
             Prerenderer({
               routes: ["/", "/menu", "/order", "/location", "/catering"],
