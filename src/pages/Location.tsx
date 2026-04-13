@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
@@ -16,6 +17,16 @@ const Location = () => {
       description="Visit Ricos Tacos at 505 51st Street, Brooklyn NY 11220 in Sunset Park. Open 7 days a week 9am–2am. Pickup and delivery available. Call (718) 633-4816."
       canonicalPath="/location"
     />
+    <Helmet>
+      <script type="application/ld+json">{JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://losricostacos.com" },
+          { "@type": "ListItem", "position": 2, "name": "Hours & Location", "item": "https://losricostacos.com/location" }
+        ]
+      })}</script>
+    </Helmet>
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <Navigation />
       

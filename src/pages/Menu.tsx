@@ -111,6 +111,14 @@ const Menu = () => {
     />
     <Helmet>
       <script type="application/ld+json">{JSON.stringify(menuSchema)}</script>
+      <script type="application/ld+json">{JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://losricostacos.com" },
+          { "@type": "ListItem", "position": 2, "name": "Menu", "item": "https://losricostacos.com/menu" }
+        ]
+      })}</script>
     </Helmet>
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 festive-pattern relative">
       <ConfettiBackground />

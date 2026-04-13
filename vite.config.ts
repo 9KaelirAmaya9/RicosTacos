@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
       plugins: mode === "production"
         ? [
             Prerenderer({
-              routes: ["/", "/menu", "/order", "/location"],
+              routes: ["/", "/menu", "/order", "/location", "/catering"],
             }),
           ]
         : [],

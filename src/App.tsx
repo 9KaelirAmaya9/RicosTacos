@@ -9,30 +9,36 @@ import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ConditionalFloatingButtons } from "@/components/ConditionalFloatingButtons";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
-import Menu from "./pages/Menu";
-import Order from "./pages/Order";
-import Location from "./pages/Location";
-import Cart from "./pages/Cart";
-import Auth from "./pages/Auth";
-import SignIn from "./pages/SignIn";
-import SignUp from "./pages/SignUp";
-import Profile from "./pages/Profile";
-import OrderHistory from "./pages/OrderHistory";
-import Logout from "./pages/Logout";
-import Admin from "./pages/Admin";
-import AdminOrders from "./pages/AdminOrders";
-import AdminRoles from "./pages/AdminRoles";
-import AdminPasswordManagement from "./pages/AdminPasswordManagement";
-import Kitchen from "./pages/Kitchen";
-import KitchenLogin from "./pages/KitchenLogin";
-import Dashboard from "./pages/Dashboard";
-import OrderSuccess from "./pages/OrderSuccess";
-import NotFound from "./pages/NotFound";
-import ServerError from "./pages/ServerError";
-import MenuCatalog from "./pages/MenuCatalog";
-import DebugAuth from "./pages/DebugAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { lazy, Suspense } from "react";
+
+// Route-level code splitting — each page is its own JS chunk, loaded on demand.
+// This cuts the initial bundle size significantly, improving mobile load time
+// and Google Core Web Vitals scores.
+const Index = lazy(() => import("./pages/Index"));
+const Menu = lazy(() => import("./pages/Menu"));
+const Order = lazy(() => import("./pages/Order"));
+const Location = lazy(() => import("./pages/Location"));
+const Catering = lazy(() => import("./pages/Catering"));
+const Cart = lazy(() => import("./pages/Cart"));
+const Auth = lazy(() => import("./pages/Auth"));
+const SignIn = lazy(() => import("./pages/SignIn"));
+const SignUp = lazy(() => import("./pages/SignUp"));
+const Profile = lazy(() => import("./pages/Profile"));
+const OrderHistory = lazy(() => import("./pages/OrderHistory"));
+const Logout = lazy(() => import("./pages/Logout"));
+const Admin = lazy(() => import("./pages/Admin"));
+const AdminOrders = lazy(() => import("./pages/AdminOrders"));
+const AdminRoles = lazy(() => import("./pages/AdminRoles"));
+const AdminPasswordManagement = lazy(() => import("./pages/AdminPasswordManagement"));
+const Kitchen = lazy(() => import("./pages/Kitchen"));
+const KitchenLogin = lazy(() => import("./pages/KitchenLogin"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const ServerError = lazy(() => import("./pages/ServerError"));
+const MenuCatalog = lazy(() => import("./pages/MenuCatalog"));
+const DebugAuth = lazy(() => import("./pages/DebugAuth"));
 
 // ── QueryClient ───────────────────────────────────────────────────────────────
 // staleTime: 0  — always refetch in background on mount/focus
@@ -53,16 +59,6 @@ const queryClient = new QueryClient({
 const App = () => (
   <HelmetProvider>
   <ErrorBoundary>
-    {/*
-      PersistQueryClientProvider replaces QueryClientProvider.
-
-      On first load: renders children immediately with empty cache, fetches data.
-      On tab reopen / PWA relaunch: hydrates from localStorage first (instant
-      render with cached orders), then fires background refetch to get fresh data.
-
-      persistOptions.buster: bump this string to force a full cache clear across
-      all clients (e.g. after a breaking schema change).
-    */}
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <CartProvider>
@@ -71,32 +67,35 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/menu" element={<Menu />} />
-                  <Route path="/menu-catalog" element={<MenuCatalog />} />
-                  <Route path="/order" element={<Order />} />
-                  <Route path="/location" element={<Location />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/signin" element={<SignIn />} />
-                  <Route path="/signup" element={<SignUp />} />
-                  <Route path="/kitchen-login" element={<KitchenLogin />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/order-history" element={<OrderHistory />} />
-                  <Route path="/logout" element={<Logout />} />
-                  <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><Admin /></ProtectedRoute>} />
-                  <Route path="/admin/orders" element={<ProtectedRoute requiredRole="admin"><AdminOrders /></ProtectedRoute>} />
-                  <Route path="/admin/roles" element={<ProtectedRoute requiredRole="admin"><AdminRoles /></ProtectedRoute>} />
-                  <Route path="/admin/passwords" element={<ProtectedRoute requiredRole="admin"><AdminPasswordManagement /></ProtectedRoute>} />
-                  <Route path="/kitchen" element={<ProtectedRoute requiredRole="kitchen"><Kitchen /></ProtectedRoute>} />
-                  <Route path="/order-success" element={<OrderSuccess />} />
-                  <Route path="/500" element={<ServerError />} />
-                  <Route path="/debug-auth" element={<DebugAuth />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                <Suspense fallback={null}>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/menu" element={<Menu />} />
+                    <Route path="/menu-catalog" element={<MenuCatalog />} />
+                    <Route path="/order" element={<Order />} />
+                    <Route path="/location" element={<Location />} />
+                    <Route path="/catering" element={<Catering />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/signin" element={<SignIn />} />
+                    <Route path="/signup" element={<SignUp />} />
+                    <Route path="/kitchen-login" element={<KitchenLogin />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/order-history" element={<OrderHistory />} />
+                    <Route path="/logout" element={<Logout />} />
+                    <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><Admin /></ProtectedRoute>} />
+                    <Route path="/admin/orders" element={<ProtectedRoute requiredRole="admin"><AdminOrders /></ProtectedRoute>} />
+                    <Route path="/admin/roles" element={<ProtectedRoute requiredRole="admin"><AdminRoles /></ProtectedRoute>} />
+                    <Route path="/admin/passwords" element={<ProtectedRoute requiredRole="admin"><AdminPasswordManagement /></ProtectedRoute>} />
+                    <Route path="/kitchen" element={<ProtectedRoute requiredRole="kitchen"><Kitchen /></ProtectedRoute>} />
+                    <Route path="/order-success" element={<OrderSuccess />} />
+                    <Route path="/500" element={<ServerError />} />
+                    <Route path="/debug-auth" element={<DebugAuth />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
                 <ConditionalFloatingButtons />
               </BrowserRouter>
             </TooltipProvider>

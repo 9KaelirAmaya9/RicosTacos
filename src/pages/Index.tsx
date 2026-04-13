@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { SerapeStripe } from "@/components/SerapeStripe";
@@ -46,6 +47,13 @@ const Index = () => {
       description="Sunset Park Brooklyn's neighborhood taqueria — authentic Puebla recipes since day one. Al pastor, birria, carnitas, barbacoa, lengua & more. Order online for pickup or delivery. Open 9 AM–2 AM daily. 505 51st St. (718) 633-4816."
       canonicalPath="/"
     />
+    <Helmet>
+      <script type="application/ld+json">{JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [{ "@type": "ListItem", "position": 1, "name": "Home", "item": "https://losricostacos.com" }]
+      })}</script>
+    </Helmet>
     <div className="min-h-screen">
       {/* Skip to content link for accessibility */}
       <a 
