@@ -115,6 +115,19 @@ const OrderSuccess = () => {
     fetchOrderDetails();
   }, [orderNumber]);
 
+  // Fire Google Ads conversion when order details load successfully
+  useEffect(() => {
+    if (!orderDetails) return;
+    if (typeof window.gtag === "function") {
+      window.gtag("event", "conversion", {
+        send_to: "AW-16961291835/purchase",
+        value: orderDetails.total,
+        currency: "USD",
+        transaction_id: orderDetails.order_number,
+      });
+    }
+  }, [orderDetails]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
