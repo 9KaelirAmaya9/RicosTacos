@@ -43,7 +43,7 @@ const Index = () => {
     <>
     <SEO
       title="Ricos Tacos Brooklyn - Authentic Mexican Street Tacos | Order Online"
-      description="Authentic Mexican street tacos in Sunset Park, Brooklyn NY. Order al pastor, birria, carnitas & more for pickup or delivery. 505 51st Street. (718) 633-4816."
+      description="Sunset Park Brooklyn's neighborhood taqueria — authentic Puebla recipes since day one. Al pastor, birria, carnitas, barbacoa, lengua & more. Order online for pickup or delivery. Open 9 AM–2 AM daily. 505 51st St. (718) 633-4816."
       canonicalPath="/"
     />
     <div className="min-h-screen">

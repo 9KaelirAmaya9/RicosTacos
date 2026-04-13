@@ -17,19 +17,19 @@ export const translations: Record<"en" | "es", Translations> = {
     // Homepage
     "home.hero.title1": "Auténtica Cocina",
     "home.hero.title2": "Mexicana",
-    "home.hero.subtitle": "Puebla's rich, savory heritage lives on in Sunset Park, Brooklyn. Authentic al pastor, birria, and carnitas tacos — made the traditional way.",
+    "home.hero.subtitle": "Sunset Park's taqueria. Puebla's recipes. Al pastor, birria, carnitas, barbacoa & more — made fresh the traditional way, every day.",
     "home.hero.orderNow": "Order Now",
     "home.hero.viewMenu": "View Menu",
     
     "home.about.title1": "A Taste of",
     "home.about.title2": "Tradition",
-    "home.about.p1": "At Ricos Tacos in Sunset Park, Brooklyn, we honor the rich culinary heritage of Puebla, Mexico. Each dish is crafted from authentic recipes passed down through generations, featuring natural, locally sourced ingredients that bring out the delectable, savory flavors of traditional poblano cuisine.",
-    "home.about.p2": "From our handmade mole poblano with its intricate blend of chiles and spices, to our succulent tacos árabes and chalupas, every bite celebrates the time-honored techniques and fresh ingredients that make Puebla's gastronomy world-renowned.",
+    "home.about.p1": "Ricos Tacos has been Sunset Park Brooklyn's neighborhood taqueria from day one. Our recipes don't come from a cookbook — they come from Puebla, Mexico, passed down through generations and made fresh every single day at 505 51st Street.",
+    "home.about.p2": "From slow-braised birria and trompo-grilled al pastor, to handmade mole poblano, tacos árabes, and chalupas — every dish celebrates the techniques and ingredients that make Puebla's cuisine world-renowned. World-class food. Zero pretension. Open daily 9 AM to 2 AM.",
     "home.about.exploreMenu": "Explore Our Menu",
     
     "home.why.title": "Why Choose",
     "home.why.titleHighlight": "Ricos Tacos",
-    "home.why.subtitle": "Quality, authenticity, and convenience—all in one place",
+    "home.why.subtitle": "Brooklyn's deepest Mexican menu — tacos, tortas, burritos, platillos, pozole & more, made fresh in Sunset Park every day",
     
     "home.feature1.title": "Authentic Recipes",
     "home.feature1.desc": "Traditional Mexican recipes made with love and the finest ingredients, bringing you genuine flavors from our kitchen to your table.",
@@ -40,12 +40,12 @@ export const translations: Record<"en" | "es", Translations> = {
     "home.feature3.title": "Catering Available",
     "home.feature3.desc": "Planning an event? We offer full catering services with authentic Mexican dishes perfect for any celebration.",
     
-    "home.cta.title": "Ready to Experience Authentic Mexican Cuisine?",
-    "home.cta.subtitle": "Order now for pickup or delivery and taste the difference that tradition makes",
+    "home.cta.title": "Sunset Park's Taqueria. Open 9 AM to 2 AM.",
+    "home.cta.subtitle": "Order al pastor, birria, carnitas & more for pickup or delivery. Made fresh from Puebla recipes, every day.",
     "home.cta.startOrder": "Start Your Order",
     
     "home.footer.tagline1": "Auténtica Comida Mexicana",
-    "home.footer.tagline2": "Authentic Mexican Food",
+    "home.footer.tagline2": "From Puebla. For Brooklyn.",
     "home.footer.contact": "Contact",
     "home.footer.hours": "Hours",
     "home.footer.openDays": "Open 7 Days a Week",
@@ -154,19 +154,19 @@ export const translations: Record<"en" | "es", Translations> = {
     // Homepage
     "home.hero.title1": "Auténtica Cocina",
     "home.hero.title2": "Mexicana",
-    "home.hero.subtitle": "La rica y sabrosa herencia de Puebla vive en Sunset Park. Cada platillo honra siglos de tradición poblana con sabores intensos y técnicas auténticas.",
+    "home.hero.subtitle": "La taquería de Sunset Park. Las recetas de Puebla. Al pastor, birria, carnitas, barbacoa y más — preparados frescos cada día.",
     "home.hero.orderNow": "Ordenar Ahora",
     "home.hero.viewMenu": "Ver Menú",
     
     "home.about.title1": "Un Sabor de",
     "home.about.title2": "Tradición",
-    "home.about.p1": "En Ricos Tacos, honramos la rica herencia culinaria de Puebla, México. Cada platillo se elabora con recetas auténticas transmitidas por generaciones, utilizando ingredientes naturales de origen local que resaltan los sabores deliciosos y sabrosos de la cocina tradicional poblana.",
-    "home.about.p2": "Desde nuestro mole poblano hecho a mano con su intrincada mezcla de chiles y especias, hasta nuestros suculentos tacos árabes y chalupas, cada bocado celebra las técnicas tradicionales e ingredientes frescos que hacen de la gastronomía de Puebla reconocida mundialmente.",
+    "home.about.p1": "Ricos Tacos es la taquería del barrio de Sunset Park, Brooklyn, desde el primer día. Nuestras recetas no vienen de un libro — vienen de Puebla, México, transmitidas por generaciones y preparadas frescas cada día en el 505 de la Calle 51.",
+    "home.about.p2": "Desde birria en consomé y al pastor en trompo, hasta mole poblano, tacos árabes y chalupas — cada platillo celebra las técnicas e ingredientes que hacen de la cocina de Puebla algo mundialmente reconocido. Abiertos todos los días de 9 AM a 2 AM.",
     "home.about.exploreMenu": "Explorar Nuestro Menú",
     
     "home.why.title": "Por Qué Elegir",
     "home.why.titleHighlight": "Ricos Tacos",
-    "home.why.subtitle": "Calidad, autenticidad y conveniencia—todo en un solo lugar",
+    "home.why.subtitle": "El menú mexicano más completo de Brooklyn — tacos, tortas, burritos, platillos, pozole y más, preparados frescos en Sunset Park cada día",
     
     "home.feature1.title": "Recetas Auténticas",
     "home.feature1.desc": "Recetas mexicanas tradicionales hechas con amor y los mejores ingredientes, trayendo sabores genuinos de nuestra cocina a tu mesa.",
@@ -177,8 +177,8 @@ export const translations: Record<"en" | "es", Translations> = {
     "home.feature3.title": "Catering Disponible",
     "home.feature3.desc": "¿Planificando un evento? Ofrecemos servicios completos de catering con platillos mexicanos auténticos perfectos para cualquier celebración.",
     
-    "home.cta.title": "¿Listo para Experimentar la Auténtica Cocina Mexicana?",
-    "home.cta.subtitle": "Ordena ahora para recolección o entrega y prueba la diferencia que hace la tradición",
+    "home.cta.title": "La Taquería de Sunset Park. Abiertos de 9 AM a 2 AM.",
+    "home.cta.subtitle": "Ordena al pastor, birria, carnitas y más para recolección o entrega. Preparados frescos con recetas de Puebla, cada día.",
     "home.cta.startOrder": "Comenzar Tu Orden",
     
     "home.footer.tagline1": "Auténtica Comida Mexicana",
