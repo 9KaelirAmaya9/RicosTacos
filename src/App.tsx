@@ -8,6 +8,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ConditionalFloatingButtons } from "@/components/ConditionalFloatingButtons";
+import { StickyOrderBar } from "@/components/StickyOrderBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { lazy, Suspense } from "react";
@@ -97,6 +98,7 @@ const App = () => (
                   </Routes>
                 </Suspense>
                 <ConditionalFloatingButtons />
+                <StickyOrderBar />
               </BrowserRouter>
             </TooltipProvider>
           </AuthProvider>
