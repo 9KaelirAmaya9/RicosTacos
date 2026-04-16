@@ -12,6 +12,7 @@ export const translations: Record<"en" | "es", Translations> = {
     "nav.hoursDesc": "Visit us in Brooklyn",
     "nav.orderOnline": "Order Online",
     "nav.location": "Location",
+    "nav.catering": "Catering",
     "nav.cart": "Cart",
 
     // Homepage
@@ -149,6 +150,7 @@ export const translations: Record<"en" | "es", Translations> = {
     "nav.hoursDesc": "Visítanos en Brooklyn",
     "nav.orderOnline": "Ordenar En Línea",
     "nav.location": "Ubicación",
+    "nav.catering": "Catering",
     "nav.cart": "Carrito",
 
     // Homepage

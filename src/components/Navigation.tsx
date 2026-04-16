@@ -44,6 +44,7 @@ export const Navigation = () => {
     { to: "/menu", label: t("nav.fullMenu") },
     { to: "/order", label: t("nav.orderOnline") },
     { to: "/location", label: t("nav.location") },
+    { to: "/catering", label: t("nav.catering") },
   ];
 
   return (

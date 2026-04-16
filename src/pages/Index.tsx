@@ -340,6 +340,10 @@ const Index = () => {
                 &copy; {new Date().getFullYear()} Ricos Tacos. {t("home.footer.copyright")}
               </p>
               <div className="flex gap-4 text-xs">
+                <Link to="/catering" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Catering
+                </Link>
+                <span className="text-muted-foreground/50">|</span>
                 <Link to="/auth?redirect=/admin" className="text-muted-foreground hover:text-foreground transition-colors">
                   Admin
                 </Link>
