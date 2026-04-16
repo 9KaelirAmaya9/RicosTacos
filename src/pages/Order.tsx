@@ -94,6 +94,7 @@ const Order = () => {
       title="Order Online - Pickup & Delivery | Ricos Tacos Brooklyn"
       description="Order authentic Mexican street tacos online for pickup or delivery. Al pastor, birria, carnitas & more. Fast pickup from 505 51st Street, Sunset Park, Brooklyn NY."
       canonicalPath="/order"
+      noindex={true}
     />
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 relative">
       <Navigation />

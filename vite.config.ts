@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
       plugins: mode === "production" && !process.env.VERCEL
         ? [
             Prerenderer({
-              routes: ["/", "/menu", "/order", "/location", "/catering"],
+              routes: ["/", "/menu", "/location", "/catering"],
             }),
           ]
         : [],
