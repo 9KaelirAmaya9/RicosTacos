@@ -1,11 +1,12 @@
 {
-  "name": "Ricos Tacos",
-  "short_name": "Ricos Tacos",
-  "description": "Order delicious authentic Mexican tacos",
-  "start_url": "/",
+  "name": "Ricos Tacos — Kitchen",
+  "short_name": "RT Kitchen",
+  "description": "Ricos Tacos kitchen order dashboard",
+  "start_url": "/kitchen",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#10B981",
+  "background_color": "#0f0f0f",
+  "theme_color": "#E31E24",
   "orientation": "portrait-primary",
   "icons": [
     {

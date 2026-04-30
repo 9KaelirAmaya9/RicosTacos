@@ -15,6 +15,178 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
 };
 
+// ── Restaurant email notification ─────────────────────────────────────────────
+// Sends an email to the restaurant owner/staff whenever a new paid order arrives.
+// This is the primary "kitchen is open but tab is closed" safety net.
+// Requires RESEND_API_KEY and RESTAURANT_NOTIFICATION_EMAIL in Supabase secrets.
+async function notifyRestaurant(orderNumber: string): Promise<void> {
+  const resendKey = Deno.env.get('RESEND_API_KEY');
+  const restaurantEmail = Deno.env.get('RESTAURANT_NOTIFICATION_EMAIL');
+  const restaurantPhone = Deno.env.get('RESTAURANT_NOTIFICATION_PHONE');
+  const twilioSid = Deno.env.get('TWILIO_ACCOUNT_SID');
+  const twilioToken = Deno.env.get('TWILIO_AUTH_TOKEN');
+  const twilioFrom = Deno.env.get('TWILIO_PHONE_NUMBER');
+
+  // Fetch order details once — used by both email and SMS
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('order_number, customer_name, customer_phone, order_type, delivery_address, items, subtotal, tax, total, notes')
+    .eq('order_number', orderNumber)
+    .single();
+
+  if (error || !order) {
+    console.error('[WEBHOOK] Could not fetch order for notifications:', error?.message);
+    return;
+  }
+
+  // ── SMS to restaurant owner (Twilio) ─────────────────────────────────────────
+  // Most reliable channel — works even if wifi is down on the tablet.
+  if (twilioSid && twilioToken && twilioFrom && restaurantPhone) {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const itemSummary = items
+      .map((i: { name: string; quantity: number }) => `${i.quantity}× ${i.name}`)
+      .join(', ');
+    const smsBody =
+      `🚨 NEW ORDER #${order.order_number}\n` +
+      `${order.order_type.toUpperCase()} — $${Number(order.total).toFixed(2)}\n` +
+      `${order.customer_name} · ${order.customer_phone}\n` +
+      `${itemSummary}\n` +
+      (order.delivery_address ? `📍 ${order.delivery_address}\n` : '') +
+      (order.notes ? `📝 ${order.notes}\n` : '') +
+      `losricostacos.com/kitchen`;
+
+    try {
+      const smsResp = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: 'Basic ' + btoa(`${twilioSid}:${twilioToken}`),
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({ From: twilioFrom, To: restaurantPhone, Body: smsBody }),
+        }
+      );
+      if (smsResp.ok) {
+        console.log('[WEBHOOK] SMS sent to restaurant:', restaurantPhone);
+      } else {
+        const body = await smsResp.json().catch(() => ({}));
+        console.error('[WEBHOOK] Twilio SMS error:', smsResp.status, JSON.stringify(body));
+      }
+    } catch (err) {
+      console.error('[WEBHOOK] Twilio SMS exception:', err);
+    }
+  } else {
+    console.warn('[WEBHOOK] SMS skipped — TWILIO_* or RESTAURANT_NOTIFICATION_PHONE not set');
+  }
+
+  if (!resendKey || !restaurantEmail) {
+    console.warn('[WEBHOOK] Restaurant email skipped — RESEND_API_KEY or RESTAURANT_NOTIFICATION_EMAIL not set');
+    return;
+  }
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsHtml = items
+    .map((item: { name: string; quantity: number; price: number }) =>
+      `<tr><td style="padding:4px 8px">${item.quantity}×</td><td style="padding:4px 8px">${item.name}</td><td style="padding:4px 8px;text-align:right">$${(item.price * item.quantity).toFixed(2)}</td></tr>`
+    )
+    .join('');
+
+  const deliveryRow = order.order_type === 'delivery' && order.delivery_address
+    ? `<p><strong>Deliver to:</strong> ${order.delivery_address}</p>`
+    : `<p><strong>Type:</strong> Pickup</p>`;
+
+  const notesRow = order.notes
+    ? `<p><strong>Special instructions:</strong> ${order.notes}</p>`
+    : '';
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+      <h2 style="background:#E31E24;color:#fff;padding:16px;margin:0;border-radius:8px 8px 0 0">
+        🚨 New Order — #${order.order_number}
+      </h2>
+      <div style="border:1px solid #eee;border-top:none;padding:16px;border-radius:0 0 8px 8px">
+        <p><strong>Customer:</strong> ${order.customer_name} — ${order.customer_phone}</p>
+        ${deliveryRow}
+        ${notesRow}
+        <table style="width:100%;border-collapse:collapse;margin:12px 0">
+          <thead><tr style="background:#f5f5f5">
+            <th style="padding:4px 8px;text-align:left">Qty</th>
+            <th style="padding:4px 8px;text-align:left">Item</th>
+            <th style="padding:4px 8px;text-align:right">Price</th>
+          </tr></thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+        <p style="text-align:right;font-size:1.1em"><strong>Total: $${Number(order.total).toFixed(2)}</strong></p>
+        <p style="margin-top:16px">
+          <a href="https://losricostacos.com/kitchen" style="background:#E31E24;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold">
+            Open Kitchen Dashboard →
+          </a>
+        </p>
+      </div>
+    </div>
+  `;
+
+  try {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Ricos Tacos Orders <orders@losricostacos.com>',
+        to: [restaurantEmail],
+        subject: `🚨 New ${order.order_type === 'delivery' ? 'Delivery' : 'Pickup'} Order #${order.order_number} — $${Number(order.total).toFixed(2)}`,
+        html,
+      }),
+    });
+
+    if (resp.ok) {
+      console.log('[WEBHOOK] Restaurant notification email sent to', restaurantEmail);
+    } else {
+      const body = await resp.json().catch(() => ({}));
+      console.error('[WEBHOOK] Resend error:', resp.status, JSON.stringify(body));
+    }
+  } catch (err) {
+    console.error('[WEBHOOK] Failed to send restaurant email:', err);
+  }
+}
+
+// ── Shared: handle a confirmed paid order ────────────────────────────────────
+async function handlePaidOrder(orderNumber: string): Promise<void> {
+  // 1. Update order status to 'paid' (idempotent — only if still pending)
+  const { error: updateError } = await supabase
+    .from('orders')
+    .update({ status: 'paid' })
+    .eq('order_number', orderNumber)
+    .eq('status', 'pending');
+
+  if (updateError) {
+    console.error('[WEBHOOK] Failed to update order status:', updateError);
+  } else {
+    console.log('[WEBHOOK] Order status set to paid:', orderNumber);
+  }
+
+  // 2. Email the restaurant — primary reliable notification channel.
+  //    Runs even if the kitchen browser tab is closed.
+  await notifyRestaurant(orderNumber);
+
+  // 3. Web push to kitchen/admin staff — secondary channel (browser tab must be open).
+  try {
+    await supabase.functions.invoke('send-push-notification', {
+      body: {
+        title: '🚨 New Order Received',
+        body: `Order #${orderNumber} — payment confirmed`,
+        data: { url: '/kitchen' },
+        targetRoles: ['admin', 'kitchen'],
+      },
+    });
+  } catch (pushErr) {
+    console.warn('[WEBHOOK] Push notification failed (non-critical):', pushErr);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -33,10 +205,6 @@ serve(async (req) => {
     const body = await req.text();
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
 
-    // FIX: Fail fast if STRIPE_WEBHOOK_SECRET is not configured.
-    // Previously this passed '' to constructEventAsync which throws a
-    // "No signatures found" error on EVERY webhook call — silently returning
-    // HTTP 400 and never processing any payment event.
     if (!webhookSecret) {
       console.error('[WEBHOOK] STRIPE_WEBHOOK_SECRET is not set — cannot verify signature');
       return new Response(
@@ -45,60 +213,26 @@ serve(async (req) => {
       );
     }
 
-    // Verify webhook signature using async method
     const event = await stripe.webhooks.constructEventAsync(
       body,
       signature,
       webhookSecret
     );
 
-    console.log('Webhook event type:', event.type);
+    console.log('[WEBHOOK] Event type:', event.type);
 
-    // Handle payment_intent.succeeded (for PaymentIntent flow)
-    // This is the primary flow used by the app (SecurePaymentModal / create-payment-intent)
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       const orderNumber = paymentIntent.metadata?.order_number;
 
       if (orderNumber) {
         console.log('[WEBHOOK] Payment succeeded for order:', orderNumber);
-
-        // Update order status to 'paid' — this is the authoritative
-        // server-side confirmation that payment has been collected.
-        // Kitchen dashboard queries for "pending", "preparing", and "paid" statuses.
-        const { error: updateError } = await supabase
-          .from('orders')
-          .update({ status: 'paid' })
-          .eq('order_number', orderNumber)
-          .eq('status', 'pending'); // only update if still pending (idempotent)
-
-        if (updateError) {
-          console.error('[WEBHOOK] Failed to update order status:', updateError);
-        } else {
-          console.log('[WEBHOOK] Order status set to paid:', orderNumber);
-        }
-
-        // Fire push notification to kitchen/admin staff
-        try {
-          await supabase.functions.invoke('send-push-notification', {
-            body: {
-              title: '🚨 New Order Received',
-              body: `Order #${orderNumber} — payment confirmed`,
-              data: { url: '/kitchen' },
-              targetRoles: ['admin', 'kitchen'],
-            },
-          });
-        } catch (pushErr) {
-          console.warn('[WEBHOOK] Push notification failed (non-critical):', pushErr);
-        }
+        await handlePaidOrder(orderNumber);
       } else {
         console.warn('[WEBHOOK] payment_intent.succeeded has no order_number in metadata');
       }
     }
 
-    // Handle the checkout.session.completed event (for Checkout Session flow)
-    // FIX: Also update order status to 'paid' here — previously this handler
-    // only tried to send a notification but never updated the order status.
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const orderNumber = session.metadata?.order_number;
@@ -112,34 +246,7 @@ serve(async (req) => {
       }
 
       console.log('[WEBHOOK] Checkout session completed for order:', orderNumber);
-
-      // Update order status to 'paid' (idempotent — only if still pending)
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ status: 'paid' })
-        .eq('order_number', orderNumber)
-        .eq('status', 'pending');
-
-      if (updateError) {
-        console.error('[WEBHOOK] Failed to update order status:', updateError);
-      } else {
-        console.log('[WEBHOOK] Order status set to paid:', orderNumber);
-      }
-
-      // Fire push notification to kitchen/admin staff
-      try {
-        await supabase.functions.invoke('send-push-notification', {
-          body: {
-            title: '🚨 New Order Received',
-            body: `Order #${orderNumber} — payment confirmed`,
-            data: { url: '/kitchen' },
-            targetRoles: ['admin', 'kitchen'],
-          },
-        });
-      } catch (pushErr) {
-        console.warn('[WEBHOOK] Push notification failed (non-critical):', pushErr);
-      }
-
+      await handlePaidOrder(orderNumber);
       console.log('[WEBHOOK] Order pipeline complete for:', orderNumber);
     }
 

@@ -44,17 +44,17 @@ serve(async (req) => {
     const { items, orderType, customerInfo, orderNumber: clientOrderNumber, couponCode, discountAmount, checkoutSessionId } = await req.json();
 
     // Generate a human-readable order number server-side.
-    // Format: RT-YYYYMMDD-XXXX  (e.g. RT-20260324-4F2A)
+    // Format: RT-YYYYMMDD-XXXXXX  (e.g. RT-20260324-4F2A9C)
     //   RT       = Ricos Tacos brand prefix
     //   YYYYMMDD = UTC date — helps staff identify which day an order is from
-    //   XXXX     = 4 random uppercase hex chars (65,536 combos/day — plenty for a restaurant)
+    //   XXXXXX   = 6 random uppercase hex chars (16.7M combos/day — collision-safe)
     //
     // Falls back to a client-supplied orderNumber only if one was explicitly passed
     // (legacy path — no current callers send one, but kept for safety).
     function generateOrderNumber(): string {
       const now = new Date();
       const date = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
-      const rand = Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+      const rand = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase().padStart(6, '0');
       return `RT-${date}-${rand}`;
     }
 

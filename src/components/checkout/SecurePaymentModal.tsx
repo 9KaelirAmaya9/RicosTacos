@@ -43,7 +43,8 @@ function PaymentForm({
   orderType,
   amounts,
   cart,
-  onSuccess
+  onSuccess,
+  onProcessingChange,
 }: {
   orderNumber: string;
   customerInfo: CustomerInfo;
@@ -51,10 +52,17 @@ function PaymentForm({
   amounts: OrderAmounts;
   cart: Array<{ name: string; price: number; quantity: number }>;
   onSuccess: () => void;
+  onProcessingChange: (v: boolean) => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Keep parent in sync so modal close can be blocked during payment
+  const setProcessing = (v: boolean) => {
+    setIsProcessing(v);
+    onProcessingChange(v);
+  };
   const [isReady, setIsReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
@@ -94,7 +102,7 @@ function PaymentForm({
     }
 
     console.log('🟡 Starting payment processing...');
-    setIsProcessing(true);
+    setProcessing(true);
     setErrorMessage(null);
 
     try {
@@ -105,7 +113,7 @@ function PaymentForm({
         console.error('❌ Payment validation failed:', submitError);
         setErrorMessage(submitError.message || 'Please check your payment details.');
         toast.error(submitError.message || 'Please check your payment details.');
-        setIsProcessing(false);
+        setProcessing(false);
         return;
       }
       console.log('✅ Payment details validated');
@@ -124,7 +132,7 @@ function PaymentForm({
         console.error('❌ Payment confirmation failed:', error);
         setErrorMessage(error.message || 'Payment failed. Please try again.');
         toast.error(error.message || 'Payment failed. Please try again.');
-        setIsProcessing(false);
+        setProcessing(false);
         return;
       }
 
@@ -134,11 +142,28 @@ function PaymentForm({
       });
 
       if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
-        // Notify kitchen now that payment is confirmed — fire-and-forget.
         // Use raw fetch() to avoid GoTrueClient JWT refresh (same pattern as Cart.tsx).
         const _SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
         const _SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '';
 
+        // ── Fix: Client-side status update to 'paid' ─────────────────────────
+        // The Stripe webhook also sets this, but webhook delivery can lag 5-30s.
+        // Updating here means the kitchen sees "PAID — New" the instant Stripe
+        // confirms, not after an indeterminate webhook delay.
+        // The webhook's update is idempotent (.eq('status','pending')) so this
+        // client write and the webhook write don't conflict.
+        fetch(`${_SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': _SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ status: 'paid' }),
+        }).catch((e: any) => console.warn('Client-side status update failed (webhook will cover this):', e));
+
+        // Notify kitchen now that payment is confirmed — fire-and-forget.
         fetch(`${_SUPABASE_URL}/functions/v1/send-push-notification`, {
           method: 'POST',
           headers: {
@@ -192,14 +217,14 @@ function PaymentForm({
       } else {
         setErrorMessage('Payment status unclear. Please check your order status.');
         toast.warning('Payment status unclear. Please check your order status.');
-        setIsProcessing(false);
+        setProcessing(false);
       }
     } catch (err: any) {
       console.error('❌ Payment error:', err);
       const message = err?.message || 'An unexpected error occurred.';
       setErrorMessage(message);
       toast.error(message);
-      setIsProcessing(false);
+      setProcessing(false);
     }
   };
 
@@ -353,6 +378,7 @@ export default function SecurePaymentModal({
   onSuccess,
 }: SecurePaymentModalProps) {
   const [stripeInstance, setStripeInstance] = useState<Stripe | null | undefined>(undefined);
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -381,7 +407,17 @@ export default function SecurePaymentModal({
   }, [publishableKey]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Block closing the dialog while a payment is in-flight.
+        // Accidental dismiss (Escape key, backdrop click) during Stripe processing
+        // would leave the customer on the cart page while the charge still completes,
+        // causing "Order Not Found" on the success page.
+        if (!next && isPaymentProcessing) return;
+        onOpenChange(next);
+      }}
+    >
       <DialogContent className="w-[95vw] max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-lg sm:text-xl">Complete Your Payment</DialogTitle>
@@ -408,6 +444,7 @@ export default function SecurePaymentModal({
               amounts={amounts}
               cart={cart}
               onSuccess={onSuccess}
+              onProcessingChange={setIsPaymentProcessing}
             />
           </Elements>
         )}

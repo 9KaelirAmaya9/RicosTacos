@@ -227,6 +227,11 @@ const Cart = () => {
       return;
     }
 
+    // Lock immediately — before any async work — so a second tap while the first
+    // is still in-flight is rejected by the guard above. Previously this was set
+    // later in the flow, allowing a fast double-tap to create two payment intents.
+    setIsProcessing(true);
+
     // Generate a stable session ID for this checkout flow once, on first attempt.
     // Retries (e.g. after a timeout) reuse the same ID so the edge function's
     // idempotency key is identical and Stripe returns the existing payment intent
@@ -333,8 +338,6 @@ const Cart = () => {
     } else {
       if (isDev) console.log("Pickup order - skipping delivery validation");
     }
-
-    setIsProcessing(true);
 
     // Declared OUTSIDE try so it's accessible in catch/finally
     const overallStartTime = Date.now();
@@ -542,6 +545,9 @@ const Cart = () => {
         total: serverAmounts.total,
         notes: validation.data.notes || null,
         status: "pending",
+        // Preserve coupon data so admin reports and receipts show the correct discount
+        coupon_code: appliedCoupon?.code || null,
+        discount_amount: appliedCoupon?.discount_amount || null,
       };
 
       if (isDev) {
@@ -636,10 +642,47 @@ const Cart = () => {
           console.error(`❌ Order creation took ${elapsed}ms before failing`);
         }
 
-        let errorMessage = "Failed to create order. Please try again.";
+        // 23505 = unique_violation on stripe_payment_intent_id.
+        // This means the order was already created in a previous attempt that
+        // succeeded DB-side but failed network-side before the client saw the
+        // response. The same payment intent is still valid (Stripe idempotency
+        // key ensures we got back the same clientSecret). Recover silently by
+        // fetching the existing order and opening the payment modal.
         if (orderError?.code === '23505') {
-          errorMessage = "An order with this number already exists. Please try again.";
-        } else if (orderError?.code === '23503') {
+          if (isDev) console.log("ℹ️ Duplicate PI detected — fetching existing order to resume");
+          try {
+            const existingResp = await fetch(
+              `${SUPABASE_URL}/rest/v1/orders?stripe_payment_intent_id=eq.${encodeURIComponent(piData.paymentIntentId)}&select=order_number&limit=1`,
+              {
+                headers: {
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                },
+              }
+            );
+            if (existingResp.ok) {
+              const rows = await existingResp.json();
+              const existingOrderNumber = rows?.[0]?.order_number;
+              if (existingOrderNumber) {
+                if (isDev) console.log("✅ Resuming existing order:", existingOrderNumber);
+                setCurrentOrderNumber(existingOrderNumber);
+                setCheckoutAmounts(serverAmounts);
+                setCheckoutClientSecret(piData.clientSecret as string);
+                setCheckoutPublishableKey(piData.publishableKey as string);
+                setShowCheckout(true);
+                setIsProcessing(false);
+                return;
+              }
+            }
+          } catch (resumeErr) {
+            if (isDev) console.warn("Could not fetch existing order — falling through to error", resumeErr);
+          }
+          // Could not recover — tell user and let them retry fresh
+          throw new Error("Your session was already started. Please try again.");
+        }
+
+        let errorMessage = "Failed to create order. Please try again.";
+        if (orderError?.code === '23503') {
           errorMessage = "Invalid order data. Please check your information and try again.";
         } else if (orderError?.code === '42501') {
           errorMessage = "Permission denied. Please contact support.";

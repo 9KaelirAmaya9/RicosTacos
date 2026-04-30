@@ -313,13 +313,29 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 4: Return validated zone data
+    // Step 4: Return validated zone data — re-check time limit even for cached entries
     const totalTime = Date.now() - requestStartTime;
+
+    if (zone.estimated_minutes > MAX_DELIVERY_TIME_MINUTES) {
+      console.log(`❌ validate-delivery-google: Cached zone ${zipCode} exceeds limit (${zone.estimated_minutes} min)`);
+      // Mark the cached entry as inactive so it doesn't re-trigger this path
+      supabase.from('delivery_zones').update({ is_active: false }).eq('zip_code', zipCode).then(() => {});
+      return new Response(
+        JSON.stringify({
+          isValid: false,
+          message: `We apologize, but your location is outside our 20-minute delivery zone (estimated ${zone.estimated_minutes} minutes away). Pickup is always available and ready in 20-30 minutes!`,
+          suggestPickup: true,
+          estimatedMinutes: zone.estimated_minutes,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log(`✅ validate-delivery-google: Validation successful (from DB) in ${totalTime}ms`);
-    
+
     return new Response(
-      JSON.stringify({ 
-        isValid: true, 
+      JSON.stringify({
+        isValid: true,
         estimatedMinutes: zone.estimated_minutes,
         message: `Estimated delivery time: ${zone.estimated_minutes} minutes`,
         formattedAddress: verifiedFormattedAddress

@@ -1,40 +1,81 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
+// VAPID public key — must match VAPID_PUBLIC_KEY set in Supabase Edge Function secrets
+// and VITE_VAPID_PUBLIC_KEY set in Vercel environment variables.
+const VAPID_PUBLIC_KEY =
+  import.meta.env.VITE_VAPID_PUBLIC_KEY ||
+  'BJUO9xKvxVa-vOnUNE8_9o2PZRHKi0gFOrQVagNRmuqZVRX7-gwSbHh8JJvntjD8dyjh0YzhwyRVYBN0EilaByk';
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) {
+    output[i] = rawData.charCodeAt(i);
+  }
+  return output;
+}
 
 export const usePushNotifications = () => {
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [permissionState, setPermissionState] = useState<NotificationPermission>('default');
   const { toast } = useToast();
 
   useEffect(() => {
-    checkSupport();
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+    setIsSupported(supported);
+    if (supported && 'Notification' in window) {
+      setPermissionState(Notification.permission);
+    }
     checkSubscription();
   }, []);
 
-  const checkSupport = () => {
-    const supported = 'serviceWorker' in navigator && 'PushManager' in window;
-    setIsSupported(supported);
-    
-    if (!supported) {
-      console.log('Push notifications not supported');
-    }
-  };
-
   const checkSubscription = async () => {
     if (!('serviceWorker' in navigator)) return;
-
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       setIsSubscribed(!!subscription);
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      console.error('[Push] Error checking subscription:', error);
     }
   };
 
-  const subscribe = async () => {
+  const saveSubscriptionToDb = async (subscription: PushSubscription) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
+    if (!user) throw new Error('User not authenticated');
+
+    const sub = subscription.toJSON();
+    const endpoint = sub.endpoint || '';
+
+    // Remove any stale subscriptions for this user before inserting the fresh one.
+    // The table has no unique constraint on endpoint, so we can't upsert —
+    // delete-then-insert is the safe pattern here.
+    await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', user.id);
+
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .insert({
+        user_id: user.id,
+        endpoint,
+        p256dh: sub.keys?.p256dh || '',
+        auth: sub.keys?.auth || '',
+      });
+
+    if (error) throw error;
+  };
+
+  // subscribe — requests permission if needed, then creates the push subscription
+  const subscribe = useCallback(async (): Promise<boolean> => {
     if (!isSupported) {
       toast({
         title: 'Not Supported',
@@ -47,82 +88,92 @@ export const usePushNotifications = () => {
     setIsLoading(true);
 
     try {
-      // Request notification permission
-      const permission = await Notification.requestPermission();
-      
+      // Request notification permission if not already granted
+      let permission = Notification.permission;
+      if (permission === 'default') {
+        permission = await Notification.requestPermission();
+      }
+      setPermissionState(permission);
+
       if (permission !== 'granted') {
         toast({
-          title: 'Permission Denied',
-          description: 'Please enable notifications in your browser settings',
+          title: 'Notifications blocked',
+          description: 'Enable notifications in browser settings → Site Settings → Notifications',
           variant: 'destructive',
         });
         setIsLoading(false);
         return false;
       }
 
-      // Register service worker
-      let registration = await navigator.serviceWorker.getRegistration();
-      
-      if (!registration) {
-        registration = await navigator.serviceWorker.register('/service-worker.js');
-        await navigator.serviceWorker.ready;
+      const registration = await navigator.serviceWorker.ready;
+
+      // Check if already subscribed — if the key matches, reuse it
+      let subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        // Unsubscribe and re-subscribe to ensure key consistency
+        await subscription.unsubscribe();
       }
 
-      // Subscribe to push notifications
-      // Note: In production, you would use your own VAPID keys
-      // For now, we'll use a basic subscription
-      const subscription = await registration.pushManager.subscribe({
+      subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(
-          import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BK8F34vq37vI72C9_4hPr-MW0-8mvqjwNvwZRXBpQNRJ3WUvy8a8mdiXcV0ms7MuxWFRdmvUEqlQxIin5lDvpSA'
-        )
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
 
-      const subscriptionJSON = subscription.toJSON();
-
-      // Get current user - use getSession() to avoid a network call to /auth/v1/user
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user ?? null;
-
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Save subscription to database
-      const { error } = await supabase
-        .from('push_subscriptions')
-        .insert({
-          user_id: user.id,
-          endpoint: subscriptionJSON.endpoint || '',
-          p256dh: subscriptionJSON.keys?.p256dh || '',
-          auth: subscriptionJSON.keys?.auth || '',
-        });
-
-      if (error) throw error;
+      await saveSubscriptionToDb(subscription);
 
       setIsSubscribed(true);
       toast({
-        title: 'Notifications Enabled',
-        description: 'You will now receive push notifications for new orders',
+        title: '🔔 Notifications enabled',
+        description: 'You will be alerted on this device for every new order',
       });
 
-      setIsLoading(false);
       return true;
     } catch (error: any) {
-      console.error('Error subscribing to push notifications:', error);
+      console.error('[Push] Subscribe error:', error);
       toast({
-        title: 'Subscription Failed',
-        description: error.message || 'Failed to enable notifications',
+        title: 'Subscription failed',
+        description: error.message || 'Could not enable notifications',
         variant: 'destructive',
       });
-      setIsLoading(false);
       return false;
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [isSupported, toast]);
 
-  const unsubscribe = async () => {
+  // autoSubscribe — silently subscribes if permission already granted, otherwise no-ops.
+  // Call this on kitchen page mount so staff who already said "yes" are always subscribed.
+  const autoSubscribe = useCallback(async (): Promise<void> => {
+    if (!isSupported) return;
+    if (Notification.permission !== 'granted') return;
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const existing = await registration.pushManager.getSubscription();
+
+      // Already subscribed with a valid endpoint — nothing to do
+      if (existing) {
+        await saveSubscriptionToDb(existing); // keep DB in sync in case row was lost
+        setIsSubscribed(true);
+        return;
+      }
+
+      // Permission is granted but no active subscription — re-subscribe silently
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+
+      await saveSubscriptionToDb(subscription);
+      setIsSubscribed(true);
+      console.log('[Push] Auto-subscribed successfully');
+    } catch (err) {
+      console.warn('[Push] Auto-subscribe failed (non-critical):', err);
+    }
+  }, [isSupported]);
+
+  const unsubscribe = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
-
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
@@ -130,10 +181,8 @@ export const usePushNotifications = () => {
       if (subscription) {
         await subscription.unsubscribe();
 
-        // Remove from database - use getSession() to avoid a network call to /auth/v1/user
         const { data: { session } } = await supabase.auth.getSession();
         const user = session?.user ?? null;
-
         if (user) {
           await supabase
             .from('push_subscriptions')
@@ -144,46 +193,28 @@ export const usePushNotifications = () => {
       }
 
       setIsSubscribed(false);
-      toast({
-        title: 'Notifications Disabled',
-        description: 'You will no longer receive push notifications',
-      });
-
-      setIsLoading(false);
+      toast({ title: 'Notifications disabled' });
       return true;
     } catch (error: any) {
-      console.error('Error unsubscribing:', error);
+      console.error('[Push] Unsubscribe error:', error);
       toast({
-        title: 'Unsubscribe Failed',
-        description: error.message || 'Failed to disable notifications',
+        title: 'Unsubscribe failed',
+        description: error.message,
         variant: 'destructive',
       });
-      setIsLoading(false);
       return false;
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   return {
     isSupported,
     isSubscribed,
     isLoading,
+    permissionState,
     subscribe,
     unsubscribe,
+    autoSubscribe,
   };
 };
-
-// Helper function to convert VAPID key
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}

@@ -25,6 +25,14 @@ export const useOrderAlarm = () => {
     typeof window !== "undefined" &&
     ("AudioContext" in window || "webkitAudioContext" in window);
 
+  // Only attempt vibration on touch-capable devices (Android PWA).
+  // Desktop Chrome has navigator.vibrate but blocks it with an [Intervention]
+  // console warning — checking maxTouchPoints avoids that noise entirely.
+  const canVibrate = () =>
+    typeof navigator !== "undefined" &&
+    "vibrate" in navigator &&
+    navigator.maxTouchPoints > 0;
+
   // ── AudioContext lifecycle ─────────────────────────────────────────────────
   // On Android Chrome the context survives screen lock but goes "suspended".
   // On iOS Safari it can be "closed" after a long background period.
@@ -73,8 +81,8 @@ export const useOrderAlarm = () => {
    * staff even if the AudioContext is temporarily suspended.
    */
   const playAlarmChime = useCallback(async () => {
-    // ── Vibration (Android PWA) ───────────────────────────────────────────────
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    // ── Vibration (Android PWA only) ─────────────────────────────────────────
+    if (canVibrate()) {
       try { navigator.vibrate([250, 100, 250, 100, 250]); } catch { /* ignore */ }
     }
 
@@ -95,8 +103,8 @@ export const useOrderAlarm = () => {
         osc.start(now + startOffset);
         osc.stop(now + startOffset + duration + 0.01);
       };
-      playTone(880, 0, 0.22, 0.55);
-      playTone(660, 0.20, 0.28, 0.45);
+      playTone(880, 0, 0.22, 0.85);
+      playTone(660, 0.20, 0.28, 0.75);
       return;
     }
 
@@ -153,8 +161,8 @@ export const useOrderAlarm = () => {
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    // Cancel any pending vibration pattern
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    // Cancel any pending vibration pattern (touch devices only)
+    if (canVibrate()) {
       try { navigator.vibrate(0); } catch { /* ignore */ }
     }
   }, []);

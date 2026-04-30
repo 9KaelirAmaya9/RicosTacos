@@ -10,6 +10,7 @@ import { Clock, Package, ChefHat, Printer, BellOff, MapPin, StickyNote } from "l
 import { printReceipt } from "@/utils/printReceipt";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { useOrderAlarm } from "@/hooks/useOrderAlarm";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 // ── SW postMessage listener type ──────────────────────────────────────────────
 interface SwMessage {
@@ -79,7 +80,16 @@ const Kitchen = () => {
   });
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const { startAlarm, stopAlarm, unlockAudio } = useOrderAlarm();
+  const { autoSubscribe } = usePushNotifications();
+
+  // Auto-subscribe to OS push notifications as soon as the session is ready.
+  // If the user already granted permission, this is silent and instant.
+  // If not, it no-ops — staff can still click "Enable Notifications" in the card below.
+  useEffect(() => {
+    if (session) void autoSubscribe();
+  }, [session, autoSubscribe]);
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const alarmMinimumUntilRef = useRef<number>(0);
   const stopTimeoutRef = useRef<number | null>(null);
@@ -248,6 +258,7 @@ const Kitchen = () => {
     } finally {
       fetchInProgressRef.current = false;
       setLoading(false);
+      setLastFetchedAt(new Date());
       // If updateStatus queued a fetch while we were in-flight, run it now.
       if (pendingFetchRef.current) {
         pendingFetchRef.current = false;
@@ -291,6 +302,27 @@ const Kitchen = () => {
 
         if (error) throw error;
         toast.success("Order status updated");
+
+        // When an order is marked ready, SMS the customer so they know
+        // to come pick up (or that their delivery is on the way).
+        // Fire-and-forget — never block the kitchen UI on this.
+        if (newStatus === 'ready') {
+          const order = orders.find((o) => o.id === orderId);
+          if (order) {
+            fetch(`${SUPABASE_URL}/functions/v1/notify-order-ready`, {
+              method: 'POST',
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                orderNumber: order.order_number,
+                orderType: order.order_type,
+              }),
+            }).catch((e) => console.warn('[Kitchen] Customer SMS failed (non-critical):', e));
+          }
+        }
       } catch (error) {
         console.error("Error updating status:", error);
         toast.error("Failed to update status");
@@ -439,6 +471,24 @@ const Kitchen = () => {
     return `${minutes} min`;
   }, []);
 
+  // Returns a border urgency class based on how long the order has been waiting.
+  // Unaccepted (paid/pending): amber at 15 min, red at 25 min.
+  // Preparing: amber at 25 min, red at 40 min.
+  const getUrgencyClass = useCallback((order: Order) => {
+    const ageMin = Math.floor(
+      (currentTime.getTime() - new Date(order.created_at).getTime()) / 60000
+    );
+    if (order.status === 'paid' || order.status === 'pending' || order.status === 'confirmed') {
+      if (ageMin >= 25) return 'border-red-500';
+      if (ageMin >= 15) return 'border-amber-400';
+    }
+    if (order.status === 'preparing') {
+      if (ageMin >= 40) return 'border-red-500';
+      if (ageMin >= 25) return 'border-amber-400';
+    }
+    return 'border-border';
+  }, [currentTime]);
+
   const hasActiveAlarm = orders.some(
     (o) => o.status === "pending" || o.status === "paid" || o.status === "confirmed"
   );
@@ -469,8 +519,21 @@ const Kitchen = () => {
             </div>
 
             <div className="flex items-center gap-3 self-end sm:self-auto">
-              {/* Stop alarm button — only visible when alarm is active */}
-              {hasActiveAlarm && audioEnabled && (
+              {/* Sound controls */}
+              {!audioEnabled ? (
+                <Button
+                  size="lg"
+                  className="gap-2 text-base h-12 bg-yellow-500 hover:bg-yellow-400 text-yellow-950 font-bold animate-pulse"
+                  onClick={async () => {
+                    const ok = await unlockAudio();
+                    setAudioEnabled(ok);
+                    await startAlarm();
+                    setTimeout(() => stopAlarm(), 2000);
+                  }}
+                >
+                  🔔 Enable Sound
+                </Button>
+              ) : hasActiveAlarm ? (
                 <Button
                   variant="destructive"
                   size="lg"
@@ -479,6 +542,18 @@ const Kitchen = () => {
                 >
                   <BellOff className="h-5 w-5" />
                   Silence Alarm
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-sm h-9 text-muted-foreground"
+                  onClick={async () => {
+                    await startAlarm();
+                    setTimeout(() => stopAlarm(), 2000);
+                  }}
+                >
+                  🔔 Test Sound
                 </Button>
               )}
 
@@ -495,29 +570,28 @@ const Kitchen = () => {
       </div>
 
       <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-        {!audioEnabled && (
-          <button
-            className="w-full text-left cursor-pointer"
-            onClick={async () => {
-              const ok = await unlockAudio();
-              setAudioEnabled(ok);
-            }}
-          >
-            <Card className="bg-yellow-400 dark:bg-yellow-500 border-yellow-500 dark:border-yellow-400 animate-pulse hover:animate-none">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="text-4xl">🔔</div>
-                <div>
-                  <h3 className="font-bold text-lg text-yellow-900 dark:text-yellow-950">
-                    TAP HERE to Enable Order Alarms
-                  </h3>
-                  <p className="text-sm text-yellow-800 dark:text-yellow-900">
-                    Audio alerts are off — tap this banner before orders arrive
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </button>
+        {/* Sound status bar — only show when audio is confirmed enabled */}
+        {audioEnabled && !hasActiveAlarm && (
+          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 rounded-lg px-4 py-2 border border-green-200 dark:border-green-800">
+            <span>🔔</span>
+            <span className="font-medium">Sound alerts active</span>
+            <span className="text-muted-foreground">— alarm will fire on every new order</span>
+          </div>
         )}
+
+        {/* Staleness indicator — warn if data is more than 2 minutes old */}
+        {lastFetchedAt && (() => {
+          const ageMs = currentTime.getTime() - lastFetchedAt.getTime();
+          const ageMins = Math.floor(ageMs / 60000);
+          if (ageMins < 2) return null;
+          return (
+            <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg px-4 py-2 border border-yellow-200 dark:border-yellow-800">
+              <span>⚠️</span>
+              <span className="font-medium">Last updated {ageMins} min ago</span>
+              <span className="text-muted-foreground">— connection may be slow. Orders are still coming in.</span>
+            </div>
+          );
+        })()}
 
         <NotificationSettings />
 
@@ -534,7 +608,11 @@ const Kitchen = () => {
             {orders.map((order) => (
               <Card
                 key={order.id}
-                className="border-4 hover:shadow-2xl transition-shadow flex flex-col"
+                className={`border-4 hover:shadow-2xl transition-shadow flex flex-col ${getUrgencyClass(order)} ${
+                  order.status === "paid" || order.status === "pending"
+                    ? "ring-4 ring-green-400 ring-offset-2 animate-pulse"
+                    : ""
+                }`}
               >
                 <CardHeader
                   className={`${getStatusColor(order.status)} text-white p-5 md:p-7`}
@@ -573,6 +651,14 @@ const Kitchen = () => {
                     <p className="font-semibold text-2xl md:text-3xl break-words">
                       {order.customer_name}
                     </p>
+                    {order.customer_phone && (
+                      <a
+                        href={`tel:${order.customer_phone}`}
+                        className="text-base text-primary underline-offset-2 hover:underline mt-1 inline-block"
+                      >
+                        {order.customer_phone}
+                      </a>
+                    )}
                   </div>
 
                   {/* Delivery address */}
