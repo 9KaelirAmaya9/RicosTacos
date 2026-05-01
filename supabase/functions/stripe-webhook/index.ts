@@ -10,6 +10,8 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://losricostacos.com';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
@@ -53,7 +55,7 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
       `${itemSummary}\n` +
       (order.delivery_address ? `📍 ${order.delivery_address}\n` : '') +
       (order.notes ? `📝 ${order.notes}\n` : '') +
-      `losricostacos.com/kitchen`;
+      `${SITE_URL}/kitchen`;
 
     try {
       const smsResp = await fetch(
@@ -119,7 +121,7 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
         </table>
         <p style="text-align:right;font-size:1.1em"><strong>Total: $${Number(order.total).toFixed(2)}</strong></p>
         <p style="margin-top:16px">
-          <a href="https://losricostacos.com/kitchen" style="background:#E31E24;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold">
+          <a href="${SITE_URL}/kitchen" style="background:#E31E24;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold">
             Open Kitchen Dashboard →
           </a>
         </p>

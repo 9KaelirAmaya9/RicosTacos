@@ -27,6 +27,8 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://losricostacos.com';
+
   try {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     
@@ -132,7 +134,7 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
               <p style="margin: 0; color: #666; font-size: 14px;">
                 Thank you for choosing Ricos Tacos!<br>
-                <a href="https://losricostacos.com" style="color: #d97706; text-decoration: none;">Visit our website</a>
+                <a href="${SITE_URL}" style="color: #d97706; text-decoration: none;">Visit our website</a>
               </p>
             </div>
           </div>
