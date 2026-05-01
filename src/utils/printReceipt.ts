@@ -18,13 +18,6 @@ interface ReceiptData {
 }
 
 export const printReceipt = (order: ReceiptData) => {
-  const printWindow = window.open('', '_blank');
-  
-  if (!printWindow) {
-    alert('Please allow popups to print receipts');
-    return;
-  }
-
   const receiptHTML = `
     <!DOCTYPE html>
     <html>
@@ -68,21 +61,10 @@ export const printReceipt = (order: ReceiptData) => {
           margin: 5px 0;
           font-size: 11px;
         }
-        .item-name {
-          flex: 1;
-        }
-        .item-qty {
-          width: 30px;
-          text-align: center;
-        }
-        .item-price {
-          width: 60px;
-          text-align: right;
-        }
-        .totals {
-          margin: 15px 0;
-          font-size: 12px;
-        }
+        .item-name { flex: 1; }
+        .item-qty { width: 30px; text-align: center; }
+        .item-price { width: 60px; text-align: right; }
+        .totals { margin: 15px 0; font-size: 12px; }
         .total-row {
           display: flex;
           justify-content: space-between;
@@ -107,8 +89,8 @@ export const printReceipt = (order: ReceiptData) => {
     <body>
       <div class="header">
         <div class="restaurant-name">Ricos Tacos Puebla</div>
-        <div>123 Main St, Brooklyn, NY</div>
-        <div>(718) 555-0123</div>
+        <div>Brooklyn, NY</div>
+        <div>(718) 633-4816</div>
       </div>
 
       <div class="order-info">
@@ -149,17 +131,34 @@ export const printReceipt = (order: ReceiptData) => {
         <div>Thank you for your order!</div>
         <div>Follow us @RicosTacosPuebla</div>
       </div>
-
-      <script>
-        window.onload = function() {
-          window.print();
-          setTimeout(() => window.close(), 500);
-        }
-      </script>
     </body>
     </html>
   `;
 
-  printWindow.document.write(receiptHTML);
-  printWindow.document.close();
+  // Use a hidden iframe instead of window.open so popup blockers don't interfere.
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:0;';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument ?? iframe.contentWindow?.document;
+  if (!doc) {
+    document.body.removeChild(iframe);
+    return;
+  }
+
+  doc.open();
+  doc.write(receiptHTML);
+  doc.close();
+
+  // Wait for fonts/styles to load before printing
+  iframe.contentWindow?.addEventListener('load', () => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+    // Clean up after the print dialog closes
+    setTimeout(() => {
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    }, 1000);
+  });
 };

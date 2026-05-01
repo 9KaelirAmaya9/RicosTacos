@@ -280,17 +280,13 @@ const Kitchen = () => {
         // Mark as optimistically removed so any in-flight poll doesn't re-add it
         optimisticallyRemovedRef.current.add(orderId);
       }
-      setOrders((prevOrders) => {
-        const updated = prevOrders.map((order) =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        );
-        return updated.filter(
-          (order) =>
-            order.status === "preparing" ||
-            order.status === "paid" ||
-            order.status === "confirmed"
-        );
-      });
+      const nextOrders = orders
+        .map((order) => order.id === orderId ? { ...order, status: newStatus } : order)
+        .filter((order) => order.status === "preparing" || order.status === "paid" || order.status === "confirmed");
+      setOrders(nextOrders);
+      // Write to localStorage immediately so a hard refresh during the DB write
+      // doesn't resurrect the order from the stale cache.
+      writeKitchenCache(nextOrders);
 
       try {
         const { error } = await supabase

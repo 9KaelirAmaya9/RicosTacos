@@ -26,7 +26,7 @@ const Profile = () => {
   useEffect(() => {
     if (authLoading) return; // wait for auth to resolve
     if (!session) {
-      navigate("/auth");
+      navigate("/signin");
       return;
     }
 

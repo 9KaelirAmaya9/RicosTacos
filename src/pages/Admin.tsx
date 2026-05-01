@@ -114,7 +114,7 @@ const Admin = () => {
     console.log('[Admin] fetchAdminMetrics result — count:', allOrders.length);
 
     const ordersToday = allOrders.filter(o => o.created_at >= todayISO);
-    const pendingOrders = allOrders.filter(o => ["pending", "paid", "confirmed"].includes(o.status));
+    const pendingOrders = allOrders.filter(o => ["paid", "confirmed", "preparing"].includes(o.status));
     const recentOrders = allOrders.slice(0, 10);
 
     return {
@@ -238,7 +238,7 @@ const Admin = () => {
   useEffect(() => {
     if (!metrics) return;
     const unaccepted = metrics.recentOrders.filter(
-      (o: any) => o.status === 'pending' || o.status === 'paid' || o.status === 'confirmed'
+      (o: any) => o.status === 'paid' || o.status === 'confirmed'
     );
     const newOnes = unaccepted.filter((o: any) => !knownOrderIdsRef.current.has(o.id));
 
@@ -278,7 +278,7 @@ const Admin = () => {
       title: "Pending Orders",
       value: pendingOrders,
       icon: Clock,
-      description: "Awaiting processing",
+      description: "Paid — awaiting kitchen",
       color: "text-orange-600",
     },
     {
