@@ -68,6 +68,13 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter>
+                <div
+                  id="sr-announcer"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className="sr-only"
+                />
                 <Suspense fallback={null}>
                   <Routes>
                     <Route path="/" element={<Index />} />

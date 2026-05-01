@@ -46,7 +46,7 @@ const Location = () => {
             {/* Location Info */}
             <Card className="p-8">
               <div className="flex items-center gap-3 mb-6">
-                <img src={logo} alt="Ricos Tacos" className="h-16 w-16" />
+                <img src={logo} alt="Ricos Tacos" className="h-16 w-16" width={64} height={64} />
                 <h2 className="font-serif text-3xl font-semibold">{t("location.locationTitle")}</h2>
               </div>
               <div className="space-y-6">

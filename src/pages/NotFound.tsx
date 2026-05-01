@@ -2,6 +2,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
+import { SEO } from "@/components/SEO";
 
 const NotFound = () => {
   const location = useLocation();
@@ -21,6 +22,13 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
+    <>
+    <SEO
+      title="Page Not Found | Ricos Tacos Brooklyn"
+      description="The page you're looking for doesn't exist. Head back to our menu."
+      canonicalPath="/404"
+      noindex={true}
+    />
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="text-center space-y-4 max-w-md">
         <h1 className="text-6xl font-bold text-primary">404</h1>
@@ -38,6 +46,7 @@ const NotFound = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

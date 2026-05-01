@@ -28,7 +28,7 @@ All colors MUST be HSL.
 
     /* Soft muted tones */
     --muted: 43 20% 94%;
-    --muted-foreground: 20 8% 45%;
+    --muted-foreground: 20 8% 38%;
 
     /* Orange accent from border */
     --accent: 24 91% 57%;

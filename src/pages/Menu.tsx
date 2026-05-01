@@ -125,7 +125,7 @@ const Menu = () => {
       <SerapeStripe />
       <Navigation />
       
-      <div className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
+      <div className="pt-24 sm:pt-28 md:pt-32 pb-20 md:pb-0">
         <div className="container mx-auto px-4">
           {/* Header */}
           <div className="text-center mb-8 sm:mb-12">

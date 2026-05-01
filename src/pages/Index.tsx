@@ -54,7 +54,7 @@ const Index = () => {
         "itemListElement": [{ "@type": "ListItem", "position": 1, "name": "Home", "item": "https://losricostacos.com" }]
       })}</script>
     </Helmet>
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-20 md:pb-0">
       {/* Skip to content link for accessibility */}
       <a 
         href="#main-content" 

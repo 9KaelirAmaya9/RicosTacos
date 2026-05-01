@@ -1,22 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ShoppingBag, Calendar, DollarSign, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, ShoppingBag, Calendar, DollarSign, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-
-interface Order {
-  id: string;
-  order_number: string;
-  created_at: string;
-  status: string;
-  order_type: string;
-  total: number;
-  items: Array<{ name: string; quantity: number; price: number }>;
-}
+import type { Order } from "@/types/orders";
 
 const OrderHistory = () => {
   const { session, loading: authLoading } = useAuth();
@@ -34,7 +26,7 @@ const OrderHistory = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setOrders((data || []) as any as Order[]);
+      setOrders((data || []) as Order[]);
     } catch (error: any) {
       console.error("Error loading orders:", error);
       toast.error("Failed to load order history");
@@ -112,6 +104,12 @@ const OrderHistory = () => {
               <p className="text-muted-foreground">
                 You haven't placed any orders yet. Start ordering to see your history here!
               </p>
+              <Link to="/order">
+                <Button variant="outline" className="mt-4 gap-2">
+                  <ArrowRight className="h-4 w-4" />
+                  Browse the Menu
+                </Button>
+              </Link>
             </Card>
           ) : (
             <div className="space-y-4">

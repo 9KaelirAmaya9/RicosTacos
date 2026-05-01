@@ -71,6 +71,8 @@ export const Navigation = () => {
                 src={logoGreen}
                 alt="Ricos Tacos sign"
                 className="w-full h-full object-cover"
+                width={88}
+                height={88}
               />
             </div>
 
