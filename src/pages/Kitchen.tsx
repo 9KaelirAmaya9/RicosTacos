@@ -124,7 +124,7 @@ const Kitchen = () => {
 
   const syncAlarmState = useCallback((nextOrders: Order[]) => {
     const hasUnacceptedOrders = nextOrders.some(
-      (o) => o.status === "pending" || o.status === "paid" || o.status === "confirmed"
+      (o) => o.status === "paid" || o.status === "confirmed"
     );
 
     if (hasUnacceptedOrders) {
@@ -171,7 +171,7 @@ const Kitchen = () => {
       const timeoutId = setTimeout(() => controller.abort(), 20000);
 
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/orders?select=*&status=in.(pending,preparing,paid,confirmed)&order=created_at.asc`,
+        `${SUPABASE_URL}/rest/v1/orders?select=*&status=in.(paid,confirmed,preparing)&order=created_at.asc`,
         {
           headers: {
             'apikey': SUPABASE_KEY,
@@ -196,7 +196,7 @@ const Kitchen = () => {
         const newUnacceptedOrders = nextOrders.filter(
           (order) =>
             !knownOrderIdsRef.current.has(order.id) &&
-            (order.status === "pending" || order.status === "paid")
+            (order.status === "paid" || order.status === "confirmed")
         );
 
         if (newUnacceptedOrders.length > 0) {
@@ -271,7 +271,6 @@ const Kitchen = () => {
     async (orderId: string, newStatus: string) => {
       // Determine if this status removes the order from the kitchen display
       const kitchenVisible =
-        newStatus === "pending" ||
         newStatus === "preparing" ||
         newStatus === "paid" ||
         newStatus === "confirmed";
@@ -287,7 +286,6 @@ const Kitchen = () => {
         );
         return updated.filter(
           (order) =>
-            order.status === "pending" ||
             order.status === "preparing" ||
             order.status === "paid" ||
             order.status === "confirmed"
@@ -452,13 +450,11 @@ const Kitchen = () => {
 
   const getStatusColor = (status: string) => {
     if (status === "paid" || status === "confirmed") return "bg-green-600";
-    if (status === "pending") return "bg-yellow-500";
     return "bg-blue-500"; // preparing
   };
 
   const getStatusLabel = (status: string) => {
     if (status === "paid" || status === "confirmed") return "PAID — New";
-    if (status === "pending") return "PENDING";
     return "PREPARING";
   };
 
@@ -478,7 +474,7 @@ const Kitchen = () => {
     const ageMin = Math.floor(
       (currentTime.getTime() - new Date(order.created_at).getTime()) / 60000
     );
-    if (order.status === 'paid' || order.status === 'pending' || order.status === 'confirmed') {
+    if (order.status === 'paid' || order.status === 'confirmed') {
       if (ageMin >= 25) return 'border-red-500';
       if (ageMin >= 15) return 'border-amber-400';
     }
@@ -490,7 +486,7 @@ const Kitchen = () => {
   }, [currentTime]);
 
   const hasActiveAlarm = orders.some(
-    (o) => o.status === "pending" || o.status === "paid" || o.status === "confirmed"
+    (o) => o.status === "paid" || o.status === "confirmed"
   );
 
   return (
@@ -609,7 +605,7 @@ const Kitchen = () => {
               <Card
                 key={order.id}
                 className={`border-4 hover:shadow-2xl transition-shadow flex flex-col ${getUrgencyClass(order)} ${
-                  order.status === "paid" || order.status === "pending"
+                  order.status === "paid" || order.status === "confirmed"
                     ? "ring-4 ring-green-400 ring-offset-2 animate-pulse"
                     : ""
                 }`}
@@ -713,14 +709,6 @@ const Kitchen = () => {
 
                   {/* Actions */}
                   <div className="space-y-3 mt-auto">
-                    {order.status === "pending" && (
-                      <Button
-                        onClick={() => updateStatus(order.id, "preparing")}
-                        className="w-full text-2xl md:text-3xl font-semibold h-16 md:h-20"
-                      >
-                        Start Preparing
-                      </Button>
-                    )}
                     {(order.status === "paid" || order.status === "confirmed") && (
                       <Button
                         onClick={() => updateStatus(order.id, "preparing")}
