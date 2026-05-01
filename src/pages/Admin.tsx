@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useRef, useState, useEffect } from "react";
+import { useOrderAlarm } from "@/hooks/useOrderAlarm";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,6 +58,23 @@ const Admin = () => {
   const sessionRef = useRef(session);
   useEffect(() => { sessionRef.current = session; }, [session]);
   const userEmail = user?.email || "";
+
+  // ── Alarm — fires when unaccepted orders exist, same as Kitchen/AdminOrders ──
+  const { startAlarm, stopAlarm, unlockAudio } = useOrderAlarm();
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
+
+  // Unlock AudioContext on first interaction so alarm can play async
+  useEffect(() => {
+    if (audioEnabled) return;
+    const unlock = async () => { const ok = await unlockAudio(); setAudioEnabled(ok); };
+    document.addEventListener('click', unlock, { once: true });
+    document.addEventListener('touchstart', unlock, { once: true });
+    return () => {
+      document.removeEventListener('click', unlock);
+      document.removeEventListener('touchstart', unlock);
+    };
+  }, [audioEnabled, unlockAudio]);
 
   // ── Component-scoped fetchAdminMetrics — raw fetch() bypasses GoTrueClient lock
   const fetchAdminMetrics = useCallback(async (): Promise<AdminMetrics> => {
@@ -215,6 +233,24 @@ const Admin = () => {
       setIsDeleting(false);
     }
   }, [queryClient]);
+
+  // ── Alarm trigger — fires when metrics load/update with unaccepted orders ───
+  useEffect(() => {
+    if (!metrics) return;
+    const unaccepted = metrics.recentOrders.filter(
+      (o: any) => o.status === 'pending' || o.status === 'paid' || o.status === 'confirmed'
+    );
+    const newOnes = unaccepted.filter((o: any) => !knownOrderIdsRef.current.has(o.id));
+
+    if (newOnes.length > 0) {
+      void startAlarm();
+    } else if (unaccepted.length === 0) {
+      stopAlarm();
+    }
+
+    // Update known set from full recent list so next render can diff correctly
+    knownOrderIdsRef.current = new Set(metrics.recentOrders.map((o: any) => o.id));
+  }, [metrics, startAlarm, stopAlarm]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
   const todayOrders = metrics?.todayOrders ?? 0;

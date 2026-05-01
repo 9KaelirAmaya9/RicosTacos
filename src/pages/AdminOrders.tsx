@@ -60,11 +60,28 @@ export default function AdminOrders() {
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const { startAlarm, stopAlarm } = useOrderAlarm();
+  const { startAlarm, stopAlarm, unlockAudio } = useOrderAlarm();
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const alarmMinimumUntilRef = useRef<number>(0);
   const stopTimeoutRef = useRef<number | null>(null);
   const snoozedUntilRef = useRef<number>(0);
+
+  // Unlock AudioContext on first user interaction — identical to Kitchen.tsx.
+  // Without this, startAlarm() calls are silently swallowed by the browser.
+  useEffect(() => {
+    if (audioEnabled) return;
+    const handleInteraction = async () => {
+      const ok = await unlockAudio();
+      setAudioEnabled(ok);
+    };
+    document.addEventListener('click', handleInteraction, { once: true });
+    document.addEventListener('touchstart', handleInteraction, { once: true });
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+    };
+  }, [audioEnabled, unlockAudio]);
   // Prevent concurrent fetches stacking up with 5s poll + long timeout
   const fetchInProgressRef = useRef(false);
   const navigate = useNavigate();
@@ -291,10 +308,21 @@ export default function AdminOrders() {
           </Button>
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold">Order Tracking</h1>
-            <Button onClick={fetchOrders} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              {audioEnabled ? (
+                <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                  🔔 Sound active
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  🔕 Click anywhere to enable sound
+                </span>
+              )}
+              <Button onClick={fetchOrders} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
 
