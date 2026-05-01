@@ -46,7 +46,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error } = await supabase
       .from('orders')
-      .select('order_number, customer_name, customer_phone, order_type')
+      .select('order_number, customer_name, customer_phone, order_type, customer_notified_at')
       .eq('order_number', orderNumber)
       .single();
 
@@ -55,6 +55,15 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: 'Order not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Idempotency guard — never send the customer two "ready" texts
+    if (order.customer_notified_at) {
+      console.log('[notify-order-ready] Already notified for order', orderNumber, 'at', order.customer_notified_at, '— skipping');
+      return new Response(
+        JSON.stringify({ success: true, message: 'Already notified — skipped duplicate' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -67,11 +76,12 @@ Deno.serve(async (req: Request) => {
     }
 
     const customerName = order.customer_name ?? 'there';
+    const restaurantPhone = Deno.env.get('RESTAURANT_PHONE_NUMBER') || '(718) 633-4816';
 
     const smsBody =
       orderType === 'pickup'
-        ? `Hi ${customerName}! Your order #${orderNumber} from Ricos Tacos is ready for pickup! 🌮\nCome in anytime — we're at 349 Knickerbocker Ave, Brooklyn.\nQuestions? Call (718) 633-4816`
-        : `Hi ${customerName}! Your order #${orderNumber} from Ricos Tacos is on its way! 🌮🚗\nEstimated arrival: 30-45 min.\nQuestions? Call (718) 633-4816`;
+        ? `Hi ${customerName}! Your order #${orderNumber} from Ricos Tacos is ready for pickup! 🌮\nCome in anytime — we're at 349 Knickerbocker Ave, Brooklyn.\nQuestions? Call ${restaurantPhone}`
+        : `Hi ${customerName}! Your order #${orderNumber} from Ricos Tacos is on its way! 🌮🚗\nEstimated arrival: 30-45 min.\nQuestions? Call ${restaurantPhone}`;
 
     try {
       const smsResp = await fetch(
@@ -88,6 +98,13 @@ Deno.serve(async (req: Request) => {
 
       if (smsResp.ok) {
         console.log('[notify-order-ready] SMS sent to customer:', order.customer_phone);
+
+        // Stamp the order so duplicate calls are rejected
+        await supabase
+          .from('orders')
+          .update({ customer_notified_at: new Date().toISOString() })
+          .eq('order_number', orderNumber);
+
         return new Response(
           JSON.stringify({ success: true, message: 'SMS sent to customer' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

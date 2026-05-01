@@ -21,6 +21,17 @@ serve(async (req) => {
       );
     }
 
+    // orderAmount must be a real positive number — without this check a crafted
+    // request can pass undefined/null (coerces to 0) and bypass any minimum order
+    // amount requirement, making coupons apply to $0 orders.
+    const orderTotal = Number(orderAmount);
+    if (!orderAmount || isNaN(orderTotal) || orderTotal <= 0) {
+      return new Response(
+        JSON.stringify({ error: 'A valid order amount is required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -66,7 +77,6 @@ serve(async (req) => {
     }
 
     // Check minimum order amount
-    const orderTotal = Number(orderAmount) || 0;
     if (coupon.min_order_amount && orderTotal < coupon.min_order_amount) {
       return new Response(
         JSON.stringify({ 
