@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Loader2, User, LogOut, Mail, Phone, MapPin, History } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import { Textarea } from "@/components/ui/textarea";
+import { NotificationSettings } from "@/components/NotificationSettings";
 
 const Profile = () => {
   const { user, session, loading: authLoading, signOut } = useAuth();
@@ -58,12 +59,15 @@ const Profile = () => {
 
       const { error } = await supabase
         .from("profiles")
-        .upsert({
-          user_id: user.id,
-          name: profileData.name,
-          phone: profileData.phone,
-          default_delivery_address: profileData.address,
-        });
+        .upsert(
+          {
+            user_id: user.id,
+            name: profileData.name,
+            phone: profileData.phone,
+            default_delivery_address: profileData.address,
+          },
+          { onConflict: 'user_id' }
+        );
 
       if (error) throw error;
       
@@ -194,6 +198,9 @@ const Profile = () => {
                 </form>
               </CardContent>
             </Card>
+
+            {/* Notification Settings */}
+            <NotificationSettings />
 
             {/* Order History */}
             <Card>
