@@ -4,8 +4,9 @@ import { Database } from "@/integrations/supabase/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Loader2, UserCog, Shield, ChefHat } from "lucide-react";
+import { Loader2, UserCog, Shield, ChefHat, UserPlus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +37,17 @@ interface UserWithRoles {
 export const RoleManagement = () => {
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMutating, setIsMutating] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{ userId: string; role: string } | null>(null);
+
+  // Incrementing this key forces each user's <Select> to unmount+remount after
+  // a successful role add, resetting the displayed value back to the placeholder.
+  const [selectEpoch, setSelectEpoch] = useState(0);
+
+  // Grant-by-email state
+  const [grantEmail, setGrantEmail] = useState("");
+  const [grantRole, setGrantRole] = useState<AppRole | "">("");
+  const [isGranting, setIsGranting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -45,7 +56,7 @@ export const RoleManagement = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      
+
       // Fetch all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
@@ -87,18 +98,20 @@ export const RoleManagement = () => {
       const usersWithRoles: UserWithRoles[] = Array.from(userIds).map(userId => {
         const profile = profiles?.find(p => p.user_id === userId);
         const userRoles = roles?.filter(r => r.user_id === userId).map(r => r.role) || [];
-        
-        // Get email from: current user, orders, or show user ID
+
+        // Email resolution priority: current user → orders → profile name hint → UUID prefix
         let email = "";
         if (userId === currentUser?.id) {
           email = currentUser.email || "";
         } else if (emailMap.has(userId)) {
           email = emailMap.get(userId)!;
+        } else if (profile?.name) {
+          // Profile name was auto-set from email prefix on signup — use it as hint
+          email = `${profile.name} (email unknown)`;
         } else {
-          // Show first 8 chars of user ID as fallback
-          email = `${userId.substring(0, 8)}...`;
+          email = `${userId.substring(0, 8)}…`;
         }
-        
+
         return {
           id: userId,
           email,
@@ -107,8 +120,9 @@ export const RoleManagement = () => {
         };
       });
 
-      // Sort by name, then email
+      // Sort: users with roles first, then by name/email
       usersWithRoles.sort((a, b) => {
+        if (b.roles.length !== a.roles.length) return b.roles.length - a.roles.length;
         const nameA = a.name || a.email;
         const nameB = b.name || b.email;
         return nameA.localeCompare(nameB);
@@ -124,21 +138,37 @@ export const RoleManagement = () => {
   };
 
   const handleAddRole = async (userId: string, role: string) => {
+    if (isMutating) return;
+
+    // Guard: prevent duplicate roles before hitting the DB
+    const user = users.find(u => u.id === userId);
+    if (user?.roles.includes(role)) {
+      toast.info(`User already has the "${role}" role`);
+      setSelectEpoch(e => e + 1); // still reset the Select
+      return;
+    }
+
+    setIsMutating(true);
     try {
       const { error } = await supabase
         .from("user_roles")
         .insert({ user_id: userId, role: role as AppRole });
 
       if (error) throw error;
-      
+
       toast.success(`Role "${role}" added successfully`);
-      fetchUsers();
+      setSelectEpoch(e => e + 1); // reset all Select dropdowns
+      await fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Failed to add role");
+    } finally {
+      setIsMutating(false);
     }
   };
 
   const handleRemoveRole = async (userId: string, role: string) => {
+    if (isMutating) return;
+    setIsMutating(true);
     try {
       const { error } = await supabase
         .from("user_roles")
@@ -147,11 +177,70 @@ export const RoleManagement = () => {
         .eq("role", role as AppRole);
 
       if (error) throw error;
-      
+
       toast.success(`Role "${role}" removed successfully`);
-      fetchUsers();
+      await fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Failed to remove role");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  // Grant a role by email address — looks the user up via their orders or profiles
+  const handleGrantByEmail = async () => {
+    const email = grantEmail.trim().toLowerCase();
+    if (!email || !grantRole) {
+      toast.error("Enter an email address and select a role");
+      return;
+    }
+
+    setIsGranting(true);
+    try {
+      // Step 1: Find user_id from orders (most reliable email source)
+      let userId: string | null = null;
+
+      const { data: orderMatch } = await supabase
+        .from("orders")
+        .select("user_id")
+        .ilike("customer_email", email)
+        .not("user_id", "is", null)
+        .limit(1)
+        .maybeSingle();
+
+      if (orderMatch?.user_id) {
+        userId = orderMatch.user_id;
+      }
+
+      if (!userId) {
+        toast.error(
+          "No account found with that email. The staff member must sign up first, then you can assign their role here or by searching their profile."
+        );
+        return;
+      }
+
+      // Step 2: Check for existing role
+      const existingUser = users.find(u => u.id === userId);
+      if (existingUser?.roles.includes(grantRole)) {
+        toast.info(`That user already has the "${grantRole}" role`);
+        return;
+      }
+
+      // Step 3: Insert role
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role: grantRole as AppRole });
+
+      if (error) throw error;
+
+      toast.success(`Role "${grantRole}" granted to ${email}`);
+      setGrantEmail("");
+      setGrantRole("");
+      await fetchUsers();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to grant role");
+    } finally {
+      setIsGranting(false);
     }
   };
 
@@ -188,70 +277,135 @@ export const RoleManagement = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserCog className="h-5 w-5" />
-          User Role Management
-        </CardTitle>
-        <CardDescription>
-          Assign or remove admin and kitchen staff roles
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {users.map((user) => (
-            <div
-              key={user.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border rounded-lg"
+    <div className="space-y-6">
+      {/* Grant role by email */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" />
+            Grant Role by Email
+          </CardTitle>
+          <CardDescription>
+            Assign a role to a staff member using their account email address
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Input
+              type="email"
+              placeholder="staff@example.com"
+              value={grantEmail}
+              onChange={e => setGrantEmail(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleGrantByEmail()}
+              disabled={isGranting}
+              className="flex-1"
+            />
+            <Select
+              value={grantRole}
+              onValueChange={v => setGrantRole(v as AppRole)}
+              disabled={isGranting}
             >
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{user.name || "No name"}</div>
-                <div className="text-sm text-muted-foreground truncate">{user.email}</div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {user.roles.length === 0 ? (
-                    <Badge variant="outline">No roles</Badge>
-                  ) : (
-                    user.roles.map((role) => (
-                      <Badge
-                        key={role}
-                        variant={getRoleVariant(role)}
-                        className="flex items-center gap-1"
-                      >
-                        {getRoleIcon(role)}
-                        {role}
-                        <button
-                          onClick={() => setRemoveTarget({ userId: user.id, role })}
-                          className="ml-1 hover:text-destructive"
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="kitchen">Kitchen</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={handleGrantByEmail}
+              disabled={isGranting || !grantEmail.trim() || !grantRole}
+              className="shrink-0"
+            >
+              {isGranting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Granting…</>
+              ) : (
+                <><UserPlus className="h-4 w-4 mr-2" />Grant Role</>
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            The staff member must have an account before a role can be assigned.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* User list */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserCog className="h-5 w-5" />
+            User Role Management
+          </CardTitle>
+          <CardDescription>
+            All registered accounts — assign or remove admin and kitchen roles
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border rounded-lg"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">
+                    {user.name || <span className="text-muted-foreground italic">No name</span>}
+                  </div>
+                  <div className="text-sm text-muted-foreground truncate">{user.email}</div>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {user.roles.length === 0 ? (
+                      <Badge variant="outline">No roles</Badge>
+                    ) : (
+                      user.roles.map((role) => (
+                        <Badge
+                          key={role}
+                          variant={getRoleVariant(role)}
+                          className="flex items-center gap-1"
                         >
-                          ×
-                        </button>
-                      </Badge>
-                    ))
-                  )}
+                          {getRoleIcon(role)}
+                          {role}
+                          <button
+                            onClick={() => !isMutating && setRemoveTarget({ userId: user.id, role })}
+                            className="ml-1 hover:text-destructive disabled:opacity-40"
+                            disabled={isMutating}
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {/* key={selectEpoch} forces a remount after any successful add,
+                      resetting the displayed value back to the placeholder */}
+                  <Select
+                    key={`${user.id}-${selectEpoch}`}
+                    onValueChange={(role) => handleAddRole(user.id, role)}
+                    disabled={isMutating}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder={isMutating ? "Saving…" : "Add role"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="kitchen">Kitchen</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Select onValueChange={(role) => handleAddRole(user.id, role)}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Add role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="kitchen">Kitchen</SelectItem>
-                  </SelectContent>
-                </Select>
+            ))}
+
+            {users.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No users found
               </div>
-            </div>
-          ))}
-          
-          {users.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No users found
-            </div>
-          )}
-        </div>
-      </CardContent>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <AlertDialog open={!!removeTarget} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
         <AlertDialogContent>
@@ -277,6 +431,6 @@ export const RoleManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </div>
   );
 };

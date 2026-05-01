@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -11,27 +12,12 @@ import { printReceipt } from "@/utils/printReceipt";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { useOrderAlarm } from "@/hooks/useOrderAlarm";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import type { Order } from "@/types/orders";
 
 // ── SW postMessage listener type ──────────────────────────────────────────────
 interface SwMessage {
   type: string;
   payload?: unknown;
-}
-
-interface Order {
-  id: string;
-  order_number: string;
-  customer_name: string;
-  customer_phone: string;
-  order_type: string;
-  items: Array<{ name: string; quantity: number; price: number }>;
-  status: string;
-  total: number;
-  subtotal: number;
-  tax: number;
-  delivery_address?: string | null;
-  notes?: string | null;
-  created_at: string;
 }
 
 // ── localStorage cache helpers ────────────────────────────────────────────────
@@ -58,6 +44,7 @@ const SUPABASE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.me
 
 const Kitchen = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { session } = useAuth();
   // Keep session in a ref so fetchOrders always uses the latest token
   // without needing to be recreated on every token refresh
@@ -155,7 +142,7 @@ const Kitchen = () => {
     if (fetchInProgressRef.current) return;
     fetchInProgressRef.current = true;
 
-    console.log('[Kitchen] fetchOrders: starting query...');
+    if (import.meta.env.DEV) console.log('[Kitchen] fetchOrders: starting query...');
     try {
       // Use raw fetch() to bypass the GoTrueClient lock.
       // supabase.from() calls getSession() internally which waits for the lock —
@@ -185,11 +172,15 @@ const Kitchen = () => {
 
       if (!response.ok) {
         const body = await response.text().catch(() => '');
+        if (response.status === 401) {
+          navigate("/signin", { replace: true });
+          return;
+        }
         throw new Error(`HTTP ${response.status}: ${body}`);
       }
 
       const data: Order[] = await response.json();
-      console.log('[Kitchen] fetchOrders result — count:', data.length);
+      if (import.meta.env.DEV) console.log('[Kitchen] fetchOrders result — count:', data.length);
       {
         const nextOrders = data;
         const nextIds = new Set(nextOrders.map((order) => order.id));
@@ -236,9 +227,20 @@ const Kitchen = () => {
         }
         // Filter out orders we've optimistically removed but whose DB write hasn't committed yet.
         // This prevents a stale poll response from re-adding an order the user just dismissed.
-        const displayOrders = nextOrders.filter(
+        const filtered = nextOrders.filter(
           (o) => !optimisticallyRemovedRef.current.has(o.id)
         );
+
+        // Sort by urgency: unaccepted (paid/confirmed) before preparing, then
+        // oldest first within each group so the most time-sensitive order is
+        // always at the top of the board.
+        const statusPriority = (status: string) =>
+          status === 'paid' || status === 'confirmed' ? 0 : 1;
+        const displayOrders = [...filtered].sort((a, b) => {
+          const pd = statusPriority(a.status) - statusPriority(b.status);
+          if (pd !== 0) return pd;
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        });
 
         setOrders(displayOrders);
         // Persist to localStorage (survives hard refresh) and React Query cache (survives navigation)
@@ -265,10 +267,18 @@ const Kitchen = () => {
         void fetchOrders();
       }
     }
-  }, [startAlarm, syncAlarmState, queryClient]);
+  }, [startAlarm, syncAlarmState, queryClient, navigate]);
 
   const updateStatus = useCallback(
     async (orderId: string, newStatus: string) => {
+      // Snapshot current orders so we can restore them if the DB write fails
+      const ordersSnapshot = orders;
+
+      // Capture the order object NOW — before the optimistic filter removes it
+      // from the orders array. The SMS notification path runs after setOrders()
+      // which could make orders.find() return undefined in a stale closure.
+      const orderSnapshot = orders.find((o) => o.id === orderId);
+
       // Determine if this status removes the order from the kitchen display
       const kitchenVisible =
         newStatus === "preparing" ||
@@ -301,8 +311,7 @@ const Kitchen = () => {
         // to come pick up (or that their delivery is on the way).
         // Fire-and-forget — never block the kitchen UI on this.
         if (newStatus === 'ready') {
-          const order = orders.find((o) => o.id === orderId);
-          if (order) {
+          if (orderSnapshot) {
             fetch(`${SUPABASE_URL}/functions/v1/notify-order-ready`, {
               method: 'POST',
               headers: {
@@ -311,17 +320,21 @@ const Kitchen = () => {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                orderNumber: order.order_number,
-                orderType: order.order_type,
+                orderNumber: orderSnapshot.order_number,
+                orderType: orderSnapshot.order_type,
               }),
             }).catch((e) => console.warn('[Kitchen] Customer SMS failed (non-critical):', e));
           }
         }
       } catch (error) {
         console.error("Error updating status:", error);
-        toast.error("Failed to update status");
+        toast.error("Failed to update order status. Please try again.");
         // Undo optimistic removal — DB write failed
         optimisticallyRemovedRef.current.delete(orderId);
+        // Restore the pre-optimistic orders so the order reappears on the board
+        setOrders(ordersSnapshot);
+        writeKitchenCache(ordersSnapshot);
+        queryClient.setQueryData(["kitchen-orders"], ordersSnapshot);
       } finally {
         // Always re-fetch after a status change: use pendingFetchRef if one is already in-flight
         if (fetchInProgressRef.current) {
@@ -331,7 +344,7 @@ const Kitchen = () => {
         }
       }
     },
-    [fetchOrders]
+    [fetchOrders, orders]
   );
 
   const handleStopAlarm = useCallback(() => {
@@ -389,7 +402,7 @@ const Kitchen = () => {
 
     const handleSwMessage = (event: MessageEvent<SwMessage>) => {
       if (event.data?.type === 'NEW_ORDER_PUSH') {
-        console.log('[Kitchen] SW push received — refreshing orders');
+        if (import.meta.env.DEV) console.log('[Kitchen] SW push received — refreshing orders');
         void fetchOrders();
       }
     };

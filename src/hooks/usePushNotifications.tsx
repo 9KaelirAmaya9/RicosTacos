@@ -54,13 +54,14 @@ export const usePushNotifications = () => {
     const sub = subscription.toJSON();
     const endpoint = sub.endpoint || '';
 
-    // Remove any stale subscriptions for this user before inserting the fresh one.
-    // The table has no unique constraint on endpoint, so we can't upsert —
-    // delete-then-insert is the safe pattern here.
+    // Remove the existing row for this specific (user_id, endpoint) pair before
+    // re-inserting. Deleting by user_id alone would wipe subscriptions from all
+    // other devices the user is logged into (phone, tablet, etc).
     await supabase
       .from('push_subscriptions')
       .delete()
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('endpoint', endpoint);
 
     const { error } = await supabase
       .from('push_subscriptions')

@@ -3,11 +3,16 @@ import { useCallback, useEffect, useRef } from "react";
 // Alarm pattern: two-tone descending siren (restaurant order bell).
 // Plays a high-low pair every 1.2 seconds until stopped.
 const ALARM_INTERVAL_MS = 1200;
+// Auto-stop after 5 minutes so the alarm can't ring indefinitely if nobody
+// is watching the screen. syncAlarmState will re-arm it on the next poll
+// if unaccepted orders still exist.
+const ALARM_MAX_DURATION_MS = 5 * 60 * 1000;
 
 export const useOrderAlarm = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<number | null>(null);
+  const maxDurationRef = useRef<number | null>(null);
   const isPlayingRef = useRef(false);
 
   // Pre-load the alarm WAV so it's ready to play instantly
@@ -153,6 +158,19 @@ export const useOrderAlarm = () => {
     intervalRef.current = window.setInterval(() => {
       void playAlarmChime();
     }, ALARM_INTERVAL_MS);
+
+    // Auto-stop after max duration — syncAlarmState will re-arm on next poll
+    // if the order is still unaccepted, preventing truly infinite ringing.
+    maxDurationRef.current = window.setTimeout(() => {
+      if (isPlayingRef.current) {
+        isPlayingRef.current = false;
+        if (intervalRef.current !== null) {
+          window.clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        maxDurationRef.current = null;
+      }
+    }, ALARM_MAX_DURATION_MS);
   }, [playAlarmChime]);
 
   const stopAlarm = useCallback(() => {
@@ -160,6 +178,10 @@ export const useOrderAlarm = () => {
     if (intervalRef.current !== null) {
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
+    }
+    if (maxDurationRef.current !== null) {
+      window.clearTimeout(maxDurationRef.current);
+      maxDurationRef.current = null;
     }
     // Cancel any pending vibration pattern (touch devices only)
     if (canVibrate()) {

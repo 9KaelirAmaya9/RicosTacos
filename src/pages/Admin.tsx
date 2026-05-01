@@ -1,10 +1,12 @@
 import { useMemo, useCallback, useRef, useState, useEffect } from "react";
 import { useOrderAlarm } from "@/hooks/useOrderAlarm";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -34,7 +36,13 @@ import {
   Loader2,
   Trash2,
   ChefHat,
+  Bell,
+  BellOff,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
+import { NotificationSettings } from "@/components/NotificationSettings";
+import type { Order } from "@/types/orders";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface AdminMetrics {
@@ -42,7 +50,7 @@ interface AdminMetrics {
   todayRevenue: number;
   pendingOrders: number;
   totalOrders: number;
-  recentOrders: any[];
+  recentOrders: Order[];
 }
 
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
@@ -59,22 +67,56 @@ const Admin = () => {
   useEffect(() => { sessionRef.current = session; }, [session]);
   const userEmail = user?.email || "";
 
+  // ── Push notifications — auto-subscribe if permission already granted ────────
+  const { autoSubscribe } = usePushNotifications();
+  useEffect(() => { void autoSubscribe(); }, [autoSubscribe]);
+
   // ── Alarm — fires when unaccepted orders exist, same as Kitchen/AdminOrders ──
   const { startAlarm, stopAlarm, unlockAudio } = useOrderAlarm();
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [hasActiveAlarm, setHasActiveAlarm] = useState(false);
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  const snoozedUntilRef = useRef<number>(0);
 
-  // Unlock AudioContext on first interaction so alarm can play async
+  // Unlock AudioContext on first interaction so alarm can play async.
+  // unlockAudio is kept in a ref so the stable handler wrapper never needs to
+  // be re-created — the same function reference is passed to both
+  // addEventListener and removeEventListener, so cleanup always works correctly
+  // even if unlockAudio changes identity across renders.
+  const unlockAudioRef = useRef(unlockAudio);
+  useEffect(() => { unlockAudioRef.current = unlockAudio; }, [unlockAudio]);
+  const unlockHandlerRef = useRef<() => Promise<void>>();
   useEffect(() => {
     if (audioEnabled) return;
-    const unlock = async () => { const ok = await unlockAudio(); setAudioEnabled(ok); };
+    // Create the handler only once (or when audioEnabled resets to false).
+    // Re-use the same function object so removeEventListener finds an exact match.
+    if (!unlockHandlerRef.current) {
+      unlockHandlerRef.current = async () => {
+        const ok = await unlockAudioRef.current();
+        setAudioEnabled(ok);
+        unlockHandlerRef.current = undefined;
+      };
+    }
+    const unlock = unlockHandlerRef.current;
     document.addEventListener('click', unlock, { once: true });
     document.addEventListener('touchstart', unlock, { once: true });
     return () => {
       document.removeEventListener('click', unlock);
       document.removeEventListener('touchstart', unlock);
     };
-  }, [audioEnabled, unlockAudio]);
+  }, [audioEnabled]);
+
+  const handleStopAlarm = useCallback(() => {
+    snoozedUntilRef.current = Date.now() + 5 * 60 * 1000; // snooze 5 min
+    stopAlarm();
+    setHasActiveAlarm(false);
+    toast.info("Alarm silenced for 5 minutes");
+  }, [stopAlarm]);
+
+  const handleTestSound = useCallback(async () => {
+    await startAlarm();
+    setTimeout(() => stopAlarm(), 2000);
+  }, [startAlarm, stopAlarm]);
 
   // ── Component-scoped fetchAdminMetrics — raw fetch() bypasses GoTrueClient lock
   const fetchAdminMetrics = useCallback(async (): Promise<AdminMetrics> => {
@@ -88,7 +130,7 @@ const Admin = () => {
     today.setHours(0, 0, 0, 0);
     const todayISO = today.toISOString();
 
-    console.log('[Admin] fetchAdminMetrics: starting query...');
+    if (import.meta.env.DEV) console.log('[Admin] fetchAdminMetrics: starting query...');
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
 
@@ -110,8 +152,8 @@ const Admin = () => {
       throw new Error(`HTTP ${response.status}: ${body}`);
     }
 
-    const allOrders: any[] = await response.json();
-    console.log('[Admin] fetchAdminMetrics result — count:', allOrders.length);
+    const allOrders: Order[] = await response.json();
+    if (import.meta.env.DEV) console.log('[Admin] fetchAdminMetrics result — count:', allOrders.length);
 
     const ordersToday = allOrders.filter(o => o.created_at >= todayISO);
     const pendingOrders = allOrders.filter(o => ["paid", "confirmed", "preparing"].includes(o.status));
@@ -129,6 +171,7 @@ const Admin = () => {
   // Dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // ── React Query — caches metrics across navigations AND tab close/reopen ──
   //
@@ -218,7 +261,7 @@ const Admin = () => {
       }
       // Content-Range: */N tells us how many rows were deleted
       const contentRange = response.headers.get('Content-Range') || '';
-      console.log('[Admin] DELETE orders response:', response.status, 'Content-Range:', contentRange);
+      if (import.meta.env.DEV) console.log('[Admin] DELETE orders response:', response.status, 'Content-Range:', contentRange);
       const deleted = parseInt(contentRange.replace('*/', ''), 10);
       if (!isNaN(deleted) && deleted === 0) {
         throw new Error('No orders were deleted — you may not have admin permissions. Check console for details.');
@@ -238,18 +281,20 @@ const Admin = () => {
   useEffect(() => {
     if (!metrics) return;
     const unaccepted = metrics.recentOrders.filter(
-      (o: any) => o.status === 'paid' || o.status === 'confirmed'
+      (o) => o.status === 'paid' || o.status === 'confirmed'
     );
-    const newOnes = unaccepted.filter((o: any) => !knownOrderIdsRef.current.has(o.id));
+    const newOnes = unaccepted.filter((o) => !knownOrderIdsRef.current.has(o.id));
 
-    if (newOnes.length > 0) {
+    if (newOnes.length > 0 && Date.now() > snoozedUntilRef.current) {
       void startAlarm();
+      setHasActiveAlarm(true);
     } else if (unaccepted.length === 0) {
       stopAlarm();
+      setHasActiveAlarm(false);
     }
 
     // Update known set from full recent list so next render can diff correctly
-    knownOrderIdsRef.current = new Set(metrics.recentOrders.map((o: any) => o.id));
+    knownOrderIdsRef.current = new Set(metrics.recentOrders.map((o) => o.id));
   }, [metrics, startAlarm, stopAlarm]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -323,7 +368,7 @@ const Admin = () => {
       title: "Settings",
       description: "Account & profile settings",
       icon: Settings,
-      onClick: () => navigate("/profile"),
+      onClick: () => navigate("/profile", { state: { fromAdmin: true } }),
       color: "bg-gray-500 hover:bg-gray-600",
     },
   ], [navigate]);
@@ -532,35 +577,139 @@ const Admin = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Notification Controls */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Notification Controls
+            </CardTitle>
+            <CardDescription>
+              Manage order alert sounds and push notifications for this device
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Audio alarm controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="font-medium text-sm">Order Alert Sound</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {audioEnabled
+                    ? hasActiveAlarm
+                      ? "🔔 Alarm is ringing — new unaccepted orders"
+                      : "Audio enabled — alarm will fire on new paid orders"
+                    : "Click Enable Sound first so the alarm can play"}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {!audioEnabled && (
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      const ok = await unlockAudio();
+                      setAudioEnabled(ok);
+                      toast.success("Audio enabled");
+                    }}
+                    className="gap-2"
+                  >
+                    <Volume2 className="h-4 w-4" />
+                    Enable Sound
+                  </Button>
+                )}
+                {audioEnabled && hasActiveAlarm && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={handleStopAlarm}
+                    className="gap-2"
+                  >
+                    <BellOff className="h-4 w-4" />
+                    Silence (5 min)
+                  </Button>
+                )}
+                {audioEnabled && !hasActiveAlarm && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleTestSound}
+                    className="gap-2"
+                  >
+                    <Volume2 className="h-4 w-4" />
+                    Test Sound
+                  </Button>
+                )}
+                {audioEnabled && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      stopAlarm();
+                      setAudioEnabled(false);
+                      setHasActiveAlarm(false);
+                      toast.info("Audio disabled for this session");
+                    }}
+                    className="gap-2 text-muted-foreground"
+                  >
+                    <VolumeX className="h-4 w-4" />
+                    Disable
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Push notification settings */}
+            <div className="pt-2 border-t">
+              <p className="font-medium text-sm mb-3">Push Notifications</p>
+              <NotificationSettings />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Delete All Orders Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {
+        setShowDeleteDialog(open);
+        if (!open) setDeleteConfirmText("");
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
               Delete All Orders?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p className="font-medium">
-                This will permanently delete ALL {totalOrders} orders from the database.
-              </p>
-              <p>This action cannot be undone. Are you absolutely sure?</p>
-              <Alert variant="destructive" className="mt-3">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Warning:</strong> This will remove all order history, including today's revenue data.
-                </AlertDescription>
-              </Alert>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p className="font-medium">
+                  This will permanently delete ALL {totalOrders} orders from the database.
+                </p>
+                <p>This action cannot be undone. Are you absolutely sure?</p>
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Warning:</strong> This will remove all order history, including today's revenue data.
+                  </AlertDescription>
+                </Alert>
+                <div className="pt-1">
+                  <p className="text-sm font-medium mb-1.5">Type <strong>DELETE</strong> to confirm:</p>
+                  <Input
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                    className="border-destructive focus-visible:ring-destructive"
+                    disabled={isDeleting}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting} onClick={() => setDeleteConfirmText("")}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAllOrders}
-              disabled={isDeleting}
-              className="bg-destructive hover:bg-destructive/90"
+              disabled={isDeleting || deleteConfirmText !== "DELETE"}
+              className="bg-destructive hover:bg-destructive/90 disabled:opacity-40"
             >
               {isDeleting ? (
                 <>

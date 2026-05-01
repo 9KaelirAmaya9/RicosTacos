@@ -46,11 +46,9 @@ const KitchenLogin = () => {
       }
 
       toast.success("Login successful! Redirecting to kitchen...");
-
-      // Defer navigation and let ProtectedRoute handle authorization
-      setTimeout(() => {
-        navigate("/kitchen", { replace: true });
-      }, 300);
+      // Navigation is handled by the useEffect above once AuthContext finishes
+      // loading roles — removing the 300 ms setTimeout prevents landing on
+      // /kitchen before ProtectedRoute has confirmed the kitchen/admin role.
 
     } catch (error: any) {
       console.error("Login error:", error);

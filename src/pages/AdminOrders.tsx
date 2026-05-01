@@ -9,14 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Search, Printer, RefreshCw, ArrowLeft } from "lucide-react";
+import { Loader2, Search, Printer, RefreshCw, ArrowLeft, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printReceipt } from "@/utils/printReceipt";
 import { useOrderAlarm } from "@/hooks/useOrderAlarm";
-import type { Tables } from "@/integrations/supabase/types";
-
-type Order = Tables<"orders">;
+import type { Order } from "@/types/orders";
 
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
 const SUPABASE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
@@ -59,7 +58,10 @@ export default function AdminOrders() {
     return !hasCache;
   });
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() =>
+    sessionStorage.getItem("rt_admin_orders_filter") ?? "all"
+  );
+  const [fetchError, setFetchError] = useState(false);
   const { startAlarm, stopAlarm, unlockAudio } = useOrderAlarm();
   const [audioEnabled, setAudioEnabled] = useState(false);
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
@@ -102,7 +104,7 @@ export default function AdminOrders() {
   }, []);
 
   const syncAlarmState = useCallback((nextOrders: Order[]) => {
-    const hasUnacceptedOrders = nextOrders.some((o) => o.status === "pending" || o.status === "paid" || o.status === "confirmed");
+    const hasUnacceptedOrders = nextOrders.some((o) => o.status === "paid" || o.status === "confirmed");
 
     if (hasUnacceptedOrders) {
       if (Date.now() < snoozedUntilRef.current) return;
@@ -156,6 +158,11 @@ export default function AdminOrders() {
 
       if (!response.ok) {
         const body = await response.text().catch(() => '');
+        if (response.status === 401) {
+          // Session expired — stop polling and redirect to sign-in
+          navigate("/signin", { replace: true });
+          return;
+        }
         throw new Error(`HTTP ${response.status}: ${body}`);
       }
 
@@ -163,7 +170,7 @@ export default function AdminOrders() {
       console.log('[AdminOrders] fetchOrders result — count:', ordersData.length);
       const nextIds = new Set(ordersData.map((order) => order.id));
       const newUnacceptedOrders = ordersData.filter(
-        (order) => !knownOrderIdsRef.current.has(order.id) && (order.status === "pending" || order.status === "paid")
+        (order) => !knownOrderIdsRef.current.has(order.id) && order.status === "paid"
       );
 
       if (newUnacceptedOrders.length > 0) {
@@ -179,9 +186,10 @@ export default function AdminOrders() {
       writeAdminCache(ordersData);
       queryClient.setQueryData(["admin-orders"], ordersData);
       syncAlarmState(ordersData);
+      setFetchError(false);
     } catch (error) {
       console.error("Error fetching orders:", error);
-      toast.error("Failed to load orders");
+      setFetchError(true);
       // Do NOT clear orders — keep showing last known data on transient errors
     } finally {
       fetchInProgressRef.current = false;
@@ -338,7 +346,7 @@ export default function AdminOrders() {
                   className="pl-9"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); sessionStorage.setItem("rt_admin_orders_filter", v); }}>
                 <SelectTrigger className="w-full md:w-[200px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -357,9 +365,25 @@ export default function AdminOrders() {
           </CardContent>
         </Card>
 
+        {fetchError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>Failed to load orders — showing last known data.</span>
+              <Button size="sm" variant="outline" onClick={fetchOrders} className="ml-4 shrink-0">
+                <RefreshCw className="h-3 w-3 mr-1" /> Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card>
           <CardHeader>
-            <CardTitle>Orders ({filteredOrders.length})</CardTitle>
+            <CardTitle>
+              Orders ({filteredOrders.length === orders.length
+                ? orders.length
+                : `${filteredOrders.length} of ${orders.length}`})
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -432,9 +456,11 @@ export default function AdminOrders() {
                               customerName: order.customer_name,
                               orderType: order.order_type,
                               items: items,
-                              subtotal: order.subtotal,
-                              tax: order.tax,
-                              total: order.total,
+                              // Supabase returns DECIMAL columns as strings — wrap
+                              // in Number() so toFixed() works inside printReceipt.
+                              subtotal: Number(order.subtotal),
+                              tax: Number(order.tax),
+                              total: Number(order.total),
                               createdAt: order.created_at,
                               deliveryAddress: order.delivery_address || undefined,
                               notes: order.notes || undefined,

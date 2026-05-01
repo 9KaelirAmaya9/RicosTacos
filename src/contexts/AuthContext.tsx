@@ -130,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return [];
       }
       const data = await response.json();
-      const roles: AppRole[] = (data || []).map((r: any) => r.role);
+      const roles: AppRole[] = (data || []).map((r: { role: AppRole }) => r.role);
       writeCache(userId, roles);
       return roles;
     } catch (e: any) {

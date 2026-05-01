@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, User, LogOut, Mail, Phone, MapPin, History } from "lucide-react";
+import { Loader2, User, LogOut, Mail, Phone, MapPin, History, ArrowLeft } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import { Textarea } from "@/components/ui/textarea";
 import { NotificationSettings } from "@/components/NotificationSettings";
@@ -22,6 +22,10 @@ const Profile = () => {
     address: "",
   });
   const navigate = useNavigate();
+  const location = useLocation();
+  // When navigated here via Admin → Settings, show a back button and skip the
+  // public restaurant Navigation bar so the admin stays in the admin context.
+  const fromAdmin = (location.state as { fromAdmin?: boolean } | null)?.fromAdmin === true;
 
   useEffect(() => {
     if (authLoading) return; // wait for auth to resolve
@@ -52,6 +56,16 @@ const Profile = () => {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate phone — must be 10 digits (US) if provided
+    if (profileData.phone.trim()) {
+      const digits = profileData.phone.replace(/\D/g, "");
+      if (digits.length !== 10) {
+        toast.error("Please enter a valid 10-digit US phone number, e.g. (718) 555-1234");
+        return;
+      }
+    }
+
     setIsSaving(true);
 
     try {
@@ -92,8 +106,8 @@ const Profile = () => {
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
-        <Navigation />
-        <div className="pt-24 flex items-center justify-center">
+        {!fromAdmin && <Navigation />}
+        <div className={fromAdmin ? "pt-8 flex items-center justify-center" : "pt-24 flex items-center justify-center"}>
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       </div>
@@ -102,9 +116,27 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
-      <Navigation />
-      
-      <div className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
+      {fromAdmin ? (
+        /* Admin context header — replaces the public Navigation bar */
+        <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container mx-auto px-4 h-14 flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/admin")}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Admin
+            </Button>
+            <span className="text-sm text-muted-foreground">Admin › Settings</span>
+          </div>
+        </div>
+      ) : (
+        <Navigation />
+      )}
+
+      <div className={fromAdmin ? "pt-6 pb-16 sm:pb-20" : "pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20"}>
         <div className="container mx-auto px-4 max-w-2xl">
           <div className="mb-8 text-center">
             <h1 className="font-serif text-4xl sm:text-5xl font-bold mb-4">

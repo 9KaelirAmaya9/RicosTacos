@@ -257,7 +257,7 @@ function PaymentForm({
           {orderType === 'delivery' && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">Delivery Fee:</span>
-              <span>$5.00</span>
+              <span>${deliveryFee.toFixed(2)}</span>
             </div>
           )}
           <Separator className="my-2" />

@@ -1,16 +1,17 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Logout = () => {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   useEffect(() => {
     const handleLogout = async () => {
       try {
-        await supabase.auth.signOut();
+        await signOut();
         toast.success("Signed out successfully");
         navigate("/");
       } catch (error: any) {
@@ -20,7 +21,7 @@ const Logout = () => {
     };
 
     handleLogout();
-  }, [navigate]);
+  }, [navigate, signOut]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-center justify-center">

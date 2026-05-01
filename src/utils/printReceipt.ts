@@ -95,7 +95,7 @@ export const printReceipt = (order: ReceiptData) => {
 
       <div class="order-info">
         <div><strong>Order #:</strong> ${order.orderNumber}</div>
-        <div><strong>Date:</strong> ${new Date(order.createdAt).toLocaleString()}</div>
+        <div><strong>Date:</strong> ${new Date(order.createdAt).toLocaleString('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' })}</div>
         <div><strong>Customer:</strong> ${order.customerName}</div>
         <div><strong>Type:</strong> ${order.orderType.toUpperCase()}</div>
         ${order.deliveryAddress ? `<div><strong>Address:</strong> ${order.deliveryAddress}</div>` : ''}
@@ -149,9 +149,14 @@ export const printReceipt = (order: ReceiptData) => {
   doc.open();
   doc.write(receiptHTML);
   doc.close();
+  // doc.close() synchronously completes the document — for inline-only HTML
+  // (no external fonts/sheets/images) readyState is already 'complete' by the
+  // time we reach the next line. Adding a 'load' listener at that point is too
+  // late: the event has already fired and will never fire again, so print()
+  // would never be called. Use a short setTimeout instead so the browser has
+  // one rendering cycle to paint the content before the print dialog opens.
 
-  // Wait for fonts/styles to load before printing
-  iframe.contentWindow?.addEventListener('load', () => {
+  const doPrint = () => {
     iframe.contentWindow?.focus();
     iframe.contentWindow?.print();
     // Clean up after the print dialog closes
@@ -160,5 +165,14 @@ export const printReceipt = (order: ReceiptData) => {
         document.body.removeChild(iframe);
       }
     }, 1000);
-  });
+  };
+
+  if (iframe.contentDocument?.readyState === 'complete') {
+    // Already loaded (synchronous doc.write path) — small delay lets the
+    // browser finish any pending layout/paint before opening the dialog.
+    setTimeout(doPrint, 100);
+  } else {
+    // Fallback for browsers that fire load asynchronously
+    iframe.contentWindow?.addEventListener('load', doPrint);
+  }
 };
