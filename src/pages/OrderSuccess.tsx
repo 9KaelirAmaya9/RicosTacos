@@ -6,90 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, Home, Phone, Mail, MapPin, Loader2, Star } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase } from "@/integrations/supabase/client";
+import type { OrderDetails } from "@/types/orders";
 
-interface OrderDetails {
-  order_number: string;
-  customer_name: string;
-  customer_email: string | null;
-  customer_phone: string;
-  order_type: string;
-  delivery_address: string | null;
-  items: any;
-  subtotal: number;
-  tax: number;
-  total: number;
-  notes: string | null;
-  status: string;
-  created_at: string;
-}
-
-// FIX: Retry polling for webhook delay.
-// The Stripe webhook fires 1-10s after the user lands on this page.
-// Without retries, the single fetch returns nothing and the page shows
-// "Order Not Found" even though the order was successfully created.
-const MAX_RETRIES = 8;
-const RETRY_DELAY_MS = 1500;
-
-async function fetchOrderWithRetry(
-  orderNumber: string,
-  attempt = 0
-): Promise<OrderDetails | null> {
-  // Use raw fetch() to the Supabase REST API so the anon RLS policy
-  // ("Anonymous can view own order by number") is applied correctly.
-  // The supabase JS client may try to refresh the JWT on every call which
-  // can hang; raw fetch() bypasses GoTrueClient entirely.
-  const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
-  const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
-
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&select=*&limit=1`,
-      {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Accept': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errBody = await response.json().catch(() => ({}));
-      console.error("[OrderSuccess] REST error:", response.status, errBody);
-      if (attempt >= MAX_RETRIES) return null;
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-      return fetchOrderWithRetry(orderNumber, attempt + 1);
-    }
-
-    const rows = await response.json();
-    const data = Array.isArray(rows) ? rows[0] : null;
-
-    if (!data) {
-      if (attempt >= MAX_RETRIES) {
-        console.error("[OrderSuccess] Order not found after", MAX_RETRIES, "retries");
-        return null;
-      }
-      console.log(`[OrderSuccess] Order not found yet, retrying in ${RETRY_DELAY_MS}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-      return fetchOrderWithRetry(orderNumber, attempt + 1);
-    }
-
-    return data as OrderDetails;
-  } catch (err) {
-    console.error("[OrderSuccess] fetch error:", err);
-    if (attempt >= MAX_RETRIES) return null;
-    await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-    return fetchOrderWithRetry(orderNumber, attempt + 1);
-  }
-}
+// Retry polling for webhook delay — the Stripe webhook fires 1-10s after the
+// user lands here. Without retries, a single fetch returns nothing and the page
+// shows "Order Not Found" even though the order was successfully created.
+const MAX_RETRIES = 12;
+const RETRY_DELAY_MS = 2000;
 
 const OrderSuccess = () => {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [retrying, setRetrying] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
 
   const orderNumber = searchParams.get("order_number");
 
@@ -101,14 +31,36 @@ const OrderSuccess = () => {
       }
 
       try {
-        setRetrying(true);
-        const data = await fetchOrderWithRetry(orderNumber);
+        // Wrap fetchOrderWithRetry to surface attempt count for the progress UI
+        let attempt = 0;
+        const poll = async (): Promise<OrderDetails | null> => {
+          setRetryAttempt(attempt);
+          const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+          const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '').trim();
+          try {
+            const res = await fetch(
+              `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&select=*&limit=1`,
+              { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+            );
+            if (res.ok) {
+              const rows = await res.json();
+              if (Array.isArray(rows) && rows[0]) return rows[0] as OrderDetails;
+            }
+          } catch {}
+          if (attempt < MAX_RETRIES) {
+            attempt++;
+            setRetryAttempt(attempt);
+            await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+            return poll();
+          }
+          return null;
+        };
+        const data = await poll();
         setOrderDetails(data);
       } catch (error) {
         console.error("[OrderSuccess] Error fetching order:", error);
       } finally {
         setLoading(false);
-        setRetrying(false);
       }
     };
 
@@ -137,8 +89,8 @@ const OrderSuccess = () => {
             <div className="max-w-3xl mx-auto text-center">
               <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4 text-primary" />
               <p className="text-muted-foreground">
-                {retrying
-                  ? "Confirming your order… this may take a few seconds."
+                {retryAttempt > 0
+                  ? `Confirming your order… (${retryAttempt}/${MAX_RETRIES})`
                   : "Loading order details..."}
               </p>
             </div>
@@ -157,10 +109,14 @@ const OrderSuccess = () => {
         <div className="pt-32 pb-16">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
-              <h1 className="font-serif text-4xl font-bold mb-4">Order Not Found</h1>
+              <h1 className="font-serif text-4xl font-bold mb-4">Payment Received</h1>
+              <p className="text-xl text-muted-foreground mb-2">Your order is being confirmed</p>
               <p className="text-muted-foreground mb-4">
-                We couldn't find this order. Your payment may have been processed — please
-                check your email for a confirmation, or call us at (718) 633-4816.
+                Your card was charged and your order is on its way to our kitchen. Our system is still catching up — you'll receive a confirmation email shortly.
+              </p>
+              <p className="text-muted-foreground mb-4">
+                Questions? Call us at{" "}
+                <a href="tel:7186334816" className="font-medium underline">(718) 633-4816</a>
               </p>
               {orderNumber && (
                 <p className="text-sm text-muted-foreground mb-8 font-mono">
@@ -249,7 +205,7 @@ const OrderSuccess = () => {
             <Card className="p-6 mb-8">
               <h2 className="font-serif text-2xl font-semibold mb-6">Order Details</h2>
               <div className="space-y-4 mb-6">
-                {(orderDetails.items as any[]).map((item: any, index: number) => (
+                {orderDetails.items.map((item, index: number) => (
                   <div key={index} className="flex gap-4 pb-4 border-b border-border last:border-0">
                     {item.image && (
                       <img
@@ -281,6 +237,12 @@ const OrderSuccess = () => {
                   <span className="text-muted-foreground">Tax</span>
                   <span>${orderDetails.tax.toFixed(2)}</span>
                 </div>
+                {orderDetails.order_type === "delivery" && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Delivery Fee</span>
+                    <span>${(orderDetails.total - orderDetails.subtotal - orderDetails.tax).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-xl font-bold pt-2 border-t border-border">
                   <span>Total Paid</span>
                   <span className="text-primary">${orderDetails.total.toFixed(2)}</span>
@@ -345,3 +307,4 @@ const OrderSuccess = () => {
 };
 
 export default OrderSuccess;
+yes

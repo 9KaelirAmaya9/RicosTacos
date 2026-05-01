@@ -20,6 +20,8 @@ interface CartContextType {
   clearCart: () => void;
   cartTotal: number;
   cartCount: number;
+  cartLoadError: string | null;
+  reloadCart: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -32,10 +34,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [orderType, setOrderType] = useState<"pickup" | "delivery">("pickup");
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [cartLoadError, setCartLoadError] = useState<string | null>(null);
+  const [loadTrigger, setLoadTrigger] = useState(0);
 
   // Load cart and order type from localStorage or database on mount
   useEffect(() => {
     const loadCart = async () => {
+      setIsLoading(true);
       // Use getSession() instead of getUser() to avoid a network call to /auth/v1/user.
       // getSession() reads from localStorage and only makes a network call to refresh
       // an expired token. getUser() ALWAYS makes a network call when a session exists,
@@ -57,7 +62,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           .select('*')
           .eq('user_id', user.id);
 
-        if (!error && data) {
+        if (error) {
+          console.error('Error loading cart from database:', error);
+          setCartLoadError('Failed to load cart from database.');
+        } else if (data) {
+          setCartLoadError(null);
           const cartItems: CartItem[] = data.map(item => ({
             id: item.item_name,
             name: item.item_name_english || item.item_name,
@@ -73,17 +82,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         if (stored) {
           try {
             setCart(JSON.parse(stored));
+            setCartLoadError(null);
           } catch (e) {
             console.error('Error parsing cart from localStorage', e);
+            setCartLoadError('Failed to load your saved cart.');
           }
         }
       }
-      
+
       setIsLoading(false);
     };
 
     loadCart();
-  }, []);
+  }, [loadTrigger]);
 
   // Listen for auth changes
   useEffect(() => {
@@ -238,6 +249,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCart([]);
   };
 
+  const reloadCart = () => setLoadTrigger(n => n + 1);
+
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -253,6 +266,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         clearCart,
         cartTotal,
         cartCount,
+        cartLoadError,
+        reloadCart,
       }}
     >
       {children}

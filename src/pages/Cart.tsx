@@ -2,6 +2,8 @@ import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ShoppingCart, ArrowRight, Plus, Minus, Trash2, CreditCard, Loader2 } from "lucide-react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -19,6 +21,7 @@ import SecurePaymentModal from "@/components/checkout/SecurePaymentModal";
 import { validateDeliveryAddress } from "@/utils/deliveryValidation";
 import { validateDeliveryAddressGoogle } from "@/utils/googleMapsValidation";
 import { GooglePlacesAutocomplete } from "@/components/GooglePlacesAutocomplete";
+import { TAX_RATE, DELIVERY_FEE, MIN_ORDER } from "@/config/pricing";
 
 const CUSTOMER_INFO_KEY = 'ricos-tacos-customer-info';
 const PENDING_CHECKOUT_KEY = 'ricos-tacos-pending-checkout';
@@ -32,15 +35,15 @@ const calculateTotals = (
   currentOrderType: string
 ) => {
   const subtotalAfterDiscount = Math.max(0, cartTotal - discountAmount);
-  const tax = subtotalAfterDiscount * 0.08875; // NYC sales tax: 8.875%
-  const deliveryFee = currentOrderType === "delivery" ? 5.0 : 0;
+  const tax = subtotalAfterDiscount * TAX_RATE; // NYC sales tax: 8.875%
+  const deliveryFee = currentOrderType === "delivery" ? DELIVERY_FEE : 0;
   const total = subtotalAfterDiscount + tax + deliveryFee;
   return { subtotalAfterDiscount, tax, deliveryFee, total };
 };
 
 const Cart = () => {
   const { t } = useLanguage();
-  const { cart, orderType, setOrderType, updateQuantity, removeFromCart, clearCart, cartTotal, cartCount } = useCart();
+  const { cart, orderType, setOrderType, updateQuantity, removeFromCart, clearCart, cartTotal, cartCount, cartLoadError, reloadCart } = useCart();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -67,6 +70,10 @@ const Cart = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_amount: number; description?: string } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<{ place_id: string; formatted_address: string } | null>(null);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [paymentTimedOut, setPaymentTimedOut] = useState(false);
+  const [sessionExpiredError, setSessionExpiredError] = useState(false);
+  const [clearAllOpen, setClearAllOpen] = useState(false);
 
   useEffect(() => {
     // Check auth status - store the user object so checkout never needs to call any auth API
@@ -216,9 +223,19 @@ const Cart = () => {
       });
     }
 
+    // Reset error states at the start of each attempt
+    setPaymentTimedOut(false);
+    setSessionExpiredError(false);
+    setDeliveryError(null);
+
     if (cart.length === 0) {
       if (isDev) console.error("Cart is empty!");
       toast.error(t("order.cartEmpty"));
+      return;
+    }
+
+    if (cartTotal < MIN_ORDER) {
+      toast.error(`Minimum order is $${MIN_ORDER.toFixed(2)}. Add $${(MIN_ORDER - cartTotal).toFixed(2)} more to continue.`, { duration: 5000 });
       return;
     }
 
@@ -244,7 +261,7 @@ const Cart = () => {
     // Input validation schema - name, phone, and email are REQUIRED
     const orderSchema = z.object({
       name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name is too long"),
-      phone: z.string().trim().min(10, "Phone number must be at least 10 digits").max(20, "Phone number is too long"),
+      phone: z.string().trim().max(20, "Phone number is too long").refine(v => v.replace(/\D/g, '').length >= 10, { message: "Please enter a valid phone number (at least 10 digits)" }),
       email: z.string().trim().email("Please enter a valid email address").max(255, "Email is too long"),
       address: z.string().trim().max(500, "Address is too long").optional().or(z.literal("")),
       notes: z.string().trim().max(1000, "Notes are too long").optional().or(z.literal("")),
@@ -289,7 +306,13 @@ const Cart = () => {
         toast.loading("Checking delivery zone…", { id: "delivery-check" });
 
         try {
-          const dv = await validateDeliveryAddressGoogle(selectedPlace.place_id, selectedPlace.formatted_address);
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("TIMEOUT")), 15000)
+          );
+          const dv = await Promise.race([
+            validateDeliveryAddressGoogle(selectedPlace.place_id, selectedPlace.formatted_address),
+            timeoutPromise,
+          ]);
           toast.dismiss("delivery-check");
 
           if (!dv.isValid) {
@@ -303,6 +326,16 @@ const Cart = () => {
           }
         } catch (err: any) {
           toast.dismiss("delivery-check");
+          if (err?.message === "TIMEOUT") {
+            console.warn("⚠️ Delivery validation timed out after 15s");
+            toast.error("Address validation timed out. Please try again or call us at (718) 633-4816.", {
+              duration: 10000,
+            });
+            setDeliveryError("Address check timed out. Please try again or switch to pickup.");
+            deliveryBlocked = true;
+            setIsProcessing(false);
+            return;
+          }
           console.warn("⚠️ Delivery validation error (blocking for safety):", err);
           toast.error("We couldn't verify your delivery address. Please try again or switch to pickup.", {
             duration: 8000,
@@ -595,6 +628,7 @@ const Cart = () => {
               error: {
                 message: errBody?.message || errBody?.error || `HTTP ${response.status}`,
                 code: errBody?.code || String(response.status),
+                httpStatus: response.status,
                 details: errBody,
               }
             };
@@ -684,8 +718,16 @@ const Cart = () => {
         let errorMessage = "Failed to create order. Please try again.";
         if (orderError?.code === '23503') {
           errorMessage = "Invalid order data. Please check your information and try again.";
-        } else if (orderError?.code === '42501') {
-          errorMessage = "Permission denied. Please contact support.";
+        } else if (
+          orderError?.code === '42501' ||
+          orderError?.code === '401' ||
+          orderError?.code === '403' ||
+          orderError?.httpStatus === 401 ||
+          orderError?.httpStatus === 403
+        ) {
+          setSessionExpiredError(true);
+          setIsProcessing(false);
+          return;
         } else if (orderError?.message) {
           errorMessage = `Failed to create order: ${orderError.message}`;
         } else if (typeof orderError === 'string') {
@@ -746,7 +788,9 @@ const Cart = () => {
         if (errorMessage.includes("Order creation")) {
           errorMessage = "Order creation is taking longer than expected. Please check your connection and try again.";
         } else if (errorMessage.includes("Payment intent")) {
-          errorMessage = "Payment processing is taking longer than expected. Please check your connection and try again.";
+          setPaymentTimedOut(true);
+          setIsProcessing(false);
+          return;
         } else {
           errorMessage = "Request timed out. Please check your internet connection and try again.";
         }
@@ -788,6 +832,14 @@ const Cart = () => {
             </h1>
 
             {cart.length === 0 ? (
+              cartLoadError ? (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    We couldn't load your cart. Check your connection and{" "}
+                    <button onClick={reloadCart} className="underline font-medium">try again</button>.
+                  </AlertDescription>
+                </Alert>
+              ) : (
               <Card className="p-12 text-center">
                 <div className="relative mx-auto mb-6 w-24 h-24 flex items-center justify-center">
                   <div className="absolute inset-0 rounded-full bg-primary/10" />
@@ -806,6 +858,7 @@ const Cart = () => {
                   </Button>
                 </Link>
               </Card>
+              )
             ) : (
               <div className="grid lg:grid-cols-3 gap-8">
                 {/* Checkout Form — rendered first in DOM for mobile (appears on top on small screens) */}
@@ -813,7 +866,7 @@ const Cart = () => {
                   <Card className="p-4 sm:p-6 lg:sticky lg:top-32">
                     <h2 className="font-serif text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Checkout</h2>
 
-                    <Tabs value={orderType} onValueChange={(v) => setOrderType(v as "pickup" | "delivery")} className="mb-6">
+                    <Tabs value={orderType} onValueChange={(v) => { setOrderType(v as "pickup" | "delivery"); setDeliveryError(null); }} className="mb-6">
                       <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="pickup">{t("order.pickup")}</TabsTrigger>
                         <TabsTrigger value="delivery">{t("order.delivery")}</TabsTrigger>
@@ -884,6 +937,7 @@ const Cart = () => {
                             value={customerInfo.address}
                             onChange={(address, place) => {
                               setCustomerInfo({ ...customerInfo, address });
+                              setDeliveryError(null);
                               if (place) {
                                 setSelectedPlace({
                                   place_id: place.place_id,
@@ -1015,6 +1069,36 @@ const Cart = () => {
                         )}
                       </Button>
 
+                      {deliveryError && (
+                        <p className="text-sm text-destructive mt-2">{deliveryError}</p>
+                      )}
+
+                      {paymentTimedOut && (
+                        <Alert variant="destructive" className="mt-4">
+                          <AlertDescription>
+                            Payment is taking longer than expected. Your card has not been charged.{" "}
+                            <button
+                              onClick={() => { setPaymentTimedOut(false); handlePlaceOrder(); }}
+                              className="underline font-medium"
+                            >
+                              Try again
+                            </button>
+                            {" "}or call us at{" "}
+                            <a href="tel:7186334816" className="underline">(718) 633-4816</a>.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {sessionExpiredError && (
+                        <Alert variant="destructive" className="mt-4">
+                          <AlertDescription>
+                            Your session expired. Please{" "}
+                            <a href="/signin" className="underline font-medium">sign in again</a>
+                            {" "}— your cart is saved.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
                       {checkoutClientSecret && checkoutPublishableKey && currentOrderNumber && checkoutAmounts && (
                         <SecurePaymentModal
                           open={showCheckout}
@@ -1075,13 +1159,32 @@ const Cart = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={clearCart}
+                        onClick={() => setClearAllOpen(true)}
                         aria-label="Clear all items from cart"
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4 mr-2 pointer-events-none" />
                         <span className="pointer-events-none">Clear All</span>
                       </Button>
+                      <AlertDialog open={clearAllOpen} onOpenChange={setClearAllOpen}>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Clear your entire cart?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove all {cart.length} item{cart.length !== 1 ? "s" : ""}. This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => { clearCart(); setAppliedCoupon(null); setCouponCode(""); setClearAllOpen(false); }}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Clear Cart
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
 
                     <ul className="space-y-4">
@@ -1127,9 +1230,14 @@ const Cart = () => {
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-8 w-8"
+                                className="h-11 w-11"
                                 aria-label={`Decrease quantity of ${item.name}`}
-                                onClick={() => updateQuantity(item.id, -1)}
+                                disabled={item.quantity === 1}
+                                onClick={() => {
+                                  updateQuantity(item.id, -1);
+                                  const announcer = document.getElementById('sr-announcer');
+                                  if (announcer) announcer.textContent = `${item.name} quantity updated to ${item.quantity - 1}`;
+                                }}
                               >
                                 <Minus className="h-3 w-3 pointer-events-none" />
                               </Button>
@@ -1139,9 +1247,13 @@ const Cart = () => {
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-8 w-8"
+                                className="h-11 w-11"
                                 aria-label={`Increase quantity of ${item.name}`}
-                                onClick={() => updateQuantity(item.id, 1)}
+                                onClick={() => {
+                                  updateQuantity(item.id, 1);
+                                  const announcer = document.getElementById('sr-announcer');
+                                  if (announcer) announcer.textContent = `${item.name} quantity updated to ${item.quantity + 1}`;
+                                }}
                               >
                                 <Plus className="h-3 w-3 pointer-events-none" />
                               </Button>
