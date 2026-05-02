@@ -22,6 +22,7 @@ import { validateDeliveryAddress } from "@/utils/deliveryValidation";
 import { validateDeliveryAddressGoogle } from "@/utils/googleMapsValidation";
 import { GooglePlacesAutocomplete } from "@/components/GooglePlacesAutocomplete";
 import { TAX_RATE, DELIVERY_FEE, MIN_ORDER } from "@/config/pricing";
+import { captureException } from "@/utils/sentry";
 
 const CUSTOMER_INFO_KEY = 'ricos-tacos-customer-info';
 const PENDING_CHECKOUT_KEY = 'ricos-tacos-pending-checkout';
@@ -511,10 +512,22 @@ const Cart = () => {
         if (errMsg.includes('idempotent') || errMsg.includes('same parameters')) {
           checkoutSessionIdRef.current = null;
           localStorage.removeItem(PENDING_CHECKOUT_KEY);
-          throw new Error('A previous checkout attempt conflicted. Please try again — a fresh payment session has been started.');
+          const idempotencyErr = new Error('A previous checkout attempt conflicted. Please try again — a fresh payment session has been started.');
+          captureException(idempotencyErr, {
+            context: 'payment_intent_creation',
+            orderType: orderType,
+            cartTotal: cartTotal,
+          });
+          throw idempotencyErr;
         }
 
-        throw new Error(`Payment error: ${edgeFnError || piError.message || piError.error || "Failed to create payment intent"}`);
+        const piErr = new Error(`Payment error: ${edgeFnError || piError.message || piError.error || "Failed to create payment intent"}`);
+        captureException(piErr, {
+          context: 'payment_intent_creation',
+          orderType: orderType,
+          cartTotal: cartTotal,
+        });
+        throw piErr;
       }
 
       if (!piData?.clientSecret || !piData?.publishableKey || !piData?.orderNumber) {
@@ -734,7 +747,13 @@ const Cart = () => {
           errorMessage = `Failed to create order: ${orderError}`;
         }
 
-        throw new Error(errorMessage);
+        const orderErr = new Error(errorMessage);
+        captureException(orderErr, {
+          context: 'order_creation',
+          orderType: orderType,
+          cartTotal: cartTotal,
+        });
+        throw orderErr;
       }
 
       const orderElapsed = Date.now() - orderStartTime;
@@ -788,6 +807,11 @@ const Cart = () => {
         if (errorMessage.includes("Order creation")) {
           errorMessage = "Order creation is taking longer than expected. Please check your connection and try again.";
         } else if (errorMessage.includes("Payment intent")) {
+          captureException(error instanceof Error ? error : new Error(String(error)), {
+            context: 'payment_timeout',
+            orderType: orderType,
+            cartTotal: cartTotal,
+          });
           setPaymentTimedOut(true);
           setIsProcessing(false);
           return;

@@ -31,6 +31,7 @@ import {
 } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { setUser as setSentryUser, clearUser as clearSentryUser } from "@/utils/sentry";
 
 export type AppRole = "admin" | "kitchen";
 
@@ -173,6 +174,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data: { session: freshSession } } = await supabase.auth.getSession();
         const roles = await fetchRoles(user.id, forceRoles, freshSession?.access_token);
         settled = true;
+        setSentryUser({ id: user.id, email: user.email });
         setState({ user, session: freshSession ?? null, roles, loading: false, error: null });
       } else {
         // Fresh sign-in: set user+session immediately (loading=true) so ProtectedRoute
@@ -184,6 +186,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // NOTE: hardStop stays active until fetchRoles completes (not cleared early)
         const roles = await fetchRoles(session.user.id, forceRoles, session.access_token);
         settled = true;
+        setSentryUser({ id: session.user.id, email: session.user.email });
         setState({ user: session.user, session, roles, loading: false, error: null });
       }
     } catch (e: any) {
@@ -214,6 +217,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("[Auth] event:", event);
       if (event === "SIGNED_OUT") {
         clearCache();
+        clearSentryUser();
         setState({ user: null, session: null, roles: [], loading: false, error: null });
         return;
       }

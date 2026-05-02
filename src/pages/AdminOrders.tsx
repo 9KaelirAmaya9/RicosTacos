@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printReceipt } from "@/utils/printReceipt";
+import { captureException } from "@/utils/sentry";
 import { useOrderAlarm } from "@/hooks/useOrderAlarm";
 import type { Order } from "@/types/orders";
 
@@ -189,6 +190,9 @@ export default function AdminOrders() {
       setFetchError(false);
     } catch (error) {
       console.error("Error fetching orders:", error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        context: 'admin_fetch_orders',
+      });
       setFetchError(true);
       // Do NOT clear orders — keep showing last known data on transient errors
     } finally {
@@ -269,6 +273,9 @@ export default function AdminOrders() {
       toast.success("Order status updated");
     } catch (error) {
       console.error("Error updating order:", error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        context: 'admin_update_order_status',
+      });
       toast.error("Failed to update order status");
       // Refetch on error to ensure consistency
       fetchOrders();

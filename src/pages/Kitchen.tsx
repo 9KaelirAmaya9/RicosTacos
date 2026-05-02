@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Clock, Package, ChefHat, Printer, BellOff, MapPin, StickyNote } from "lucide-react";
 import { printReceipt } from "@/utils/printReceipt";
+import { captureException } from "@/utils/sentry";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { useOrderAlarm } from "@/hooks/useOrderAlarm";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -255,6 +256,9 @@ const Kitchen = () => {
     } catch (e: any) {
       // Catches timeout rejection and any other unexpected throws
       console.error('[Kitchen] fetchOrders EXCEPTION:', e.message);
+      captureException(e instanceof Error ? e : new Error(String(e)), {
+        context: 'kitchen_fetch_orders',
+      });
       toast.error("Failed to fetch orders — retrying…");
       // Do NOT clear orders — keep showing last known data
     } finally {
@@ -328,6 +332,11 @@ const Kitchen = () => {
         }
       } catch (error) {
         console.error("Error updating status:", error);
+        captureException(error instanceof Error ? error : new Error(String(error)), {
+          context: 'kitchen_update_status',
+          orderId,
+          newStatus: newStatus,
+        });
         toast.error("Failed to update order status. Please try again.");
         // Undo optimistic removal — DB write failed
         optimisticallyRemovedRef.current.delete(orderId);
