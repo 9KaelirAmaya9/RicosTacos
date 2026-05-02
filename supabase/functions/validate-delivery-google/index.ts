@@ -20,9 +20,32 @@ const RESTAURANT_COORDINATES = {
 // Maximum delivery time in minutes
 const MAX_DELIVERY_TIME_MINUTES = 20;
 
+// ── Rate Limiter ─────────────────────────────────────────────────────────────
+const rateLimitMap = new Map<string, number[]>();
+function isRateLimited(ip: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const timestamps = (rateLimitMap.get(ip) ?? []).filter(t => now - t < windowMs);
+  if (timestamps.length >= maxRequests) return true;
+  timestamps.push(now);
+  rateLimitMap.set(ip, timestamps);
+  return false;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MAX_REQUESTS = 20;
+const WINDOW_MS = 60_000;
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  if (isRateLimited(clientIp, MAX_REQUESTS, WINDOW_MS)) {
+    return new Response(JSON.stringify({ error: "Too many requests. Please wait and try again." }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+    });
   }
 
   console.log('🔄 validate-delivery-google: Request received');

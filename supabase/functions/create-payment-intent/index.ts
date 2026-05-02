@@ -7,10 +7,33 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ── Rate Limiter ─────────────────────────────────────────────────────────────
+const rateLimitMap = new Map<string, number[]>();
+function isRateLimited(ip: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const timestamps = (rateLimitMap.get(ip) ?? []).filter(t => now - t < windowMs);
+  if (timestamps.length >= maxRequests) return true;
+  timestamps.push(now);
+  rateLimitMap.set(ip, timestamps);
+  return false;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MAX_REQUESTS = 10;
+const WINDOW_MS = 60_000;
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  if (isRateLimited(clientIp, MAX_REQUESTS, WINDOW_MS)) {
+    return new Response(JSON.stringify({ error: "Too many requests. Please wait and try again." }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+    });
   }
 
   try {
