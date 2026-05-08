@@ -266,22 +266,29 @@ serve(async (req) => {
       backgroundWork = handlePaidOrder(orderNumber);
     }
 
-    // Return 200 to Stripe immediately — then let background work finish.
-    // EdgeRuntime.waitUntil keeps the Deno isolate alive until the promise settles.
+    // Build the 200 response FIRST, then start background work.
+    // If the catch-path runs `await backgroundWork` before returning, Stripe
+    // waits the full duration of SMS + email sends (2–5s). If Twilio or Resend
+    // hangs, this can push past 30s and trigger Stripe retries → duplicate
+    // notifications. Building the response object early avoids this entirely.
+    const okResponse = new Response(
+      JSON.stringify({ received: true }),
+      { status: 200, headers: corsHeaders }
+    );
+
     if (backgroundWork) {
       try {
         // @ts-ignore — available in Supabase Edge Runtime / Deno Deploy
         EdgeRuntime.waitUntil(backgroundWork);
       } catch {
-        // Fallback: runtime doesn't support waitUntil — await synchronously.
-        await backgroundWork;
+        // Fallback: fire-and-forget — the 200 response is already built above.
+        backgroundWork.catch((e: unknown) =>
+          console.error('[WEBHOOK] Background work threw:', e)
+        );
       }
     }
 
-    return new Response(
-      JSON.stringify({ received: true }),
-      { status: 200, headers: corsHeaders }
-    );
+    return okResponse;
 
   } catch (error) {
     console.error('[WEBHOOK] Error:', error);

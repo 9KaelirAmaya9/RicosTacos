@@ -146,22 +146,10 @@ function PaymentForm({
         const _SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
         const _SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '';
 
-        // ── Fix: Client-side status update to 'paid' ─────────────────────────
-        // The Stripe webhook also sets this, but webhook delivery can lag 5-30s.
-        // Updating here means the kitchen sees "PAID — New" the instant Stripe
-        // confirms, not after an indeterminate webhook delay.
-        // The webhook's update is idempotent (.eq('status','pending')) so this
-        // client write and the webhook write don't conflict.
-        fetch(`${_SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': _SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify({ status: 'paid' }),
-        }).catch((e: any) => console.warn('Client-side status update failed (webhook will cover this):', e));
+        // NOTE: We do NOT do a client-side PATCH to set status='paid' here.
+        // The Stripe webhook is the authoritative source for order status.
+        // An anon PATCH has no RLS UPDATE policy and silently fails for guest
+        // checkouts — the webhook covers this reliably without the race condition.
 
         // Notify kitchen now that payment is confirmed — fire-and-forget.
         fetch(`${_SUPABASE_URL}/functions/v1/send-push-notification`, {

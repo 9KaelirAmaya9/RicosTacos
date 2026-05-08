@@ -41,6 +41,28 @@ const ServerError = lazy(() => import("./pages/ServerError"));
 const MenuCatalog = lazy(() => import("./pages/MenuCatalog"));
 const DebugAuth = lazy(() => import("./pages/DebugAuth"));
 
+// Kitchen-specific error fallback — shows a "Reload" button instead of
+// navigating away, so staff can recover without losing the /kitchen route.
+// Rendered outside any hook/context so it's safe inside an ErrorBoundary.
+const KitchenErrorFallback = (
+  <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+    <div className="max-w-md w-full text-center space-y-4">
+      <p className="text-5xl">⚠️</p>
+      <h1 className="text-2xl font-bold">Kitchen Display Error</h1>
+      <p className="text-muted-foreground">
+        Something crashed on the kitchen display. Tap Reload to get back to orders.
+        If orders keep disappearing, call the manager.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-6 py-3 text-base font-semibold"
+      >
+        Reload Kitchen Display
+      </button>
+    </div>
+  </div>
+);
+
 // ── QueryClient ───────────────────────────────────────────────────────────────
 // staleTime: 0  — always refetch in background on mount/focus
 // gcTime: 5min  — keep in memory for 5 minutes (no disk persistence)
@@ -96,7 +118,7 @@ const App = () => (
                     <Route path="/admin/orders" element={<ProtectedRoute requiredRole="admin"><AdminOrders /></ProtectedRoute>} />
                     <Route path="/admin/roles" element={<ProtectedRoute requiredRole="admin"><AdminRoles /></ProtectedRoute>} />
                     <Route path="/admin/passwords" element={<ProtectedRoute requiredRole="admin"><AdminPasswordManagement /></ProtectedRoute>} />
-                    <Route path="/kitchen" element={<ProtectedRoute requiredRole="kitchen"><Kitchen /></ProtectedRoute>} />
+                    <Route path="/kitchen" element={<ProtectedRoute requiredRole="kitchen"><ErrorBoundary fallback={KitchenErrorFallback}><Kitchen /></ErrorBoundary></ProtectedRoute>} />
                     <Route path="/order-success" element={<OrderSuccess />} />
                     <Route path="/500" element={<ServerError />} />
                     <Route path="/debug-auth" element={<DebugAuth />} />

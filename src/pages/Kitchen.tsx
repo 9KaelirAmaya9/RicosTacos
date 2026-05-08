@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Clock, Package, ChefHat, Printer, BellOff, MapPin, StickyNote } from "lucide-react";
+import { Clock, Package, ChefHat, Printer, BellOff, MapPin, StickyNote, AlertTriangle } from "lucide-react";
 import { printReceipt } from "@/utils/printReceipt";
 import { captureException } from "@/utils/sentry";
 import { NotificationSettings } from "@/components/NotificationSettings";
@@ -66,6 +66,9 @@ const Kitchen = () => {
       readKitchenCache().length > 0;
     return !hasCache;
   });
+  // Pending orders: paid via Stripe but webhook hasn't updated status yet.
+  // These are invisible to the normal query — this is the safety net.
+  const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
@@ -136,6 +139,32 @@ const Kitchen = () => {
     clearStopTimeout();
     stopAlarm();
   }, [clearStopTimeout, startAlarm, stopAlarm]);
+
+  const fetchPendingOrders = useCallback(async () => {
+    const accessToken = sessionRef.current?.access_token;
+    if (!accessToken) return;
+    try {
+      // Orders pending 1–120 minutes: old enough that checkout should have finished,
+      // recent enough that they could be real orders where the webhook stalled.
+      const twoHoursAgo = new Date(Date.now() - 120 * 60 * 1000).toISOString();
+      const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/orders?select=*&status=eq.pending&created_at=gte.${encodeURIComponent(twoHoursAgo)}&created_at=lt.${encodeURIComponent(oneMinuteAgo)}&order=created_at.asc`,
+        {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      if (!response.ok) return;
+      const data: Order[] = await response.json();
+      setPendingOrders(data);
+    } catch (e) {
+      console.warn('[Kitchen] fetchPendingOrders failed (non-critical):', e);
+    }
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     // Guard: skip if a fetch is already in-flight.
@@ -424,6 +453,7 @@ const Kitchen = () => {
 
   useEffect(() => {
     fetchOrders();
+    fetchPendingOrders();
 
     // ── Real-time subscription ────────────────────────────────────────────────
     // NO filter here — fetchOrders() applies the correct status filter
@@ -456,6 +486,7 @@ const Kitchen = () => {
     // This is the safety net that guarantees the kitchen never misses an order.
     const pollInterval = window.setInterval(() => {
       fetchOrders();
+      fetchPendingOrders();
     }, 5 * 1000);
 
     return () => {
@@ -464,7 +495,7 @@ const Kitchen = () => {
       window.clearInterval(pollInterval);
       supabase.removeChannel(channel).catch(console.error);
     };
-  }, [clearStopTimeout, fetchOrders, stopAlarm]);
+  }, [clearStopTimeout, fetchOrders, fetchPendingOrders, stopAlarm]);
 
   const getStatusColor = (status: string) => {
     if (status === "paid" || status === "confirmed") return "bg-green-600";
@@ -606,6 +637,51 @@ const Kitchen = () => {
             </div>
           );
         })()}
+
+        {/* ── Pending Orders Warning Panel ─────────────────────────────────────
+            Orders that have been in 'pending' status for 1–120 minutes.
+            This is the webhook-failure safety net: if Stripe's webhook stalls,
+            paid orders would otherwise be permanently invisible to kitchen staff.
+            Staff can verify payment in Stripe Dashboard then confirm manually. */}
+        {pendingOrders.length > 0 && (
+          <div className="bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-400 rounded-xl p-4 md:p-6">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+              <h2 className="font-bold text-amber-900 dark:text-amber-100 text-lg">
+                {pendingOrders.length} Order{pendingOrders.length !== 1 ? "s" : ""} Awaiting Payment Confirmation
+              </h2>
+            </div>
+            <p className="text-sm text-amber-700 dark:text-amber-300 mb-4">
+              These orders haven't been confirmed by Stripe yet — likely a webhook delay.
+              Verify payment in <strong>Stripe Dashboard → Payments</strong>, then click Confirm to add to the kitchen queue.
+            </p>
+            <div className="space-y-3">
+              {pendingOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="bg-white dark:bg-amber-950/60 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="font-bold text-xl tabular-nums">{order.order_number}</p>
+                    <p className="font-medium">{order.customer_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {order.items.length} item{order.items.length !== 1 ? "s" : ""} &middot; ${Number(order.total).toFixed(2)} &middot; {getTimeElapsed(order.created_at)} ago
+                    </p>
+                  </div>
+                  <Button
+                    className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white h-11"
+                    onClick={() => {
+                      void updateStatus(order.id, "paid");
+                      setPendingOrders((prev) => prev.filter((o) => o.id !== order.id));
+                    }}
+                  >
+                    Confirm &amp; Start Preparing
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <NotificationSettings />
 
