@@ -202,7 +202,7 @@ const Menu = () => {
                             )}
                           </div>
                           
-                           <div className="flex items-center justify-between mt-4 pt-4 border-t border-serape-red/20">
+                           <div className="flex flex-wrap gap-2 items-center justify-between mt-4 pt-4 border-t border-serape-red/20">
                              <span className="text-2xl font-semibold bg-gradient-to-r from-serape-red via-serape-pink to-serape-purple bg-clip-text text-transparent drop-shadow-sm">
                                ${item.price.toFixed(2)}
                              </span>
@@ -225,7 +225,7 @@ const Menu = () => {
           </div>
 
           {/* Notes */}
-          <div className="mt-16 p-8 bg-card rounded-xl border-2 border-border shadow-soft">
+          <div className="mt-16 p-5 sm:p-8 bg-card rounded-xl border-2 border-border shadow-soft">
             <h3 className="font-serif text-2xl font-semibold mb-4">{t("menu.notes.title")}</h3>
             <ul className="space-y-2 text-muted-foreground">
               <li>• {t("menu.notes.1")}</li>

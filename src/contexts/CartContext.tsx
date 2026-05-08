@@ -109,10 +109,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           try {
             const localItems: CartItem[] = JSON.parse(localCart);
             
-            // Sync local cart to database
+            // Sync local cart to database — single batch upsert instead of one call per item
             if (localItems.length > 0) {
-              for (const item of localItems) {
-                await supabase.from('cart_items').upsert({
+              await supabase.from('cart_items').upsert(
+                localItems.map(item => ({
                   user_id: newUserId,
                   item_name: item.id,
                   item_name_english: item.name,
@@ -120,12 +120,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
                   quantity: item.quantity,
                   image: item.image || '',
                   category: ''
-                }, {
-                  onConflict: 'user_id,item_name'
-                });
-              }
-
-              // Clear localStorage after syncing
+                })),
+                { onConflict: 'user_id,item_name' }
+              );
               localStorage.removeItem(CART_STORAGE_KEY);
             }
           } catch (e) {
@@ -159,7 +156,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [cart]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist cart changes with debouncing
   useEffect(() => {
@@ -206,7 +203,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }, [orderType]);
 
   const addToCart = (item: { id: string; name: string; price: number; image?: string }) => {
-    console.log("addToCart called with:", item);
+    if (import.meta.env.DEV) console.log("addToCart called with:", item);
     setCart(prevCart => {
       const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
       if (existingItem) {

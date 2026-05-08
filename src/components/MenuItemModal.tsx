@@ -178,7 +178,7 @@ export function MenuItemModal({ open, onOpenChange, item, onAddToCart }: MenuIte
         </DialogHeader>
 
         {item.image && (
-          <div className="relative w-full h-64 rounded-lg overflow-hidden">
+          <div className="relative w-full h-40 sm:h-64 rounded-lg overflow-hidden">
             <img
               src={item.image}
               alt={item.name}

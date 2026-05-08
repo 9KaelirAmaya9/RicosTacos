@@ -65,7 +65,7 @@ export const Navigation = () => {
             {/* Sign photo thumbnail — height matches the text lockup panel */}
             <div
               className="relative flex-shrink-0 rounded-lg overflow-hidden shadow-md border-2 border-[#E31E24] bg-[#8BC34A] transition-transform duration-300 origin-left group-hover:scale-105"
-              style={{ height: 'clamp(3.5rem, 7vw, 5.5rem)', width: 'clamp(3.5rem, 7vw, 5.5rem)' }}
+              style={{ height: 'clamp(3rem, 7vw, 5.5rem)', width: 'clamp(3rem, 7vw, 5.5rem)' }}
             >
               <img
                 src={logoGreen}
@@ -109,7 +109,7 @@ export const Navigation = () => {
                 xmlns="http://www.w3.org/2000/svg"
                 aria-label="Ricos Tacos"
                 style={{
-                  width: 'clamp(145px, 29vw, 215px)',
+                  width: 'clamp(120px, 29vw, 215px)',
                   height: 'auto',
                   display: 'block',
                   overflow: 'visible',
@@ -215,10 +215,11 @@ export const Navigation = () => {
             </Link>
 
             <button
-              className="p-2 rounded-md hover:bg-muted transition-colors"
+              className="p-2 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-nav-drawer"
             >
               {mobileMenuOpen
                 ? <X className="h-6 w-6" />
@@ -231,55 +232,75 @@ export const Navigation = () => {
 
       {/* ── Mobile Drawer ── */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background/98 backdrop-blur-md">
-          <SerapeStripe className="h-1" />
+        <>
+          {/* Backdrop — tap anywhere outside the drawer to close */}
+          <div
+            className="fixed inset-0 z-[-1] bg-black/30"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
 
-          <div className="container mx-auto px-4 py-4">
-            <nav className="flex flex-col gap-1 mb-4">
-              {navLinks.map(({ to, label }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className={`flex items-center px-3 py-3.5 rounded-lg text-base font-medium transition-colors
-                    ${isActive(to)
-                      ? "bg-[#E31E24]/10 text-[#E31E24]"
-                      : "text-foreground hover:bg-muted hover:text-[#E31E24]"
-                    }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {label}
-                </Link>
-              ))}
-              {isAuthenticated ? (
-                <Link
-                  to="/profile"
-                  className={`flex items-center gap-2 px-3 py-3.5 rounded-lg text-base font-medium transition-colors
-                    ${isActive("/profile") ? "bg-[#E31E24]/10 text-[#E31E24]" : "text-foreground hover:bg-muted"}`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <User className="h-4 w-4" />
-                  Profile
-                </Link>
-              ) : (
-                <Link
-                  to="/signin"
-                  className={`flex items-center px-3 py-3.5 rounded-lg text-base font-medium transition-colors
-                    ${isActive("/signin") ? "bg-[#E31E24]/10 text-[#E31E24]" : "text-foreground hover:bg-muted"}`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Sign In
-                </Link>
-              )}
-            </nav>
+          <div
+            id="mobile-nav-drawer"
+            className="md:hidden border-t border-border bg-background/98 backdrop-blur-md animate-in slide-in-from-top-2 fade-in duration-200"
+          >
+            <SerapeStripe className="h-1" />
 
-            <div className="pt-3 border-t border-border flex items-center justify-between">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">Language</span>
-              <LanguageSwitch />
+            <div className="container mx-auto px-4 py-4">
+              <nav className="flex flex-col gap-1 mb-4">
+                {navLinks.map(({ to, label }) => (
+                  <Link
+                    key={to}
+                    to={to}
+                    className={`flex items-center px-3 py-3.5 rounded-lg text-base font-medium transition-colors
+                      ${isActive(to)
+                        ? "bg-[#E31E24]/10 text-[#E31E24]"
+                        : "text-foreground hover:bg-muted hover:text-[#E31E24]"
+                      }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {label}
+                  </Link>
+                ))}
+                {isAuthenticated ? (
+                  <Link
+                    to="/profile"
+                    className={`flex items-center gap-2 px-3 py-3.5 rounded-lg text-base font-medium transition-colors
+                      ${isActive("/profile") ? "bg-[#E31E24]/10 text-[#E31E24]" : "text-foreground hover:bg-muted hover:text-[#E31E24]"}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <User className="h-4 w-4" />
+                    Profile
+                  </Link>
+                ) : (
+                  <Link
+                    to="/signin"
+                    className={`flex items-center px-3 py-3.5 rounded-lg text-base font-medium transition-colors
+                      ${isActive("/signin") ? "bg-[#E31E24]/10 text-[#E31E24]" : "text-foreground hover:bg-muted hover:text-[#E31E24]"}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                )}
+              </nav>
+
+              {/* Primary CTA */}
+              <Link to="/order" onClick={() => setMobileMenuOpen(false)}>
+                <Button className="w-full mb-4 h-12 text-base font-semibold gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Order Now
+                </Button>
+              </Link>
+
+              <div className="pt-3 border-t border-border flex items-center justify-between">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Language</span>
+                <LanguageSwitch />
+              </div>
             </div>
-          </div>
 
-          <SerapeStripe className="h-1" />
-        </div>
+            <SerapeStripe className="h-1" />
+          </div>
+        </>
       )}
 
       {/* Bottom serape stripe */}

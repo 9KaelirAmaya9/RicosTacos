@@ -68,17 +68,17 @@ export const FlavorSelectionDialog = ({
           </RadioGroup>
 
           <div className="flex gap-3 pt-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => onOpenChange(false)}
-              className="flex-1"
+              className="flex-1 h-11"
             >
               {language === "es" ? "Cancelar" : "Cancel"}
             </Button>
-            <Button 
+            <Button
               onClick={handleConfirm}
               disabled={!selectedFlavor}
-              className="flex-1"
+              className="flex-1 h-11"
             >
               {language === "es" ? "Agregar al Carrito" : "Add to Cart"}
             </Button>

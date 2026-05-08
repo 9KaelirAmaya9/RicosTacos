@@ -117,9 +117,9 @@ const OrderHistory = () => {
                 <Card key={order.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <CardTitle className="flex items-center gap-2">
-                          <Package className="h-5 w-5" />
+                          <Package className="h-5 w-5 flex-shrink-0" />
                           {order.order_number}
                         </CardTitle>
                         <CardDescription className="flex items-center gap-4 mt-2">
@@ -130,7 +130,7 @@ const OrderHistory = () => {
                           <span className="capitalize">{order.order_type}</span>
                         </CardDescription>
                       </div>
-                      <Badge className={getStatusColor(order.status)}>
+                      <Badge className={`${getStatusColor(order.status)} flex-shrink-0`}>
                         {order.status}
                       </Badge>
                     </div>
@@ -141,8 +141,8 @@ const OrderHistory = () => {
                       <div className="space-y-1">
                         {order.items.map((item, idx) => (
                           <div key={idx} className="text-sm flex justify-between">
-                            <span>{item.quantity}x {item.name}</span>
-                            <span className="text-muted-foreground">
+                            <span className="min-w-0 truncate flex-1 mr-2">{item.quantity}x {item.name}</span>
+                            <span className="text-muted-foreground flex-shrink-0">
                               ${(item.price * item.quantity).toFixed(2)}
                             </span>
                           </div>

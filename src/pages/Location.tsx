@@ -30,14 +30,14 @@ const Location = () => {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <Navigation />
       
-      <div className="pt-32 pb-20">
+      <div className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
         <div className="container mx-auto px-4">
           {/* Header */}
           <div className="text-center mb-16">
-            <h1 className="font-serif text-5xl md:text-6xl font-bold mb-6">
+            <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl font-bold mb-6">
               {t("location.title")} <span className="text-primary">{t("location.titleHighlight")}</span>
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
               {t("location.subtitle")}
             </p>
           </div>
@@ -80,13 +80,13 @@ const Location = () => {
                     <div className="text-muted-foreground space-y-1">
                       <p>
                         <span className="font-medium">Tel:</span>{" "}
-                        <a href="tel:7186334816" className="hover:text-primary transition-colors font-semibold">
+                        <a href="tel:7186334816" className="inline-flex items-center py-2 hover:text-primary transition-colors font-semibold">
                           (718) 633-4816
                         </a>
                       </p>
                       <p>
                         <span className="font-medium">Cell:</span>{" "}
-                        <a href="tel:9173700430" className="hover:text-primary transition-colors font-semibold">
+                        <a href="tel:9173700430" className="inline-flex items-center py-2 hover:text-primary transition-colors font-semibold">
                           (917) 370-0430
                         </a>
                       </p>
@@ -97,7 +97,7 @@ const Location = () => {
             </Card>
 
             {/* Google Maps */}
-            <div className="h-full min-h-[400px]">
+            <div className="h-full min-h-[240px] sm:min-h-[320px] md:min-h-[400px]">
               <iframe
                 title="Ricos Tacos Location"
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3027.4268743583893!2d-74.00884492346602!3d40.65008797139283!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c25af4e3f6d5b5%3A0x1234567890abcdef!2s505%2051st%20St%2C%20Brooklyn%2C%20NY%2011220!5e0!3m2!1sen!2sus!4v1234567890123!5m2!1sen!2sus"
@@ -155,7 +155,7 @@ const Location = () => {
           </div>
 
           {/* Catering Info */}
-          <Card className="mt-12 p-8 bg-gradient-to-br from-primary via-rico-red-dark to-primary text-primary-foreground max-w-4xl mx-auto shadow-elegant border-0">
+          <Card className="mt-12 p-5 sm:p-8 bg-gradient-to-br from-primary via-rico-red-dark to-primary text-primary-foreground max-w-4xl mx-auto shadow-elegant border-0">
             <div className="text-center">
               <h2 className="font-serif text-3xl font-semibold mb-4">
                 {t("location.catering")}

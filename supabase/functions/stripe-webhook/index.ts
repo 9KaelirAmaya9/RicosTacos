@@ -41,68 +41,64 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
     return;
   }
 
-  // ── SMS to restaurant owner (Twilio) ─────────────────────────────────────────
-  // Most reliable channel — works even if wifi is down on the tablet.
-  if (twilioSid && twilioToken && twilioFrom && restaurantPhone) {
-    const items = Array.isArray(order.items) ? order.items : [];
-    const itemSummary = items
-      .map((i: { name: string; quantity: number }) => `${i.quantity}× ${i.name}`)
-      .join(', ');
-    const smsBody =
-      `🚨 NEW ORDER #${order.order_number}\n` +
-      `${order.order_type.toUpperCase()} — $${Number(order.total).toFixed(2)}\n` +
-      `${order.customer_name} · ${order.customer_phone}\n` +
-      `${itemSummary}\n` +
-      (order.delivery_address ? `📍 ${order.delivery_address}\n` : '') +
-      (order.notes ? `📝 ${order.notes}\n` : '') +
-      `${SITE_URL}/kitchen`;
-
-    try {
-      const smsResp = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: 'Basic ' + btoa(`${twilioSid}:${twilioToken}`),
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({ From: twilioFrom, To: restaurantPhone, Body: smsBody }),
-        }
-      );
-      if (smsResp.ok) {
-        console.log('[WEBHOOK] SMS sent to restaurant:', restaurantPhone);
-      } else {
-        const body = await smsResp.json().catch(() => ({}));
-        console.error('[WEBHOOK] Twilio SMS error:', smsResp.status, JSON.stringify(body));
-      }
-    } catch (err) {
-      console.error('[WEBHOOK] Twilio SMS exception:', err);
-    }
-  } else {
-    console.warn('[WEBHOOK] SMS skipped — TWILIO_* or RESTAURANT_NOTIFICATION_PHONE not set');
-  }
-
-  if (!resendKey || !restaurantEmail) {
-    console.warn('[WEBHOOK] Restaurant email skipped — RESEND_API_KEY or RESTAURANT_NOTIFICATION_EMAIL not set');
-    return;
-  }
-
   const items = Array.isArray(order.items) ? order.items : [];
-  const itemsHtml = items
-    .map((item: { name: string; quantity: number; price: number }) =>
-      `<tr><td style="padding:4px 8px">${item.quantity}×</td><td style="padding:4px 8px">${item.name}</td><td style="padding:4px 8px;text-align:right">$${(item.price * item.quantity).toFixed(2)}</td></tr>`
-    )
-    .join('');
 
-  const deliveryRow = order.order_type === 'delivery' && order.delivery_address
-    ? `<p><strong>Deliver to:</strong> ${order.delivery_address}</p>`
-    : `<p><strong>Type:</strong> Pickup</p>`;
+  // ── Build SMS promise (Twilio) ────────────────────────────────────────────────
+  // Most reliable channel — works even if wifi is down on the tablet.
+  const smsPromise: Promise<void> = (twilioSid && twilioToken && twilioFrom && restaurantPhone)
+    ? (async () => {
+        const itemSummary = items
+          .map((i: { name: string; quantity: number }) => `${i.quantity}× ${i.name}`)
+          .join(', ');
+        const smsBody =
+          `🚨 NEW ORDER #${order.order_number}\n` +
+          `${order.order_type.toUpperCase()} — $${Number(order.total).toFixed(2)}\n` +
+          `${order.customer_name} · ${order.customer_phone}\n` +
+          `${itemSummary}\n` +
+          (order.delivery_address ? `📍 ${order.delivery_address}\n` : '') +
+          (order.notes ? `📝 ${order.notes}\n` : '') +
+          `${SITE_URL}/kitchen`;
 
-  const notesRow = order.notes
-    ? `<p><strong>Special instructions:</strong> ${order.notes}</p>`
-    : '';
+        const smsResp = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: 'Basic ' + btoa(`${twilioSid}:${twilioToken}`),
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({ From: twilioFrom, To: restaurantPhone, Body: smsBody }),
+          }
+        );
+        if (smsResp.ok) {
+          console.log('[WEBHOOK] SMS sent to restaurant:', restaurantPhone);
+        } else {
+          const body = await smsResp.json().catch(() => ({}));
+          console.error('[WEBHOOK] Twilio SMS error:', smsResp.status, JSON.stringify(body));
+        }
+      })()
+    : Promise.resolve().then(() => {
+        console.warn('[WEBHOOK] SMS skipped — TWILIO_* or RESTAURANT_NOTIFICATION_PHONE not set');
+      });
 
-  const html = `
+  // ── Build email promise (Resend) ──────────────────────────────────────────────
+  const emailPromise: Promise<void> = (resendKey && restaurantEmail)
+    ? (async () => {
+        const itemsHtml = items
+          .map((item: { name: string; quantity: number; price: number }) =>
+            `<tr><td style="padding:4px 8px">${item.quantity}×</td><td style="padding:4px 8px">${item.name}</td><td style="padding:4px 8px;text-align:right">$${(item.price * item.quantity).toFixed(2)}</td></tr>`
+          )
+          .join('');
+
+        const deliveryRow = order.order_type === 'delivery' && order.delivery_address
+          ? `<p><strong>Deliver to:</strong> ${order.delivery_address}</p>`
+          : `<p><strong>Type:</strong> Pickup</p>`;
+
+        const notesRow = order.notes
+          ? `<p><strong>Special instructions:</strong> ${order.notes}</p>`
+          : '';
+
+        const html = `
     <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
       <h2 style="background:#E31E24;color:#fff;padding:16px;margin:0;border-radius:8px 8px 0 0">
         🚨 New Order — #${order.order_number}
@@ -129,48 +125,63 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
     </div>
   `;
 
-  try {
-    const resp = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Ricos Tacos Orders <orders@losricostacos.com>',
-        to: [restaurantEmail],
-        subject: `🚨 New ${order.order_type === 'delivery' ? 'Delivery' : 'Pickup'} Order #${order.order_number} — $${Number(order.total).toFixed(2)}`,
-        html,
-      }),
-    });
+        const resp = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Ricos Tacos Orders <orders@losricostacos.com>',
+            to: [restaurantEmail],
+            subject: `🚨 New ${order.order_type === 'delivery' ? 'Delivery' : 'Pickup'} Order #${order.order_number} — $${Number(order.total).toFixed(2)}`,
+            html,
+          }),
+        });
 
-    if (resp.ok) {
-      console.log('[WEBHOOK] Restaurant notification email sent to', restaurantEmail);
-    } else {
-      const body = await resp.json().catch(() => ({}));
-      console.error('[WEBHOOK] Resend error:', resp.status, JSON.stringify(body));
-    }
-  } catch (err) {
-    console.error('[WEBHOOK] Failed to send restaurant email:', err);
-  }
+        if (resp.ok) {
+          console.log('[WEBHOOK] Restaurant notification email sent to', restaurantEmail);
+        } else {
+          const body = await resp.json().catch(() => ({}));
+          console.error('[WEBHOOK] Resend error:', resp.status, JSON.stringify(body));
+        }
+      })()
+    : Promise.resolve().then(() => {
+        console.warn('[WEBHOOK] Restaurant email skipped — RESEND_API_KEY or RESTAURANT_NOTIFICATION_EMAIL not set');
+      });
+
+  // ── Fire both channels concurrently ──────────────────────────────────────────
+  const [smsResult, emailResult] = await Promise.allSettled([smsPromise, emailPromise]);
+  if (smsResult.status === 'rejected') console.error('[WEBHOOK] SMS channel threw:', smsResult.reason);
+  if (emailResult.status === 'rejected') console.error('[WEBHOOK] Email channel threw:', emailResult.reason);
 }
 
 // ── Shared: handle a confirmed paid order ────────────────────────────────────
 async function handlePaidOrder(orderNumber: string): Promise<void> {
-  // 1. Update order status to 'paid' (idempotent — only if still pending)
-  const { error: updateError } = await supabase
+  // 1. Update order status to 'paid' — only if still 'pending'.
+  //    Returns the updated row so we know whether this event is the first to win.
+  const { data: updated, error: updateError } = await supabase
     .from('orders')
     .update({ status: 'paid' })
     .eq('order_number', orderNumber)
-    .eq('status', 'pending');
+    .eq('status', 'pending')
+    .select('order_number');
 
   if (updateError) {
     console.error('[WEBHOOK] Failed to update order status:', updateError);
-  } else {
-    console.log('[WEBHOOK] Order status set to paid:', orderNumber);
   }
 
-  // 2. Email the restaurant — primary reliable notification channel.
+  // If no rows were updated the order was already paid by a prior event — skip notifications.
+  // This prevents duplicate SMS/email when both payment_intent.succeeded and
+  // checkout.session.completed fire for the same order.
+  if (!updated || updated.length === 0) {
+    console.log('[WEBHOOK] Order already paid, skipping notifications:', orderNumber);
+    return;
+  }
+
+  console.log('[WEBHOOK] Order status set to paid:', orderNumber);
+
+  // 2. Email + SMS the restaurant — primary reliable notification channel.
   //    Runs even if the kitchen browser tab is closed.
   await notifyRestaurant(orderNumber);
 
@@ -223,13 +234,17 @@ serve(async (req) => {
 
     console.log('[WEBHOOK] Event type:', event.type);
 
+    // Collect any background work to run after we return 200 to Stripe.
+    // Returning quickly prevents Stripe from timing out and retrying.
+    let backgroundWork: Promise<void> | null = null;
+
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       const orderNumber = paymentIntent.metadata?.order_number;
 
       if (orderNumber) {
         console.log('[WEBHOOK] Payment succeeded for order:', orderNumber);
-        await handlePaidOrder(orderNumber);
+        backgroundWork = handlePaidOrder(orderNumber);
       } else {
         console.warn('[WEBHOOK] payment_intent.succeeded has no order_number in metadata');
       }
@@ -248,8 +263,19 @@ serve(async (req) => {
       }
 
       console.log('[WEBHOOK] Checkout session completed for order:', orderNumber);
-      await handlePaidOrder(orderNumber);
-      console.log('[WEBHOOK] Order pipeline complete for:', orderNumber);
+      backgroundWork = handlePaidOrder(orderNumber);
+    }
+
+    // Return 200 to Stripe immediately — then let background work finish.
+    // EdgeRuntime.waitUntil keeps the Deno isolate alive until the promise settles.
+    if (backgroundWork) {
+      try {
+        // @ts-ignore — available in Supabase Edge Runtime / Deno Deploy
+        EdgeRuntime.waitUntil(backgroundWork);
+      } catch {
+        // Fallback: runtime doesn't support waitUntil — await synchronously.
+        await backgroundWork;
+      }
     }
 
     return new Response(

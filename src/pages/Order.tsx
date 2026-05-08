@@ -5,11 +5,13 @@ import { getMenuItemName, getMenuItemDescription } from "@/data/menuTranslations
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FlavorSelectionDialog } from "@/components/FlavorSelectionDialog";
+import { MeatSelectionDialog } from "@/components/MeatSelectionDialog";
 import { MenuItemModal } from "@/components/MenuItemModal";
-import { Plus, Star, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { Plus, Star, ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
@@ -17,76 +19,274 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
+// ── Extracted card components ─────────────────────────────────────────────────
+// Defined at module level so React gets a stable component identity across
+// parent re-renders. Inline definitions create a brand-new component type on
+// every render, forcing a full DOM remount and killing scroll animations.
+
+interface MenuItemData {
+  id: string;
+  name: string;
+  price: number;
+  image?: string;
+  description?: string;
+  bestSeller?: boolean;
+  subcategory: string;
+  topCategory: string;
+  hasMeatVariants?: boolean;
+}
+
+interface ItemCardProps {
+  item: MenuItemData;
+  index: number;
+  language: "en" | "es";
+  addToCartLabel: string;
+  onAddToCart: (item: { id: string; name: string; price: number; image?: string }) => void;
+  onOpenModal: (item: {
+    id: string; name: string; description?: string; price: number;
+    image?: string; bestSeller?: boolean; subcategory: string;
+  }) => void;
+}
+
+const ItemCard = ({ item, index, language, addToCartLabel, onAddToCart, onOpenModal }: ItemCardProps) => {
+  const { ref: cardRef, isVisible: cardVisible } = useScrollAnimation({
+    threshold: 0.1,
+    rootMargin: "-50px"
+  });
+
+  return (
+    <div
+      ref={cardRef}
+      className={cn(
+        "w-full transition-all duration-500",
+        cardVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+      )}
+      style={{ transitionDelay: `${index * 50}ms` }}
+    >
+      <Card className="overflow-hidden hover:shadow-elegant transition-all duration-300 group flex flex-col border-2 border-transparent hover:border-primary/10 bg-card h-full">
+        {item.image && (
+          <div
+            className="relative h-40 md:h-44 overflow-hidden flex-shrink-0 cursor-pointer select-none"
+            onClick={() => onOpenModal({
+              id: item.id,
+              name: getMenuItemName(item.id, language, item.name),
+              description: item.description ? getMenuItemDescription(item.id, language, item.description) : undefined,
+              price: item.price,
+              image: item.image,
+              bestSeller: item.bestSeller,
+              subcategory: item.subcategory,
+            })}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+          >
+            <img
+              src={item.image}
+              alt={item.name}
+              loading="lazy"
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 pointer-events-none"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-serape-red/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            <div className="absolute bottom-2 right-2 text-[8px] text-white/30 font-mono tracking-tight backdrop-blur-[2px] px-1.5 py-0.5 rounded bg-black/10 pointer-events-none">
+              AI
+            </div>
+            {item.bestSeller && (
+              <Badge className="absolute top-2 right-2 bg-gradient-to-r from-serape-yellow to-serape-orange text-white shadow-glow gap-1 border-0 pointer-events-none">
+                <Star className="h-3 w-3 fill-current pointer-events-none" />
+                <span className="pointer-events-none">Best</span>
+              </Badge>
+            )}
+          </div>
+        )}
+        <div className="p-4 flex flex-col flex-1 bg-card">
+          <h3 className="font-serif text-base md:text-lg font-semibold line-clamp-2 mb-2">
+            {getMenuItemName(item.id, language, item.name)}
+            {item.bestSeller && !item.image && (
+              <Badge className="ml-2 gap-1 bg-gradient-to-r from-serape-yellow to-serape-orange text-white border-0 text-xs">
+                <Star className="h-3 w-3 fill-current" />
+                Best
+              </Badge>
+            )}
+          </h3>
+          {item.description && (
+            <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2 flex-1">
+              {getMenuItemDescription(item.id, language, item.description)}
+            </p>
+          )}
+          {item.hasMeatVariants && (
+            <p className="text-xs text-primary font-medium mb-2">Choose your meat →</p>
+          )}
+          <div className="mt-auto space-y-2">
+            <div className="text-center">
+              <span className="text-lg md:text-xl font-semibold bg-gradient-to-r from-serape-red via-serape-pink to-serape-purple bg-clip-text text-transparent">
+                ${item.price.toFixed(2)}
+              </span>
+            </div>
+            <Button
+              type="button"
+              size="lg"
+              className="w-full gap-2"
+              onClick={() => onAddToCart({
+                id: item.id,
+                name: getMenuItemName(item.id, language, item.name),
+                price: item.price,
+                image: item.image,
+              })}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+            >
+              <Plus className="h-4 w-4 pointer-events-none" />
+              <span className="pointer-events-none">{addToCartLabel}</span>
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+interface SubcategorySectionProps {
+  subcategory: string;
+  items: MenuItemData[];
+  language: "en" | "es";
+  addToCartLabel: string;
+  onAddToCart: ItemCardProps['onAddToCart'];
+  onOpenModal: ItemCardProps['onOpenModal'];
+}
+
+const SubcategorySection = ({ subcategory, items, language, addToCartLabel, onAddToCart, onOpenModal }: SubcategorySectionProps) => {
+  const { ref, isVisible } = useScrollAnimation({ threshold: 0.1 });
+
+  return (
+    <div ref={ref}>
+      <div className={cn(
+        "mb-6 text-center transition-all duration-700",
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+      )}>
+        <h3 className="font-serif text-2xl md:text-3xl font-semibold bg-gradient-to-r from-serape-red via-serape-pink to-serape-purple bg-clip-text text-transparent mb-2">
+          {subcategory}
+        </h3>
+        <div className="h-0.5 w-24 mx-auto rounded-full bg-gradient-to-r from-serape-orange via-serape-yellow to-serape-green" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+        {items.map((item, index) => (
+          <ItemCard
+            key={item.id}
+            item={item}
+            index={index}
+            language={language}
+            addToCartLabel={addToCartLabel}
+            onAddToCart={onAddToCart}
+            onOpenModal={onOpenModal}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const Order = () => {
   const { t, language } = useLanguage();
   const { orderType, setOrderType, addToCart } = useCart();
+
+  // Flavor dialog (chicken wings)
   const [flavorDialogOpen, setFlavorDialogOpen] = useState(false);
-  const [pendingItem, setPendingItem] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
+  const [pendingFlavor, setPendingFlavor] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
+
+  // Meat dialog (burritos)
+  const [meatDialogOpen, setMeatDialogOpen] = useState(false);
+  const [pendingMeat, setPendingMeat] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
+
+  // Item detail modal
   const [menuItemModalOpen, setMenuItemModalOpen] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<any>(null);
 
-  const allTopCategories = Array.from(new Set(menuItems.map(item => item.topCategory)));
+  // Search
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Category filter (desktop sidebar + mobile pills)
+  const allTopCategories = useMemo(
+    () => Array.from(new Set(menuItems.filter(i => !i.isVariant).map(item => item.topCategory))),
+    []
+  );
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set(allTopCategories));
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  const handleAddToCart = (item: { id: string; name: string; price: number; image?: string }) => {
-    if (item.id === "k7") {
-      setPendingItem(item);
-      setFlavorDialogOpen(true);
-    } else {
-      addToCart(item);
-    }
-  };
-
-  const handleFlavorSelect = (flavor: string) => {
-    if (pendingItem) {
-      const flavorLabel = flavor === "mango-habanero" ? "Mango Habanero" 
-                        : flavor === "buffalo" ? "Buffalo" 
-                        : "BBQ";
-      addToCart({
-        ...pendingItem,
-        name: `${pendingItem.name} (${flavorLabel})`
-      });
-      setPendingItem(null);
-    }
-  };
-
   const toggleCategory = (category: string) => {
     setSelectedCategories(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(category)) {
-        newSet.delete(category);
-      } else {
-        newSet.add(category);
-      }
-      return newSet;
+      const next = new Set(prev);
+      if (next.has(category)) { next.delete(category); } else { next.add(category); }
+      return next;
     });
   };
 
   const toggleGroup = (group: string) => {
     setCollapsedGroups(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(group)) {
-        newSet.delete(group);
-      } else {
-        newSet.add(group);
-      }
-      return newSet;
+      const next = new Set(prev);
+      if (next.has(group)) { next.delete(group); } else { next.add(group); }
+      return next;
     });
   };
 
-  const groupedItems = menuItems
-    .filter(item => selectedCategories.has(item.topCategory))
-    .reduce((acc, item) => {
-      if (!acc[item.topCategory]) {
-        acc[item.topCategory] = {};
-      }
-      if (!acc[item.topCategory][item.subcategory]) {
-        acc[item.topCategory][item.subcategory] = [];
-      }
+  const allSelected = selectedCategories.size === allTopCategories.length;
+  const toggleAll = () =>
+    setSelectedCategories(allSelected ? new Set() : new Set(allTopCategories));
+
+  // Items pipeline: strip variants → apply category filter → apply search
+  const visibleItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return menuItems
+      .filter(item => !item.isVariant)
+      .filter(item => selectedCategories.has(item.topCategory))
+      .filter(item =>
+        !q ||
+        item.name.toLowerCase().includes(q) ||
+        (item.description || "").toLowerCase().includes(q)
+      );
+  }, [searchQuery, selectedCategories]);
+
+  // Group by topCategory → subcategory (only used when not searching)
+  const groupedItems = useMemo(() => {
+    if (searchQuery.trim()) return null;
+    return visibleItems.reduce((acc, item) => {
+      if (!acc[item.topCategory]) acc[item.topCategory] = {};
+      if (!acc[item.topCategory][item.subcategory]) acc[item.topCategory][item.subcategory] = [];
       acc[item.topCategory][item.subcategory].push(item);
       return acc;
-    }, {} as Record<string, Record<string, typeof menuItems>>);
+    }, {} as Record<string, Record<string, typeof visibleItems>>);
+  }, [visibleItems, searchQuery]);
+
+  const handleAddToCart = (item: { id: string; name: string; price: number; image?: string }) => {
+    // Chicken wing flavors
+    if (item.id === "k7") {
+      setPendingFlavor(item);
+      setFlavorDialogOpen(true);
+      return;
+    }
+    // Burrito meat selection
+    const menuItem = menuItems.find(m => m.id === item.id);
+    if (menuItem?.hasMeatVariants) {
+      setPendingMeat(item);
+      setMeatDialogOpen(true);
+      return;
+    }
+    addToCart(item);
+  };
+
+  const handleFlavorSelect = (flavor: string) => {
+    if (!pendingFlavor) return;
+    const label = flavor === "mango-habanero" ? "Mango Habanero"
+                : flavor === "buffalo" ? "Buffalo"
+                : "BBQ";
+    addToCart({ ...pendingFlavor, name: `${pendingFlavor.name} (${label})` });
+    setPendingFlavor(null);
+  };
+
+  const handleMeatSelect = (meat: string) => {
+    if (!pendingMeat) return;
+    addToCart({ ...pendingMeat, name: `${pendingMeat.name} (${meat})` });
+    setPendingMeat(null);
+  };
 
   return (
     <>
@@ -98,9 +298,11 @@ const Order = () => {
     />
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 relative">
       <Navigation />
-      
+
       <div className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
-        <div className="text-center mb-8 sm:mb-12 px-4">
+
+        {/* ── Header: title + pickup/delivery card ── */}
+        <div className="text-center mb-6 sm:mb-8 px-4">
           <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold mb-4 sm:mb-6">
             {t("order.title")} <span className="text-primary">{t("order.titleHighlight")}</span>
           </h1>
@@ -108,31 +310,108 @@ const Order = () => {
             {t("order.subtitle")}
           </p>
 
-          <Tabs value={orderType} onValueChange={(v) => setOrderType(v as "pickup" | "delivery")} className="max-w-md mx-auto">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="pickup">{t("order.pickup")}</TabsTrigger>
-              <TabsTrigger value="delivery">{t("order.delivery")}</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="max-w-sm mx-auto rounded-xl border-2 border-primary/20 bg-card p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3 text-center">
+              How are you getting it?
+            </p>
+            <Tabs value={orderType} onValueChange={(v) => setOrderType(v as "pickup" | "delivery")}>
+              <TabsList className="grid w-full grid-cols-2 h-12">
+                <TabsTrigger value="pickup" className="text-base font-semibold">{t("order.pickup")}</TabsTrigger>
+                <TabsTrigger value="delivery" className="text-base font-semibold">{t("order.delivery")}</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {orderType === "delivery" && (
+              <p className="mt-3 text-xs text-center text-muted-foreground leading-relaxed">
+                $5.00 delivery fee · $10.00 minimum · within 20-min drive of Sunset Park
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="flex gap-4 px-4">
-          <aside 
+        {/* ── Search bar (all breakpoints) ── */}
+        <div className="px-4 mb-4">
+          <div className="relative max-w-xl mx-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              ref={searchRef}
+              type="search"
+              placeholder="Search tacos, burritos, drinks…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9 pr-9 h-11"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Mobile category pills (hidden on lg+) ── */}
+        <div className="lg:hidden px-4 mb-6">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none snap-x">
+            {/* All pill */}
+            <button
+              onClick={toggleAll}
+              className={cn(
+                "snap-start shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition-colors whitespace-nowrap",
+                allSelected
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-foreground border-border hover:border-primary/50"
+              )}
+            >
+              All
+            </button>
+            {allTopCategories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => toggleCategory(cat)}
+                className={cn(
+                  "snap-start shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition-colors whitespace-nowrap",
+                  selectedCategories.has(cat)
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card text-foreground border-border hover:border-primary/50"
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Sidebar + main grid ── */}
+        <div className="px-4 lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 xl:grid-cols-[240px_1fr]">
+
+          {/* Desktop sidebar */}
+          <aside
             className="sticky top-20 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-4 shadow-lg hidden lg:block overflow-y-auto z-10"
-            style={{ 
-              width: 'calc(10% + 2rem)', 
-              minWidth: '200px',
-              maxHeight: 'calc(100vh - 6rem)'
-            }}
+            style={{ maxHeight: 'calc(100vh - 6rem)' }}
           >
             <h3 className="font-semibold text-lg mb-4 text-center border-b border-border pb-2">
               {t("order.filterBy")}
             </h3>
-            
+
+            {/* All toggle */}
+            <div className="flex items-center gap-2 p-2 mb-1 hover:bg-accent rounded-md transition-colors cursor-pointer" onClick={toggleAll}>
+              <Checkbox
+                id="cat-all"
+                checked={allSelected}
+                onCheckedChange={toggleAll}
+                className="shrink-0"
+              />
+              <label htmlFor="cat-all" className="flex-1 text-sm font-medium cursor-pointer">
+                All Categories
+              </label>
+            </div>
+
             <div className="space-y-1">
               {allTopCategories.map((category) => {
                 const isCollapsed = collapsedGroups.has(category);
-                
                 return (
                   <Collapsible
                     key={category}
@@ -147,7 +426,7 @@ const Order = () => {
                           onCheckedChange={() => toggleCategory(category)}
                           className="shrink-0"
                         />
-                        <label 
+                        <label
                           htmlFor={`category-${category}`}
                           className="flex-1 text-sm font-medium cursor-pointer"
                         >
@@ -163,14 +442,12 @@ const Order = () => {
                           </button>
                         </CollapsibleTrigger>
                       </div>
-                      
+
                       <CollapsibleContent className="pl-8 space-y-1">
                         {menuItems
-                          .filter(item => item.topCategory === category)
+                          .filter(item => !item.isVariant && item.topCategory === category)
                           .reduce((acc, item) => {
-                            if (!acc.includes(item.subcategory)) {
-                              acc.push(item.subcategory);
-                            }
+                            if (!acc.includes(item.subcategory)) acc.push(item.subcategory);
                             return acc;
                           }, [] as string[])
                           .map(subcategory => (
@@ -187,175 +464,93 @@ const Order = () => {
             </div>
           </aside>
 
-          <main className="flex-1 mx-auto w-full lg:max-w-[calc(80%-4rem)]">
-            <div className="space-y-16">
-              {Object.entries(groupedItems).map(([topCategory, subcategories]) => (
-                <div key={topCategory}>
-                  <div className="mb-8 text-center">
-                    <h2 className="font-serif text-4xl md:text-5xl font-bold bg-gradient-to-r from-serape-red via-serape-pink to-serape-purple bg-clip-text text-transparent mb-3">
-                      {topCategory}
-                    </h2>
-                    <div className="h-1.5 w-32 mx-auto rounded-full overflow-hidden flex">
-                      <div className="flex-1 bg-serape-cyan"></div>
-                      <div className="flex-1 bg-serape-red"></div>
-                      <div className="flex-1 bg-serape-pink"></div>
-                      <div className="flex-1 bg-serape-purple"></div>
-                      <div className="flex-1 bg-serape-blue"></div>
-                      <div className="flex-1 bg-serape-green"></div>
-                      <div className="flex-1 bg-serape-yellow"></div>
-                      <div className="flex-1 bg-serape-orange"></div>
+          {/* Main content */}
+          <main className="w-full min-w-0">
+
+            {/* Search results: flat grid */}
+            {searchQuery.trim() ? (
+              <div>
+                <p className="text-sm text-muted-foreground mb-6">
+                  {visibleItems.length === 0
+                    ? `No results for "${searchQuery}"`
+                    : `${visibleItems.length} result${visibleItems.length !== 1 ? "s" : ""} for "${searchQuery}"`}
+                </p>
+                {visibleItems.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                    {visibleItems.map((item, index) => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        index={index}
+                        language={language}
+                        addToCartLabel={t("order.addToCart")}
+                        onAddToCart={handleAddToCart}
+                        onOpenModal={(modalItem) => {
+                          setSelectedMenuItem(modalItem);
+                          setMenuItemModalOpen(true);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Normal grouped view */
+              <div className="space-y-16">
+                {groupedItems && Object.entries(groupedItems).map(([topCategory, subcategories]) => (
+                  <div key={topCategory}>
+                    <div className="mb-8 text-center">
+                      <h2 className="font-serif text-4xl md:text-5xl font-bold bg-gradient-to-r from-serape-red via-serape-pink to-serape-purple bg-clip-text text-transparent mb-3">
+                        {topCategory}
+                      </h2>
+                      <div className="h-1.5 w-32 mx-auto rounded-full overflow-hidden flex">
+                        <div className="flex-1 bg-serape-cyan"></div>
+                        <div className="flex-1 bg-serape-red"></div>
+                        <div className="flex-1 bg-serape-pink"></div>
+                        <div className="flex-1 bg-serape-purple"></div>
+                        <div className="flex-1 bg-serape-blue"></div>
+                        <div className="flex-1 bg-serape-green"></div>
+                        <div className="flex-1 bg-serape-yellow"></div>
+                        <div className="flex-1 bg-serape-orange"></div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-12">
+                      {Object.entries(subcategories).map(([subcategory, items]) => (
+                        <SubcategorySection
+                          key={subcategory}
+                          subcategory={subcategory}
+                          items={items}
+                          language={language}
+                          addToCartLabel={t("order.addToCart")}
+                          onAddToCart={handleAddToCart}
+                          onOpenModal={(modalItem) => {
+                            setSelectedMenuItem(modalItem);
+                            setMenuItemModalOpen(true);
+                          }}
+                        />
+                      ))}
                     </div>
                   </div>
-
-                  <div className="space-y-12">
-                    {Object.entries(subcategories).map(([subcategory, items]) => {
-                      const SubcategorySection = () => {
-                        const { ref, isVisible } = useScrollAnimation({ threshold: 0.1 });
-                        
-                        return (
-                          <div key={subcategory} ref={ref}>
-                            <div className={cn(
-                              "mb-6 text-center transition-all duration-700",
-                              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-                            )}>
-                              <h3 className="font-serif text-2xl md:text-3xl font-semibold bg-gradient-to-r from-serape-red via-serape-pink to-serape-purple bg-clip-text text-transparent mb-2">
-                                {subcategory}
-                              </h3>
-                              <div className="h-0.5 w-24 mx-auto rounded-full bg-gradient-to-r from-serape-orange via-serape-yellow to-serape-green"></div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-5 justify-items-center">
-                              {items.map((item, index) => {
-                                const ItemCard = () => {
-                                  const { ref: cardRef, isVisible: cardVisible } = useScrollAnimation({ 
-                                    threshold: 0.1,
-                                    rootMargin: "-50px"
-                                  });
-                                  
-                                  return (
-                                     <div
-                                      ref={cardRef}
-                                      className={cn(
-                                        "w-full max-w-xs transition-all duration-500",
-                                        cardVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-                                      )}
-                                      style={{ transitionDelay: `${index * 50}ms` }}
-                                    >
-                                      <Card className="overflow-hidden hover:shadow-elegant transition-all duration-300 group flex flex-col border-2 border-transparent hover:border-primary/10 bg-card h-full">
-                                        {item.image && (
-                                          <div 
-                                            className="relative h-40 md:h-36 overflow-hidden flex-shrink-0 cursor-pointer select-none"
-                                            onClick={() => {
-                                              setSelectedMenuItem({
-                                                id: item.id,
-                                                name: getMenuItemName(item.id, language, item.name),
-                                                description: item.description ? getMenuItemDescription(item.id, language, item.description) : undefined,
-                                                price: item.price,
-                                                image: item.image,
-                                                bestSeller: item.bestSeller,
-                                                subcategory: item.subcategory
-                                              });
-                                              setMenuItemModalOpen(true);
-                                            }}
-                                            style={{ 
-                                              touchAction: 'manipulation',
-                                              WebkitTapHighlightColor: 'transparent'
-                                            }}
-                                          >
-                                            <img 
-                                              src={item.image} 
-                                              alt={item.name}
-                                              loading="lazy"
-                                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 pointer-events-none"
-                                            />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-serape-red/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                                            <div className="absolute bottom-2 right-2 text-[8px] text-white/30 font-mono tracking-tight backdrop-blur-[2px] px-1.5 py-0.5 rounded bg-black/10 pointer-events-none">
-                                              AI
-                                            </div>
-                                            {item.bestSeller && (
-                                              <Badge className="absolute top-2 right-2 bg-gradient-to-r from-serape-yellow to-serape-orange text-white shadow-glow gap-1 border-0 pointer-events-none">
-                                                <Star className="h-3 w-3 fill-current pointer-events-none" />
-                                                <span className="pointer-events-none">Best</span>
-                                              </Badge>
-                                            )}
-                                          </div>
-                                        )}
-                                        <div className="p-4 flex flex-col flex-1 bg-card">
-                                          <h3 className="font-serif text-base md:text-lg font-semibold line-clamp-2 mb-2">
-                                            {getMenuItemName(item.id, language, item.name)}
-                                            {item.bestSeller && !item.image && (
-                                              <Badge className="ml-2 gap-1 bg-gradient-to-r from-serape-yellow to-serape-orange text-white border-0 text-xs">
-                                                <Star className="h-3 w-3 fill-current" />
-                                                Best
-                                              </Badge>
-                                            )}
-                                          </h3>
-                                          
-                                          {item.description && (
-                                            <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2 flex-1">
-                                              {getMenuItemDescription(item.id, language, item.description)}
-                                            </p>
-                                          )}
-                                          
-                                          <div className="mt-auto space-y-2">
-                                            <div className="text-center">
-                                              <span className="text-lg md:text-xl font-semibold bg-gradient-to-r from-serape-red via-serape-pink to-serape-purple bg-clip-text text-transparent">
-                                                ${item.price.toFixed(2)}
-                                              </span>
-                                            </div>
-                                            
-                                            <button
-                                              type="button"
-                                              onClick={() => handleAddToCart({ 
-                                                id: item.id, 
-                                                name: getMenuItemName(item.id, language, item.name), 
-                                                price: item.price,
-                                                image: item.image 
-                                              })}
-                                              className="w-full gap-2 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                                              style={{ 
-                                                minHeight: '44px',
-                                                touchAction: 'manipulation',
-                                                WebkitTapHighlightColor: 'transparent'
-                                              }}
-                                            >
-                                              <Plus className="h-4 w-4 pointer-events-none" />
-                                              <span className="pointer-events-none">{t("order.addToCart")}</span>
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </Card>
-                                    </div>
-                                  );
-                                };
-                                
-                                return <ItemCard key={item.id} />;
-                              })}
-                            </div>
-                          </div>
-                        );
-                      };
-                      
-                      return <SubcategorySection key={subcategory} />;
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </main>
-
-          <div 
-            className="hidden lg:block shrink-0"
-            style={{ width: 'calc(10% + 2rem)', minWidth: '200px' }}
-          />
         </div>
       </div>
 
-      <FlavorSelectionDialog 
+      <FlavorSelectionDialog
         open={flavorDialogOpen}
         onOpenChange={setFlavorDialogOpen}
         onSelectFlavor={handleFlavorSelect}
-        itemName={pendingItem?.name || ""}
+        itemName={pendingFlavor?.name || ""}
+      />
+
+      <MeatSelectionDialog
+        open={meatDialogOpen}
+        onOpenChange={setMeatDialogOpen}
+        onSelectMeat={handleMeatSelect}
+        itemName={pendingMeat?.name || "Burrito"}
       />
 
       {selectedMenuItem && (

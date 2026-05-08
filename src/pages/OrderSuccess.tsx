@@ -84,7 +84,7 @@ const OrderSuccess = () => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
         <Navigation />
-        <div className="pt-32 pb-16">
+        <div className="pt-24 sm:pt-28 md:pt-32 pb-16">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
               <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4 text-primary" />
@@ -106,7 +106,7 @@ const OrderSuccess = () => {
       <SEO title="Order Confirmed | Ricos Tacos Brooklyn" description="Your order has been placed." canonicalPath="/order-success" noindex={true} />
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
         <Navigation />
-        <div className="pt-32 pb-16">
+        <div className="pt-24 sm:pt-28 md:pt-32 pb-16">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
               <h1 className="font-serif text-4xl font-bold mb-4">Payment Received</h1>
@@ -160,9 +160,9 @@ const OrderSuccess = () => {
             </div>
 
             {/* Order Number Card */}
-            <Card className="p-8 mb-8 text-center bg-primary/5 border-primary/20">
+            <Card className="p-5 sm:p-8 mb-8 text-center bg-primary/5 border-primary/20">
               <p className="text-sm text-muted-foreground mb-2">Order Number</p>
-              <p className="font-mono text-3xl font-bold text-primary">{orderDetails.order_number}</p>
+              <p className="font-mono text-3xl font-bold text-primary break-all">{orderDetails.order_number}</p>
               <p className="text-sm text-muted-foreground mt-4">
                 {orderDetails.order_type === "delivery" ? "🚗 Delivery Order" : "🏪 Pickup Order"}
               </p>
@@ -215,7 +215,7 @@ const OrderSuccess = () => {
                       />
                     )}
                     <div className="flex-1">
-                      <h4 className="font-semibold">{item.name}</h4>
+                      <h4 className="font-semibold line-clamp-2">{item.name}</h4>
                       <p className="text-sm text-muted-foreground">
                         ${item.price.toFixed(2)} × {item.quantity}
                       </p>
@@ -278,14 +278,14 @@ const OrderSuccess = () => {
               rel="noopener noreferrer"
               className="block w-full"
             >
-              <Button variant="outline" size="lg" className="w-full gap-2 border-yellow-400 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-950/20">
+              <Button variant="outline" size="lg" className="w-full gap-2 text-sm border-yellow-400 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-950/20">
                 <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                Enjoyed your order? Leave us a Google review!
+                Leave us a Google review!
               </Button>
             </a>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 mt-4">
               <Link to="/" className="flex-1">
                 <Button variant="outline" size="lg" className="w-full gap-2">
                   <Home className="h-5 w-5" />
@@ -307,4 +307,3 @@ const OrderSuccess = () => {
 };
 
 export default OrderSuccess;
-yes

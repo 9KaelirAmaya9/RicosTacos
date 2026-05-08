@@ -167,6 +167,10 @@ export interface MenuItem {
   subcategory: string;
   image?: string;
   bestSeller?: boolean;
+  /** Hidden from the Order grid — kept in data so /menu still shows full list */
+  isVariant?: boolean;
+  /** When true, tapping "Add to Cart" opens a modifier dialog instead */
+  hasMeatVariants?: boolean;
 }
 
 export const menuCategories = [
@@ -273,17 +277,19 @@ export const menuItems: MenuItem[] = [
   { id: "to15", name: "Al Pastor", description: "Juicy pork with pineapple on toasted telera bread", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaPastor },
 
   // Burritos
-  { id: "b1", name: "Birria", description: "Rich braised beef with rice, beans, and melted cheese", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBirria },
-  { id: "b2", name: "Pollo", description: "Tender chicken with rice, beans, and fresh salsa", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPollo },
-  { id: "b3", name: "Bistec Asado", description: "Grilled steak burrito packed with flavor", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBistec },
-  { id: "b4", name: "Carnitas", description: "Crispy pork with all the fixings in a warm tortilla", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoCarnitas },
-  { id: "b6", name: "Lengua", description: "Tender beef tongue with rice, beans, and cilantro", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoLengua },
-  { id: "b7", name: "Al Pastor", description: "Marinated pork with pineapple, wrapped to perfection", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPastor },
-  { id: "b8", name: "Picadillo de Res", description: "Hearty ground beef stew with potatoes and spices", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPicadillo },
-  { id: "b9", name: "Vegetariano", description: "Fresh beans, rice, cheese, lettuce, and guacamole", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoVegetariano },
-  { id: "b10", name: "Cecina", description: "Smoky salted beef with traditional accompaniments", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoCecina },
-  { id: "b11", name: "Arabe", description: "Middle Eastern-style spiced pork burrito", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoArabe },
-  { id: "b12", name: "Mole", description: "Rich chocolate-chile sauce with chicken, unforgettable", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoMole },
+  // Combined item shown in the Order page — individual variants kept for /menu
+  { id: "burrito-combo", name: "Burrito", description: "Your choice of filling wrapped in a warm flour tortilla with rice, beans, and salsa. Choose from 11 meats.", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBirria, hasMeatVariants: true },
+  { id: "b1", name: "Birria", description: "Rich braised beef with rice, beans, and melted cheese", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBirria, isVariant: true },
+  { id: "b2", name: "Pollo", description: "Tender chicken with rice, beans, and fresh salsa", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPollo, isVariant: true },
+  { id: "b3", name: "Bistec Asado", description: "Grilled steak burrito packed with flavor", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBistec, isVariant: true },
+  { id: "b4", name: "Carnitas", description: "Crispy pork with all the fixings in a warm tortilla", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoCarnitas, isVariant: true },
+  { id: "b6", name: "Lengua", description: "Tender beef tongue with rice, beans, and cilantro", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoLengua, isVariant: true },
+  { id: "b7", name: "Al Pastor", description: "Marinated pork with pineapple, wrapped to perfection", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPastor, isVariant: true },
+  { id: "b8", name: "Picadillo de Res", description: "Hearty ground beef stew with potatoes and spices", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPicadillo, isVariant: true },
+  { id: "b9", name: "Vegetariano", description: "Fresh beans, rice, cheese, lettuce, and guacamole", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoVegetariano, isVariant: true },
+  { id: "b10", name: "Cecina", description: "Smoky salted beef with traditional accompaniments", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoCecina, isVariant: true },
+  { id: "b11", name: "Arabe", description: "Middle Eastern-style spiced pork burrito", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoArabe, isVariant: true },
+  { id: "b12", name: "Mole", description: "Rich chocolate-chile sauce with chicken, unforgettable", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoMole, isVariant: true },
 
   // Sopas (Soups)
   { id: "s1", name: "Pozole Chica", description: "Hearty hominy soup with tender pork in red chile broth", price: 7.00, category: "Sopas", topCategory: "Soups", subcategory: "Traditional Soups", image: pozole },

@@ -89,13 +89,13 @@ const Catering = () => {
             </div>
 
             {/* CTA Card */}
-            <Card className="p-8 mb-12 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground text-center max-w-2xl mx-auto border-0 shadow-elegant">
+            <Card className="p-5 sm:p-8 mb-12 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground text-center max-w-2xl mx-auto border-0 shadow-elegant">
               <h2 className="font-serif text-3xl font-bold mb-2">Ready to Book?</h2>
               <p className="mb-2 opacity-90">Contact us to discuss your event</p>
               <p className="font-semibold text-lg mb-1">Ask for Josefina</p>
               <a
                 href="tel:9173700430"
-                className="text-3xl font-serif font-bold hover:opacity-80 transition-opacity block mb-6"
+                className="text-2xl sm:text-3xl font-serif font-bold hover:opacity-80 transition-opacity block mb-6"
               >
                 (917) 370-0430
               </a>

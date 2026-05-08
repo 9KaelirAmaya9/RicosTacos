@@ -16,6 +16,7 @@ const Profile = () => {
   const { user, session, loading: authLoading, signOut } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const [profileData, setProfileData] = useState({
     name: "",
     phone: "",
@@ -61,10 +62,11 @@ const Profile = () => {
     if (profileData.phone.trim()) {
       const digits = profileData.phone.replace(/\D/g, "");
       if (digits.length !== 10) {
-        toast.error("Please enter a valid 10-digit US phone number, e.g. (718) 555-1234");
+        setPhoneError("Please enter a valid 10-digit US phone number, e.g. (718) 555-1234");
         return;
       }
     }
+    setPhoneError("");
 
     setIsSaving(true);
 
@@ -181,6 +183,7 @@ const Profile = () => {
                     <Label htmlFor="name">Full Name</Label>
                     <Input
                       id="name"
+                      autoComplete="name"
                       value={profileData.name}
                       onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                       placeholder="John Doe"
@@ -194,12 +197,14 @@ const Profile = () => {
                       <Input
                         id="phone"
                         type="tel"
+                        autoComplete="tel"
                         value={profileData.phone}
-                        onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                        onChange={(e) => { setProfileData({ ...profileData, phone: e.target.value }); setPhoneError(""); }}
                         placeholder="(555) 123-4567"
                         className="pl-9"
                       />
                     </div>
+                    {phoneError && <p className="text-sm text-destructive mt-1">{phoneError}</p>}
                   </div>
 
                   <div>
@@ -208,6 +213,7 @@ const Profile = () => {
                       <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Textarea
                         id="address"
+                        autoComplete="street-address"
                         value={profileData.address}
                         onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
                         placeholder="123 Main St, Apt 4B, New York, NY 10001"

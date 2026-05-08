@@ -368,7 +368,10 @@ const Cart = () => {
         }
       }
 
-      if (deliveryBlocked) return;
+      if (deliveryBlocked) {
+        setIsProcessing(false);
+        return;
+      }
     } else {
       if (isDev) console.log("Pickup order - skipping delivery validation");
     }
@@ -885,8 +888,8 @@ const Cart = () => {
               )
             ) : (
               <div className="grid lg:grid-cols-3 gap-8">
-                {/* Checkout Form — rendered first in DOM for mobile (appears on top on small screens) */}
-                <div className="lg:col-span-1 lg:order-last order-first">
+                {/* Checkout Form — right column on desktop, below cart items on mobile */}
+                <div className="lg:col-span-1 order-last">
                   <Card className="p-4 sm:p-6 lg:sticky lg:top-32">
                     <h2 className="font-serif text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Checkout</h2>
 
@@ -927,9 +930,9 @@ const Cart = () => {
                           required
                           autoComplete="tel"
                           inputMode="tel"
-                          className={touched.phone && customerInfo.phone.length < 10 ? "border-destructive" : ""}
+                          className={touched.phone && customerInfo.phone.replace(/\D/g, '').length < 10 ? "border-destructive" : ""}
                         />
-                        {touched.phone && customerInfo.phone.length < 10 && (
+                        {touched.phone && customerInfo.phone.replace(/\D/g, '').length < 10 && (
                           <p className="text-xs text-destructive mt-1">Phone must be at least 10 digits</p>
                         )}
                       </div>
@@ -1173,8 +1176,8 @@ const Cart = () => {
                   </Card>
                 </div>
 
-                {/* Cart Items */}
-                <div className="lg:col-span-2 lg:order-first order-last space-y-6">
+                {/* Cart Items — left column on desktop, first on mobile */}
+                <div className="lg:col-span-2 order-first space-y-6">
                   <Card className="p-6">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="font-serif text-2xl font-semibold">

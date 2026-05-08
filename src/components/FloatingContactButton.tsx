@@ -9,7 +9,7 @@ export const FloatingContactButton = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 pointer-events-none">
+    <div className="fixed bottom-24 sm:bottom-6 right-6 z-40 pointer-events-none">
       <Button
         onClick={handleCall}
         size="lg"

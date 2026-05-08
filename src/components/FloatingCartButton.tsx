@@ -18,7 +18,7 @@ export const FloatingCartButton = () => {
   };
 
   return (
-    <div className="fixed bottom-6 sm:right-6 right-2 z-50 flex flex-col items-end gap-3 pointer-events-none w-auto">
+    <div className="fixed bottom-20 sm:bottom-6 sm:right-6 right-2 z-50 flex flex-col items-end gap-3 pointer-events-none w-auto">
       {/* Expanded Cart Preview */}
       <div className={cn(
         "transition-all duration-300 origin-bottom-right",
