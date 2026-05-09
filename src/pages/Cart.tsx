@@ -426,9 +426,11 @@ const Cart = () => {
         console.log("└─────────────────────────────────────────────────────────────┘");
       }
 
+      // Send only id + name + quantity — prices are looked up server-side from menu_items.
+      // Never send client-controlled prices to the payment endpoint.
       const paymentItems = cart.map(item => ({
+        id: item.id,
         name: item.name,
-        price: item.price,
         quantity: item.quantity,
       }));
 
@@ -463,8 +465,8 @@ const Cart = () => {
               items: paymentItems,
               orderType,
               customerInfo: validation.data,
-              couponCode: appliedCoupon?.code || null,
-              discountAmount,
+              deliveryAddress: finalDeliveryAddress || null,
+              userId: session?.user?.id || null,
               checkoutSessionId,
             }),
           });
@@ -547,227 +549,14 @@ const Cart = () => {
       const paymentElapsed = Date.now() - paymentStartTime;
       if (isDev) console.log(`✅ Payment intent created successfully! (${paymentElapsed}ms) Order: ${orderNumber}`);
 
-      // STEP 4: Now write the order to the DB. Payment intent already exists in
-      // Stripe, so if this insert fails the user sees an error and can retry —
-      // the existing payment intent will be reused via idempotency.
+      // Order is now created atomically inside create-payment-intent (server-side).
+      // No client-side DB insert needed — the edge function handles it with service_role.
       if (isDev) {
-        console.log("\n┌─────────────────────────────────────────────────────────────┐");
-        console.log("│ STEP 4: CREATING ORDER                                      │");
-        console.log("└─────────────────────────────────────────────────────────────┘");
-        console.log("📝 Order Configuration:", {
-          orderNumber,
-          userType: session?.user?.id ? "authenticated" : "guest",
-          userId: session?.user?.id || null,
-          customerName: validation.data.name,
-          customerEmail: validation.data.email,
-          customerPhone: validation.data.phone,
-          orderType,
-          deliveryAddress: orderType === "delivery" ? finalDeliveryAddress : null,
-          itemsCount: cart.length,
-          subtotal: `$${cartTotal.toFixed(2)}`,
-          tax: `$${tax.toFixed(2)}`,
-          total: `$${total.toFixed(2)}`,
-          hasNotes: !!validation.data.notes,
-        });
-        console.log("💾 Inserting order into database...");
-      }
-
-      const orderStartTime = Date.now();
-
-      const orderHeartbeat = isDev ? setInterval(() => {
-        console.log(`⏳ Order creation in progress... (${Date.now() - orderStartTime}ms elapsed)`);
-      }, 2000) : null;
-
-      // Prepare order data
-      const orderDataToInsert = {
-        order_number: orderNumber,
-        stripe_payment_intent_id: piData.paymentIntentId || null,
-        user_id: session?.user?.id || null,
-        customer_name: validation.data.name,
-        customer_email: validation.data.email || null,
-        customer_phone: validation.data.phone,
-        order_type: orderType,
-        delivery_address: orderType === "delivery" ? finalDeliveryAddress : null,
-        items: cart as any,
-        subtotal: serverAmounts.subtotal,
-        tax: serverAmounts.tax,
-        total: serverAmounts.total,
-        notes: validation.data.notes || null,
-        status: "pending",
-        // Preserve coupon data so admin reports and receipts show the correct discount
-        coupon_code: appliedCoupon?.code || null,
-        discount_amount: appliedCoupon?.discount_amount || null,
-      };
-
-      if (isDev) {
-        console.log("💾 Order data prepared:", {
-          order_number: orderDataToInsert.order_number,
-          items_count: cart.length,
-          total: orderDataToInsert.total,
-          order_type: orderDataToInsert.order_type
-        });
-      }
-
-      // Create insert promise using a raw fetch() call directly to the Supabase REST API.
-      //
-      // We do NOT use the main supabase client here because when a user is authenticated,
-      // the Supabase JS client tries to refresh the JWT before making any DB call.
-      // If the auth server is slow or unreachable, this refresh hangs indefinitely,
-      // blocking the INSERT. The order never reaches the database.
-      //
-      // A raw fetch() bypasses the GoTrueClient entirely — no JWT refresh, no auth state,
-      // no second GoTrueClient instance. The anon key is used directly, which is allowed
-      // by the RLS INSERT policy on the orders table. The user_id is passed explicitly.
-      const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
-      const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
-
-      const orderInsertPromise = (async () => {
-        try {
-          if (isDev) console.log("🔄 Starting database insert (raw fetch, no JWT refresh)...");
-
-          const response = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify(orderDataToInsert),
-          });
-
-          if (!response.ok) {
-            const errBody = await response.json().catch(() => ({}));
-            if (isDev) console.error("❌ Insert HTTP error:", response.status, errBody);
-            return {
-              data: null,
-              error: {
-                message: errBody?.message || errBody?.error || `HTTP ${response.status}`,
-                code: errBody?.code || String(response.status),
-                httpStatus: response.status,
-                details: errBody,
-              }
-            };
-          }
-
-          const data = await response.json();
-          const inserted = Array.isArray(data) ? data[0] : data;
-          if (isDev) console.log("📦 Insert completed successfully");
-          return { data: inserted, error: null };
-        } catch (insertError: any) {
-          if (isDev) {
-            console.error("❌ Insert exception:", {
-              message: insertError?.message,
-              name: insertError?.name
-            });
-          }
-          return {
-            data: null,
-            error: {
-              message: insertError?.message || "Database insert failed",
-              details: insertError
-            }
-          };
-        }
-      })();
-
-      const orderTimeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => {
-          if (orderHeartbeat) clearInterval(orderHeartbeat);
-          reject(new Error(`Order creation timed out after 30 seconds (elapsed: ${Date.now() - orderStartTime}ms). Please check your connection and try again.`));
-        }, 30000)
-      );
-
-      const result = await Promise.race([orderInsertPromise, orderTimeoutPromise]) as any;
-      if (orderHeartbeat) clearInterval(orderHeartbeat);
-
-      const orderError = result?.error;
-
-      if (orderError) {
-        const elapsed = Date.now() - orderStartTime;
-        if (isDev) {
-          console.error("❌ Order creation error:", orderError);
-          console.error("❌ Error message:", orderError?.message);
-          console.error("❌ Error code:", orderError?.code);
-          console.error(`❌ Order creation took ${elapsed}ms before failing`);
-        }
-
-        // 23505 = unique_violation on stripe_payment_intent_id.
-        // This means the order was already created in a previous attempt that
-        // succeeded DB-side but failed network-side before the client saw the
-        // response. The same payment intent is still valid (Stripe idempotency
-        // key ensures we got back the same clientSecret). Recover silently by
-        // fetching the existing order and opening the payment modal.
-        if (orderError?.code === '23505') {
-          if (isDev) console.log("ℹ️ Duplicate PI detected — fetching existing order to resume");
-          try {
-            const existingResp = await fetch(
-              `${SUPABASE_URL}/rest/v1/orders?stripe_payment_intent_id=eq.${encodeURIComponent(piData.paymentIntentId)}&select=order_number&limit=1`,
-              {
-                headers: {
-                  'apikey': SUPABASE_ANON_KEY,
-                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                },
-              }
-            );
-            if (existingResp.ok) {
-              const rows = await existingResp.json();
-              const existingOrderNumber = rows?.[0]?.order_number;
-              if (existingOrderNumber) {
-                if (isDev) console.log("✅ Resuming existing order:", existingOrderNumber);
-                setCurrentOrderNumber(existingOrderNumber);
-                setCheckoutAmounts(serverAmounts);
-                setCheckoutClientSecret(piData.clientSecret as string);
-                setCheckoutPublishableKey(piData.publishableKey as string);
-                setShowCheckout(true);
-                setIsProcessing(false);
-                return;
-              }
-            }
-          } catch (resumeErr) {
-            if (isDev) console.warn("Could not fetch existing order — falling through to error", resumeErr);
-          }
-          // Could not recover — tell user and let them retry fresh
-          throw new Error("Your session was already started. Please try again.");
-        }
-
-        let errorMessage = "Failed to create order. Please try again.";
-        if (orderError?.code === '23503') {
-          errorMessage = "Invalid order data. Please check your information and try again.";
-        } else if (
-          orderError?.code === '42501' ||
-          orderError?.code === '401' ||
-          orderError?.code === '403' ||
-          orderError?.httpStatus === 401 ||
-          orderError?.httpStatus === 403
-        ) {
-          setSessionExpiredError(true);
-          setIsProcessing(false);
-          return;
-        } else if (orderError?.message) {
-          errorMessage = `Failed to create order: ${orderError.message}`;
-        } else if (typeof orderError === 'string') {
-          errorMessage = `Failed to create order: ${orderError}`;
-        }
-
-        const orderErr = new Error(errorMessage);
-        captureException(orderErr, {
-          context: 'order_creation',
-          orderType: orderType,
-          cartTotal: cartTotal,
-        });
-        throw orderErr;
-      }
-
-      const orderElapsed = Date.now() - orderStartTime;
-      if (isDev) {
-        console.log(`✅ Order created successfully! (${orderElapsed}ms)`);
         console.log("\n╔════════════════════════════════════════════════════════════════╗");
         console.log("║       CHECKOUT PROCESS COMPLETED SUCCESSFULLY                  ║");
         console.log("╚════════════════════════════════════════════════════════════════╝");
         console.log("⏱️  TOTAL RUNTIME:", `${Date.now() - overallStartTime}ms`);
-        console.log("├─ Step 3 (Payment Intent): " + paymentElapsed + "ms");
-        console.log("└─ Step 4 (Order Creation): " + orderElapsed + "ms");
+        console.log("├─ Step 3 (Payment Intent + Order): " + paymentElapsed + "ms");
         console.log("🎯 Next Action: Opening payment modal for order:", orderNumber);
       }
 
