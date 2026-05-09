@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useRef, useState, useEffect } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useOrderAlarm } from "@/hooks/useOrderAlarm";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useNavigate } from "react-router-dom";
@@ -45,12 +46,16 @@ import { NotificationSettings } from "@/components/NotificationSettings";
 import type { Order } from "@/types/orders";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+interface DailyRevenue { day: string; revenue: number; orders: number; }
+
 interface AdminMetrics {
   todayOrders: number;
   todayRevenue: number;
+  weekRevenue: number;
   pendingOrders: number;
   totalOrders: number;
   recentOrders: Order[];
+  dailyRevenue: DailyRevenue[];
 }
 
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || '').trim();
@@ -130,21 +135,31 @@ const Admin = () => {
     today.setHours(0, 0, 0, 0);
     const todayISO = today.toISOString();
 
+    // Fetch last 31 days for chart accuracy + a separate all-time count
+    const thirtyOneDaysAgo = new Date();
+    thirtyOneDaysAgo.setDate(thirtyOneDaysAgo.getDate() - 31);
+    const thirtyOneDaysAgoISO = thirtyOneDaysAgo.toISOString();
+
     if (import.meta.env.DEV) console.log('[Admin] fetchAdminMetrics: starting query...');
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/orders?select=id,total,created_at,status,order_number,customer_name,customer_phone,order_type&order=created_at.desc&limit=200`,
-      {
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-      }
-    );
+    const [response, countResponse] = await Promise.all([
+      fetch(
+        `${SUPABASE_URL}/rest/v1/orders?select=id,total,created_at,status,order_number,customer_name,customer_phone,order_type&order=created_at.desc&limit=2000&created_at=gte.${thirtyOneDaysAgoISO}`,
+        {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          signal: controller.signal,
+        }
+      ),
+      fetch(
+        `${SUPABASE_URL}/rest/v1/orders?select=id`,
+        {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json', 'Prefer': 'count=exact', 'Range': '0-0' },
+          signal: controller.signal,
+        }
+      ),
+    ]);
     clearTimeout(timeoutId);
 
     if (!response.ok) {
@@ -155,16 +170,37 @@ const Admin = () => {
     const allOrders: Order[] = await response.json();
     if (import.meta.env.DEV) console.log('[Admin] fetchAdminMetrics result — count:', allOrders.length);
 
-    const ordersToday = allOrders.filter(o => o.created_at >= todayISO);
+    // All-time total from count header
+    const contentRange = countResponse.headers.get('Content-Range') || '';
+    const totalOrders = parseInt(contentRange.split('/')[1] || String(allOrders.length), 10);
+
+    const ordersToday = allOrders.filter(o => o.created_at >= todayISO && o.status !== 'cancelled');
     const pendingOrders = allOrders.filter(o => ["paid", "confirmed", "preparing"].includes(o.status));
     const recentOrders = allOrders.slice(0, 10);
+
+    // 7-day daily revenue chart data
+    const dailyRevenue: DailyRevenue[] = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (6 - i));
+      const dayStr = d.toISOString().split('T')[0];
+      const dayOrders = allOrders.filter(o => o.created_at.startsWith(dayStr) && o.status !== 'cancelled');
+      return {
+        day: d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' }),
+        revenue: Math.round(dayOrders.reduce((sum, o) => sum + Number(o.total || 0), 0) * 100) / 100,
+        orders: dayOrders.length,
+      };
+    });
+
+    const weekRevenue = dailyRevenue.reduce((sum, d) => sum + d.revenue, 0);
 
     return {
       todayOrders: ordersToday.length,
       todayRevenue: ordersToday.reduce((sum, o) => sum + Number(o.total || 0), 0),
+      weekRevenue,
       pendingOrders: pendingOrders.length,
-      totalOrders: allOrders.length,
+      totalOrders: isNaN(totalOrders) ? allOrders.length : totalOrders,
       recentOrders,
+      dailyRevenue,
     };
   }, []);
 
@@ -300,9 +336,11 @@ const Admin = () => {
   // ── Derived values ─────────────────────────────────────────────────────────
   const todayOrders = metrics?.todayOrders ?? 0;
   const todayRevenue = metrics?.todayRevenue ?? 0;
+  const weekRevenue = metrics?.weekRevenue ?? 0;
   const pendingOrders = metrics?.pendingOrders ?? 0;
   const totalOrders = metrics?.totalOrders ?? 0;
   const recentOrders = metrics?.recentOrders ?? [];
+  const dailyRevenue = metrics?.dailyRevenue ?? [];
 
   const metricCards = useMemo(() => [
     {
@@ -327,13 +365,13 @@ const Admin = () => {
       color: "text-orange-600",
     },
     {
-      title: "Total Orders",
-      value: totalOrders,
+      title: "This Week",
+      value: `$${weekRevenue.toFixed(2)}`,
       icon: TrendingUp,
-      description: "All time orders",
+      description: "Revenue — last 7 days",
       color: "text-purple-600",
     },
-  ], [todayOrders, todayRevenue, pendingOrders, totalOrders]);
+  ], [todayOrders, todayRevenue, pendingOrders, weekRevenue]);
 
   const quickActions = useMemo(() => [
     {
@@ -351,6 +389,13 @@ const Admin = () => {
       color: "bg-orange-500 hover:bg-orange-600",
     },
     {
+      title: "Menu Management",
+      description: "Edit prices & item availability",
+      icon: Settings,
+      onClick: () => navigate("/admin/menu"),
+      color: "bg-green-600 hover:bg-green-700",
+    },
+    {
       title: "Manage Roles",
       description: "User permissions & access",
       icon: Users,
@@ -363,13 +408,6 @@ const Admin = () => {
       icon: KeyRound,
       onClick: () => navigate("/admin/passwords"),
       color: "bg-indigo-500 hover:bg-indigo-600",
-    },
-    {
-      title: "Settings",
-      description: "Account & profile settings",
-      icon: Settings,
-      onClick: () => navigate("/profile", { state: { fromAdmin: true } }),
-      color: "bg-gray-500 hover:bg-gray-600",
     },
   ], [navigate]);
 
@@ -471,20 +509,40 @@ const Admin = () => {
           ))}
         </div>
 
+        {/* Revenue Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+              Revenue — Last 7 Days
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {dailyRevenue.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={dailyRevenue} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={v => `$${v}`} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={52} />
+                  <Tooltip
+                    formatter={(value: number, name: string) => name === 'revenue' ? [`$${value.toFixed(2)}`, 'Revenue'] : [value, 'Orders']}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))' }}
+                    cursor={{ fill: 'hsl(var(--accent))' }}
+                  />
+                  <Bar dataKey="revenue" fill="#E31E24" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[220px] flex items-center justify-center text-muted-foreground text-sm">
+                No revenue data yet
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Quick Actions */}
         <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-foreground">Quick Actions</h2>
-            <Button
-              variant="destructive"
-              onClick={() => setShowDeleteDialog(true)}
-              className="gap-2"
-              disabled={totalOrders === 0}
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete All Orders
-            </Button>
-          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-4">Quick Actions</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {quickActions.map((action) => (
               <Card
@@ -665,6 +723,38 @@ const Admin = () => {
             </div>
           </CardContent>
         </Card>
+        {/* Danger Zone */}
+        <Card className="border-destructive/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Danger Zone
+            </CardTitle>
+            <CardDescription className="text-destructive/80">
+              Irreversible actions — proceed with caution
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border border-destructive/30 rounded-lg bg-destructive/5">
+              <div>
+                <p className="font-medium text-sm">Delete All Orders</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Permanently removes all {totalOrders} orders from the database. Cannot be undone.
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteDialog(true)}
+                className="gap-2 shrink-0"
+                disabled={totalOrders === 0}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete All Orders
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
 
       {/* Delete All Orders Confirmation Dialog */}

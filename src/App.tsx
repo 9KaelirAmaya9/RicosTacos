@@ -32,6 +32,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const AdminOrders = lazy(() => import("./pages/AdminOrders"));
 const AdminRoles = lazy(() => import("./pages/AdminRoles"));
 const AdminPasswordManagement = lazy(() => import("./pages/AdminPasswordManagement"));
+const AdminMenu = lazy(() => import("./pages/AdminMenu"));
 const Kitchen = lazy(() => import("./pages/Kitchen"));
 const KitchenLogin = lazy(() => import("./pages/KitchenLogin"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -120,6 +121,7 @@ const App = () => (
                     <Route path="/admin/orders" element={<ProtectedRoute requiredRole="admin"><AdminOrders /></ProtectedRoute>} />
                     <Route path="/admin/roles" element={<ProtectedRoute requiredRole="admin"><AdminRoles /></ProtectedRoute>} />
                     <Route path="/admin/passwords" element={<ProtectedRoute requiredRole="admin"><AdminPasswordManagement /></ProtectedRoute>} />
+                    <Route path="/admin/menu" element={<ProtectedRoute requiredRole="admin"><AdminMenu /></ProtectedRoute>} />
                     <Route path="/kitchen" element={<ProtectedRoute requiredRole="kitchen"><ErrorBoundary fallback={KitchenErrorFallback}><Kitchen /></ErrorBoundary></ProtectedRoute>} />
                     <Route path="/order-success" element={<OrderSuccess />} />
                     <Route path="/500" element={<ServerError />} />
