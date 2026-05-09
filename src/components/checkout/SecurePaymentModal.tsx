@@ -167,39 +167,6 @@ function PaymentForm({
           }),
         }).catch((e: any) => console.warn('Push notification failed (non-critical):', e));
 
-        // Send confirmation email (with timeout to prevent blocking)
-        const emailPromise = fetch(`${_SUPABASE_URL}/functions/v1/send-order-confirmation`, {
-          method: 'POST',
-          headers: {
-            'apikey': _SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            orderNumber,
-            customerName: customerInfo.name,
-            customerEmail: customerInfo.email,
-            orderType,
-            items: cart,
-            subtotal,
-            tax,
-            total,
-            deliveryAddress: orderType === 'delivery' ? customerInfo.address : undefined
-          }),
-        });
-
-        // Add 5-second timeout to email confirmation
-        const emailTimeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Email confirmation timeout')), 5000)
-        );
-
-        try {
-          await Promise.race([emailPromise, emailTimeout]);
-        } catch (emailError: any) {
-          console.error('Failed to send confirmation email (non-blocking):', emailError);
-          // Don't fail the transaction if email fails or times out
-        }
-        
         toast.success('Payment successful!');
         onSuccess();
       } else {

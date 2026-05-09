@@ -115,6 +115,13 @@ export const translations: Record<"en" | "es", Translations> = {
     "cart.empty": "Your cart is empty",
     "cart.emptyDesc": "Start adding delicious items from our menu to begin your order",
     "cart.browseMenu": "Browse Menu",
+    "cart.checkout.title": "Checkout",
+    "cart.checkout.name": "Name",
+    "cart.checkout.phone": "Phone",
+    "cart.checkout.email": "Email",
+    "cart.checkout.notes": "Special Instructions",
+    "cart.checkout.proceed": "Proceed to Checkout",
+    "cart.checkout.processing": "Preparing your order…",
 
     // Menu Categories
     "category.desayunos": "Mexican Breakfasts",
@@ -253,6 +260,13 @@ export const translations: Record<"en" | "es", Translations> = {
     "cart.empty": "Tu carrito está vacío",
     "cart.emptyDesc": "Comienza agregando deliciosos artículos de nuestro menú para comenzar tu orden",
     "cart.browseMenu": "Explorar Menú",
+    "cart.checkout.title": "Pago",
+    "cart.checkout.name": "Nombre",
+    "cart.checkout.phone": "Teléfono",
+    "cart.checkout.email": "Correo electrónico",
+    "cart.checkout.notes": "Instrucciones especiales",
+    "cart.checkout.proceed": "Proceder al Pago",
+    "cart.checkout.processing": "Preparando tu orden…",
 
     // Menu Categories
     "category.desayunos": "Desayunos Mexicanos",

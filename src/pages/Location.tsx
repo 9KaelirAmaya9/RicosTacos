@@ -30,7 +30,7 @@ const Location = () => {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <Navigation />
       
-      <div className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
+      <div id="main-content" className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
         <div className="container mx-auto px-4">
           {/* Header */}
           <div className="text-center mb-16">

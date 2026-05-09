@@ -75,7 +75,7 @@ const Catering = () => {
         <SerapeStripe />
         <Navigation />
 
-        <div className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
+        <div id="main-content" className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
           <div className="container mx-auto px-4">
 
             {/* Header */}

@@ -27,19 +27,11 @@ import { captureException } from "@/utils/sentry";
 const CUSTOMER_INFO_KEY = 'ricos-tacos-customer-info';
 const PENDING_CHECKOUT_KEY = 'ricos-tacos-pending-checkout';
 
-// ─── Shared totals helper ────────────────────────────────────────────────────
-// Single source of truth for all price calculations used in the UI summary,
-// coupon validation, and the order-creation / payment-intent steps.
-const calculateTotals = (
-  cartTotal: number,
-  discountAmount: number,
-  currentOrderType: string
-) => {
-  const subtotalAfterDiscount = Math.max(0, cartTotal - discountAmount);
-  const tax = subtotalAfterDiscount * TAX_RATE; // NYC sales tax: 8.875%
+const calculateTotals = (cartTotal: number, currentOrderType: string) => {
+  const tax = cartTotal * TAX_RATE;
   const deliveryFee = currentOrderType === "delivery" ? DELIVERY_FEE : 0;
-  const total = subtotalAfterDiscount + tax + deliveryFee;
-  return { subtotalAfterDiscount, tax, deliveryFee, total };
+  const total = cartTotal + tax + deliveryFee;
+  return { tax, deliveryFee, total };
 };
 
 const Cart = () => {
@@ -67,9 +59,6 @@ const Cart = () => {
   const checkoutSessionIdRef = useRef<string | null>(null);
   const hasWarmedUpRef = useRef(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_amount: number; description?: string } | null>(null);
-  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<{ place_id: string; formatted_address: string } | null>(null);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const [paymentTimedOut, setPaymentTimedOut] = useState(false);
@@ -171,36 +160,6 @@ const Cart = () => {
     }
   }, [customerInfo]);
 
-  // ─── Coupon handler (extracted from inline JSX) ──────────────────────────
-  const handleApplyCoupon = useCallback(async () => {
-    if (!couponCode.trim()) return;
-    setIsValidatingCoupon(true);
-    try {
-      const discountAmount = appliedCoupon?.discount_amount || 0;
-      const { total: orderAmount } = calculateTotals(cartTotal, discountAmount, orderType);
-
-      const { data, error } = await supabase.functions.invoke('validate-coupon', {
-        body: { code: couponCode.trim(), orderAmount }
-      });
-
-      if (error || !data?.valid) {
-        toast.error(data?.error || 'Invalid coupon code');
-        return;
-      }
-
-      setAppliedCoupon({
-        code: data.coupon.code,
-        discount_amount: data.coupon.discount_amount,
-        description: data.coupon.description,
-      });
-      toast.success(`Coupon "${data.coupon.code}" applied! ${data.coupon.description || ''}`);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to validate coupon');
-    } finally {
-      setIsValidatingCoupon(false);
-    }
-  }, [couponCode, cartTotal, orderType, appliedCoupon]);
-
   const handlePlaceOrder = useCallback(async () => {
     const isDev = import.meta.env.DEV;
 
@@ -213,7 +172,6 @@ const Cart = () => {
         cartLength: cart.length,
         isProcessing,
         orderType,
-        hasAppliedCoupon: !!appliedCoupon,
       });
       console.log("👤 Customer Information:", {
         name: customerInfo.name,
@@ -386,14 +344,11 @@ const Cart = () => {
         console.log("└─────────────────────────────────────────────────────────────┘");
       }
 
-      const discountAmount = appliedCoupon?.discount_amount || 0;
-      const { subtotalAfterDiscount, tax, deliveryFee, total } = calculateTotals(cartTotal, discountAmount, orderType);
+      const { tax, deliveryFee, total } = calculateTotals(cartTotal, orderType);
 
       if (isDev) {
         console.log("💰 Calculated Totals:", {
           subtotal: `$${cartTotal.toFixed(2)}`,
-          discount: `$${discountAmount.toFixed(2)}`,
-          subtotalAfterDiscount: `$${subtotalAfterDiscount.toFixed(2)}`,
           tax: `$${tax.toFixed(2)}`,
           deliveryFee: `$${deliveryFee.toFixed(2)}`,
           total: `$${total.toFixed(2)}`,
@@ -439,8 +394,6 @@ const Cart = () => {
           itemsCount: paymentItems.length,
           orderType,
           totalAmount: `$${total.toFixed(2)}`,
-          hasCoupon: !!appliedCoupon,
-          discountAmount: `$${discountAmount.toFixed(2)}`,
         });
         console.log("🔄 Invoking payment intent creation...");
       }
@@ -623,11 +576,9 @@ const Cart = () => {
       }
       setIsProcessing(false);
     }
-  }, [cart, customerInfo, orderType, appliedCoupon, currentUser, selectedPlace, navigate, clearCart, t, cartTotal, isProcessing]);
+  }, [cart, customerInfo, orderType, currentUser, selectedPlace, navigate, clearCart, t, cartTotal, isProcessing]);
 
-  // Derived totals for the order summary UI — uses the same helper as handlePlaceOrder
-  const discountAmount = appliedCoupon?.discount_amount || 0;
-  const { tax: uiTax, deliveryFee: uiDeliveryFee, total: uiTotal } = calculateTotals(cartTotal, discountAmount, orderType);
+  const { tax: uiTax, deliveryFee: uiDeliveryFee, total: uiTotal } = calculateTotals(cartTotal, orderType);
 
   return (
     <>
@@ -680,7 +631,7 @@ const Cart = () => {
                 {/* Checkout Form — right column on desktop, below cart items on mobile */}
                 <div className="lg:col-span-1 order-last">
                   <Card className="p-4 sm:p-6 lg:sticky lg:top-32">
-                    <h2 className="font-serif text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Checkout</h2>
+                    <h2 className="font-serif text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">{t("cart.checkout.title")}</h2>
 
                     <Tabs value={orderType} onValueChange={(v) => { setOrderType(v as "pickup" | "delivery"); setDeliveryError(null); }} className="mb-6">
                       <TabsList className="grid w-full grid-cols-2">
@@ -691,7 +642,7 @@ const Cart = () => {
 
                     <div className="space-y-4 mb-6">
                       <div>
-                        <Label htmlFor="name">Name *</Label>
+                        <Label htmlFor="name">{t("cart.checkout.name")} *</Label>
                         <Input
                           id="name"
                           value={customerInfo.name}
@@ -710,7 +661,7 @@ const Cart = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="phone">Phone *</Label>
+                        <Label htmlFor="phone">{t("cart.checkout.phone")} *</Label>
                         <Input
                           id="phone"
                           type="tel"
@@ -737,7 +688,7 @@ const Cart = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="email">Email *</Label>
+                        <Label htmlFor="email">{t("cart.checkout.email")} *</Label>
                         <Input
                           id="email"
                           type="email"
@@ -792,7 +743,7 @@ const Cart = () => {
                       )}
 
                       <div>
-                        <Label htmlFor="notes">Special Instructions</Label>
+                        <Label htmlFor="notes">{t("cart.checkout.notes")}</Label>
                         <Textarea
                           id="notes"
                           value={customerInfo.notes}
@@ -804,48 +755,6 @@ const Cart = () => {
                     </div>
 
                     <div className="space-y-4">
-                      {/* Coupon Code Input */}
-                      <div className="space-y-2">
-                        <Label htmlFor="coupon">Promo Code (Optional)</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="coupon"
-                            value={couponCode}
-                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                            placeholder="Enter code"
-                            disabled={!!appliedCoupon || isValidatingCoupon}
-                            className="flex-1"
-                          />
-                          {appliedCoupon ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => {
-                                setAppliedCoupon(null);
-                                setCouponCode("");
-                              }}
-                            >
-                              Remove
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={handleApplyCoupon}
-                              disabled={isValidatingCoupon || !couponCode.trim()}
-                            >
-                              {isValidatingCoupon ? "..." : "Apply"}
-                            </Button>
-                          )}
-                        </div>
-                        {appliedCoupon && (
-                          <p className="text-sm text-green-600 dark:text-green-400">
-                            ✓ {appliedCoupon.code} applied: -${appliedCoupon.discount_amount.toFixed(2)}
-                            {appliedCoupon.description && ` (${appliedCoupon.description})`}
-                          </p>
-                        )}
-                      </div>
-
                       {/* Order Summary — aria-live so screen readers announce total changes */}
                       <div
                         className="space-y-2 py-4 border-t border-border"
@@ -856,12 +765,6 @@ const Cart = () => {
                           <span className="text-muted-foreground">Subtotal</span>
                           <span>${cartTotal.toFixed(2)}</span>
                         </div>
-                        {appliedCoupon && (
-                          <div className="flex justify-between items-center text-green-600 dark:text-green-400">
-                            <span>Discount ({appliedCoupon.code})</span>
-                            <span>-${appliedCoupon.discount_amount.toFixed(2)}</span>
-                          </div>
-                        )}
                         <div className="flex justify-between items-center">
                           <span className="text-muted-foreground">Tax (NYC 8.875%)</span>
                           <span>${uiTax.toFixed(2)}</span>
@@ -887,12 +790,12 @@ const Cart = () => {
                         {isProcessing ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin pointer-events-none" />
-                            <span className="pointer-events-none">Preparing your order…</span>
+                            <span className="pointer-events-none">{t("cart.checkout.processing")}</span>
                           </>
                         ) : (
                           <>
                             <CreditCard className="mr-2 h-4 w-4 pointer-events-none" />
-                            <span className="pointer-events-none">Proceed to Checkout</span>
+                            <span className="pointer-events-none">{t("cart.checkout.proceed")}</span>
                           </>
                         )}
                       </Button>
@@ -945,8 +848,6 @@ const Cart = () => {
                               localStorage.removeItem(PENDING_CHECKOUT_KEY);
                               localStorage.removeItem(CUSTOMER_INFO_KEY);
                               setCustomerInfo({ name: "", phone: "", email: "", address: "", notes: "" });
-                              setAppliedCoupon(null);
-                              setCouponCode("");
                               setShowCheckout(false);
                               setCheckoutClientSecret(null);
                               setCheckoutPublishableKey(null);
@@ -1005,7 +906,7 @@ const Cart = () => {
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => { clearCart(); setAppliedCoupon(null); setCouponCode(""); setClearAllOpen(false); }}
+                              onClick={() => { clearCart(); setClearAllOpen(false); }}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Clear Cart

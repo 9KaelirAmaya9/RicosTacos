@@ -45,5 +45,5 @@ verify_jwt = true
 # Only callable server-to-server (stripe-webhook uses service_role key)
 
 [functions.send-order-confirmation]
-verify_jwt = false
-# Called from SecurePaymentModal after payment succeeds — no user JWT available at that point
+verify_jwt = true
+# Called server-to-server from stripe-webhook using service_role key

@@ -40,7 +40,7 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
   // Fetch order details once — used by both email and SMS
   const { data: order, error } = await supabase
     .from('orders')
-    .select('order_number, customer_name, customer_phone, order_type, delivery_address, items, subtotal, tax, total, notes')
+    .select('order_number, customer_name, customer_phone, customer_email, order_type, delivery_address, items, subtotal, tax, total, notes')
     .eq('order_number', orderNumber)
     .single();
 
@@ -193,7 +193,21 @@ async function handlePaidOrder(orderNumber: string): Promise<void> {
   //    Runs even if the kitchen browser tab is closed.
   await notifyRestaurant(orderNumber);
 
-  // 3. Web push to kitchen/admin staff — secondary channel (browser tab must be open).
+  // 3. Customer order confirmation email — server-side so it's auth-gated and deduped.
+  try {
+    const { error: confErr } = await supabase.functions.invoke('send-order-confirmation', {
+      body: { orderNumber },
+    });
+    if (confErr) {
+      console.warn('[WEBHOOK] Customer confirmation email failed (non-critical):', confErr);
+    } else {
+      console.log('[WEBHOOK] Customer confirmation email sent for order:', orderNumber);
+    }
+  } catch (confErr) {
+    console.warn('[WEBHOOK] Customer confirmation email threw (non-critical):', confErr);
+  }
+
+  // 4. Web push to kitchen/admin staff — secondary channel (browser tab must be open).
   try {
     await supabase.functions.invoke('send-push-notification', {
       body: {
