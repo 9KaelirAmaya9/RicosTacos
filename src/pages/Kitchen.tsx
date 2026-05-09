@@ -303,7 +303,7 @@ const Kitchen = () => {
   }, [startAlarm, syncAlarmState, queryClient, navigate]);
 
   const updateStatus = useCallback(
-    async (orderId: string, newStatus: string) => {
+    async (orderId: string, newStatus: Order["status"]) => {
       // Snapshot current orders so we can restore them if the DB write fails
       const ordersSnapshot = orders;
 
@@ -509,12 +509,12 @@ const Kitchen = () => {
 
   const getTimeElapsed = useCallback((createdAt: string) => {
     const minutes = Math.floor(
-      (new Date().getTime() - new Date(createdAt).getTime()) / 60000
+      (currentTime.getTime() - new Date(createdAt).getTime()) / 60000
     );
     if (minutes < 1) return "Just now";
     if (minutes === 1) return "1 min";
     return `${minutes} min`;
-  }, []);
+  }, [currentTime]);
 
   // Returns a border urgency class based on how long the order has been waiting.
   // Unaccepted (paid/pending): amber at 15 min, red at 25 min.

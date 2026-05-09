@@ -121,7 +121,7 @@ const App = () => (
                     <Route path="/kitchen" element={<ProtectedRoute requiredRole="kitchen"><ErrorBoundary fallback={KitchenErrorFallback}><Kitchen /></ErrorBoundary></ProtectedRoute>} />
                     <Route path="/order-success" element={<OrderSuccess />} />
                     <Route path="/500" element={<ServerError />} />
-                    <Route path="/debug-auth" element={<DebugAuth />} />
+                    <Route path="/debug-auth" element={<ProtectedRoute requiredRole="admin"><DebugAuth /></ProtectedRoute>} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

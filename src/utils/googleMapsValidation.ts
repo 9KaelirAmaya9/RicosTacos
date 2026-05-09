@@ -29,8 +29,8 @@ export const validateDeliveryAddressGoogle = async (
   formatted_address?: string
 ): Promise<GoogleMapsValidationResult> => {
   try {
-    console.log("🚀 Starting Google Maps delivery validation for place_id:", place_id);
-    
+    if (import.meta.env.DEV) console.log("🚀 Starting Google Maps delivery validation for place_id:", place_id);
+
     if (!place_id || place_id.trim().length === 0) {
       return {
         isValid: false,
@@ -38,7 +38,7 @@ export const validateDeliveryAddressGoogle = async (
         suggestPickup: true
       };
     }
-    
+
     // Increased timeout to 20 seconds to allow for edge function processing, multiple API calls, and network latency
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Validation timeout')), 20000);
@@ -46,7 +46,7 @@ export const validateDeliveryAddressGoogle = async (
 
     // Call the new Google Maps validation edge function
     const validationPromise = supabase.functions.invoke('validate-delivery-google', {
-      body: { 
+      body: {
         place_id: place_id.trim(),
         formatted_address: formatted_address
       }
@@ -54,9 +54,11 @@ export const validateDeliveryAddressGoogle = async (
 
     const result = await Promise.race([validationPromise, timeoutPromise]) as any;
 
-    console.log("📦 Google Maps validation raw result:", result);
-    console.log("📦 Result type:", typeof result);
-    console.log("📦 Result keys:", result && typeof result === 'object' ? Object.keys(result) : 'N/A');
+    if (import.meta.env.DEV) {
+      console.log("📦 Google Maps validation raw result:", result);
+      console.log("📦 Result type:", typeof result);
+      console.log("📦 Result keys:", result && typeof result === 'object' ? Object.keys(result) : 'N/A');
+    }
 
     // Handle different response formats
     let data: any = null;
@@ -67,40 +69,38 @@ export const validateDeliveryAddressGoogle = async (
       if ('data' in result && 'error' in result) {
         data = result.data;
         error = result.error;
-        console.log("📦 Supabase function response - data:", JSON.stringify(data), "error:", JSON.stringify(error));
-        
+        if (import.meta.env.DEV) console.log("📦 Supabase function response - data:", JSON.stringify(data), "error:", JSON.stringify(error));
+
         // If error exists, check if it's actually a validation result in the error
         if (error && typeof error === 'object' && 'isValid' in error) {
-          console.log("⚠️ Validation result found in error field, using it as data");
+          if (import.meta.env.DEV) console.log("⚠️ Validation result found in error field, using it as data");
           data = error;
           error = null;
         }
       } else if ('isValid' in result) {
         // Direct response from edge function
         data = result;
-        console.log("📦 Direct edge function response:", JSON.stringify(data));
+        if (import.meta.env.DEV) console.log("📦 Direct edge function response:", JSON.stringify(data));
       } else if (result.error) {
         // Error object
         error = result.error;
-        console.log("📦 Error object found:", JSON.stringify(error));
+        if (import.meta.env.DEV) console.log("📦 Error object found:", JSON.stringify(error));
       } else {
         // Try to parse as error
         error = result;
-        console.log("📦 Parsed as error:", JSON.stringify(error));
+        if (import.meta.env.DEV) console.log("📦 Parsed as error:", JSON.stringify(error));
       }
     } else {
       error = result;
-      console.log("📦 Non-object result, treating as error:", error);
+      if (import.meta.env.DEV) console.log("📦 Non-object result, treating as error:", error);
     }
 
     if (error) {
       console.error("❌ Google Maps validation error:", error);
-      console.error("❌ Error type:", typeof error);
-      console.error("❌ Error keys:", error ? Object.keys(error) : 'null');
-      
+
       // Try to extract error message from error object
       let errorMessage = "We apologize, but we couldn't validate your address. Pickup is always available!";
-      
+
       if (typeof error === 'string') {
         errorMessage = error;
       } else if (error?.message) {
@@ -110,9 +110,7 @@ export const validateDeliveryAddressGoogle = async (
       } else if (error?.data?.message) {
         errorMessage = error.data.message;
       }
-      
-      console.error("❌ Extracted error message:", errorMessage);
-      
+
       return {
         isValid: false,
         message: errorMessage,
@@ -140,11 +138,11 @@ export const validateDeliveryAddressGoogle = async (
       formattedAddress: data.formattedAddress || formatted_address
     };
 
-    console.log("✅ Google Maps validation successful:", validationResult);
+    if (import.meta.env.DEV) console.log("✅ Google Maps validation successful:", validationResult);
     return validationResult;
   } catch (error: any) {
     console.error("❌ Google Maps validation exception:", error);
-    
+
     // Handle timeout specifically
     if (error?.message === 'Validation timeout') {
       return {
@@ -153,7 +151,7 @@ export const validateDeliveryAddressGoogle = async (
         suggestPickup: true
       };
     }
-    
+
     return {
       isValid: false,
       message: error?.message || "We apologize, but we couldn't validate your address. Pickup is always available!",
@@ -161,4 +159,3 @@ export const validateDeliveryAddressGoogle = async (
     };
   }
 };
-

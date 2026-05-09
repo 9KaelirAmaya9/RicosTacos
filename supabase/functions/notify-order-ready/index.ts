@@ -28,6 +28,47 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // ── Role enforcement: only kitchen and admin staff may trigger customer SMS ──
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+    // Verify the caller's JWT and check their role
+    const callerClient = createClient(supabaseUrl, serviceRoleKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: userError } = await callerClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const { data: roles } = await callerClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+
+    const allowedRoles = ['admin', 'kitchen'];
+    const hasAccess = roles?.some((r: { role: string }) => allowedRoles.includes(r.role));
+    if (!hasAccess) {
+      console.warn('[notify-order-ready] Forbidden: user', user.id, 'has no kitchen/admin role');
+      return new Response(
+        JSON.stringify({ error: 'Forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────────────
+
     const { orderNumber, orderType }: NotifyOrderReadyRequest = await req.json();
 
     if (!orderNumber || !orderType) {
@@ -39,33 +80,28 @@ Deno.serve(async (req: Request) => {
 
     console.log('[notify-order-ready] Processing order:', orderNumber, 'type:', orderType);
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: order, error } = await supabase
+    // ── Atomic idempotency: stamp customer_notified_at only if not yet set ──────
+    // Using a conditional UPDATE prevents the TOCTOU race where two simultaneous
+    // "ready" taps both read null and both send an SMS before either can write.
+    const { data: stamped } = await supabase
       .from('orders')
-      .select('order_number, customer_name, customer_phone, order_type, customer_notified_at')
+      .update({ customer_notified_at: new Date().toISOString() })
       .eq('order_number', orderNumber)
-      .single();
+      .is('customer_notified_at', null)
+      .select('order_number, customer_name, customer_phone');
 
-    if (error || !order) {
-      console.error('[notify-order-ready] Could not fetch order:', error?.message);
-      return new Response(
-        JSON.stringify({ error: 'Order not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // Idempotency guard — never send the customer two "ready" texts
-    if (order.customer_notified_at) {
-      console.log('[notify-order-ready] Already notified for order', orderNumber, 'at', order.customer_notified_at, '— skipping');
+    if (!stamped || stamped.length === 0) {
+      // Either the order doesn't exist or it was already notified — either way, skip
+      console.log('[notify-order-ready] Already notified or order not found for', orderNumber, '— skipping');
       return new Response(
         JSON.stringify({ success: true, message: 'Already notified — skipped duplicate' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
+
+    const order = stamped[0];
 
     if (!order.customer_phone) {
       console.warn('[notify-order-ready] No customer phone on order', orderNumber, '— SMS skipped');
@@ -98,13 +134,6 @@ Deno.serve(async (req: Request) => {
 
       if (smsResp.ok) {
         console.log('[notify-order-ready] SMS sent to customer:', order.customer_phone);
-
-        // Stamp the order so duplicate calls are rejected
-        await supabase
-          .from('orders')
-          .update({ customer_notified_at: new Date().toISOString() })
-          .eq('order_number', orderNumber);
-
         return new Response(
           JSON.stringify({ success: true, message: 'SMS sent to customer' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

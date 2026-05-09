@@ -4,9 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 
 // VAPID public key — must match VAPID_PUBLIC_KEY set in Supabase Edge Function secrets
 // and VITE_VAPID_PUBLIC_KEY set in Vercel environment variables.
-const VAPID_PUBLIC_KEY =
-  import.meta.env.VITE_VAPID_PUBLIC_KEY ||
-  'BJUO9xKvxVa-vOnUNE8_9o2PZRHKi0gFOrQVagNRmuqZVRX7-gwSbHh8JJvntjD8dyjh0YzhwyRVYBN0EilaByk';
+// No hardcoded fallback: a missing key means misconfiguration and push should not silently
+// subscribe against a wrong/stale key (which would fail silently on send).
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -115,6 +115,16 @@ export const usePushNotifications = () => {
         await subscription.unsubscribe();
       }
 
+      if (!VAPID_PUBLIC_KEY) {
+        toast({
+          title: 'Configuration error',
+          description: 'Push notifications are not configured on this server',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return false;
+      }
+
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
@@ -156,6 +166,11 @@ export const usePushNotifications = () => {
       if (existing) {
         await saveSubscriptionToDb(existing); // keep DB in sync in case row was lost
         setIsSubscribed(true);
+        return;
+      }
+
+      if (!VAPID_PUBLIC_KEY) {
+        console.warn('[Push] VITE_VAPID_PUBLIC_KEY not set — auto-subscribe skipped');
         return;
       }
 

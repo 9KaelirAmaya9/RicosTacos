@@ -41,8 +41,8 @@ verify_jwt = false
 # Public function - returns public Mapbox token for frontend use
 
 [functions.send-push-notification]
-verify_jwt = false
-# Local/dev behavior: allow guest checkout flow to trigger kitchen/admin push alerts
+verify_jwt = true
+# Only callable server-to-server (stripe-webhook uses service_role key)
 
 [functions.send-order-confirmation]
 verify_jwt = false

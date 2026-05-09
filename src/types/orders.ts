@@ -13,7 +13,7 @@ export interface Order {
   customer_email?: string | null;
   order_type: string;
   items: OrderItem[];
-  status: "pending" | "paid" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled" | string;
+  status: "pending" | "paid" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled";
   total: number;
   subtotal: number;
   tax: number;

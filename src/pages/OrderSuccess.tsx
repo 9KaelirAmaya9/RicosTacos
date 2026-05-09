@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, Home, Phone, Mail, MapPin, Loader2, Star } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase } from "@/integrations/supabase/client";
 import type { OrderDetails } from "@/types/orders";
 
 // Retry polling for webhook delay — the Stripe webhook fires 1-10s after the
@@ -35,17 +36,12 @@ const OrderSuccess = () => {
         let attempt = 0;
         const poll = async (): Promise<OrderDetails | null> => {
           setRetryAttempt(attempt);
-          const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-          const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '').trim();
           try {
-            const res = await fetch(
-              `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&select=*&limit=1`,
-              { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
-            );
-            if (res.ok) {
-              const rows = await res.json();
-              if (Array.isArray(rows) && rows[0]) return rows[0] as OrderDetails;
-            }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data } = await (supabase.rpc as any)('get_order_by_number', {
+              p_order_number: orderNumber,
+            });
+            if (Array.isArray(data) && data[0]) return data[0] as OrderDetails;
           } catch {}
           if (attempt < MAX_RETRIES) {
             attempt++;

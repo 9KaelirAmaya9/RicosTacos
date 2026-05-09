@@ -15,7 +15,6 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const isDev = import.meta.env.DEV;
   const { user, loading, hasRole } = useAuth();
   const [timedOut, setTimedOut] = useState(false);
 
@@ -25,11 +24,6 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     const t = window.setTimeout(() => setTimedOut(true), 10000);
     return () => window.clearTimeout(t);
   }, [loading]);
-
-  // In local development, bypass route protection to unblock UI testing.
-  if (isDev) {
-    return <>{children}</>;
-  }
 
   if (loading && !timedOut) {
     return (
