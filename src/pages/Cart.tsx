@@ -713,7 +713,13 @@ const Cart = () => {
                           id="phone"
                           type="tel"
                           value={customerInfo.phone}
-                          onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                            const fmt = digits.length <= 3 ? digits
+                              : digits.length <= 6 ? `(${digits.slice(0,3)}) ${digits.slice(3)}`
+                              : `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+                            setCustomerInfo({ ...customerInfo, phone: fmt });
+                          }}
                           onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
                           placeholder="(555) 123-4567"
                           required

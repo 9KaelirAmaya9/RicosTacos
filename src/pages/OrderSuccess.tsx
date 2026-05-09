@@ -263,7 +263,7 @@ const OrderSuccess = () => {
                     <p>✓ Estimated pickup time: 20-30 minutes</p>
                   </>
                 )}
-                <p className="pt-2">Need help? Call us at (718) 633-4816</p>
+                <p className="pt-2">Need help? Call us at <a href="tel:7186334816" className="underline hover:text-primary">(718) 633-4816</a></p>
               </div>
             </Card>
 

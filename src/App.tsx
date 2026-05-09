@@ -40,6 +40,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const ServerError = lazy(() => import("./pages/ServerError"));
 const MenuCatalog = lazy(() => import("./pages/MenuCatalog"));
 const DebugAuth = lazy(() => import("./pages/DebugAuth"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 
 // Kitchen-specific error fallback — shows a "Reload" button instead of
 // navigating away, so staff can recover without losing the /kitchen route.
@@ -109,6 +110,7 @@ const App = () => (
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/signin" element={<SignIn />} />
                     <Route path="/signup" element={<SignUp />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/kitchen-login" element={<KitchenLogin />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/profile" element={<Profile />} />

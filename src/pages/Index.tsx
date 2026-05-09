@@ -291,8 +291,8 @@ const Index = () => {
               <p className="text-muted-foreground space-y-1 sm:space-y-2 text-sm sm:text-base">
                 <span className="block">505 51st Street</span>
                 <span className="block">Brooklyn, NY 11220</span>
-                <span className="block">Tel: (718) 633-4816</span>
-                <span className="block">Cell: (917) 370-0430</span>
+                <a href="tel:7186334816" className="block hover:text-primary transition-colors">Tel: (718) 633-4816</a>
+                <a href="tel:9173700430" className="block hover:text-primary transition-colors">Cell: (917) 370-0430</a>
               </p>
             </div>
             <div className="sm:col-span-2 md:col-span-1">

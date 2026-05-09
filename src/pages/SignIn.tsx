@@ -192,6 +192,11 @@ const SignIn = () => {
             </div>
 
             <div className="text-sm text-center text-muted-foreground">
+              <Link to="/forgot-password" className="text-primary hover:underline font-medium">
+                Forgot password?
+              </Link>
+            </div>
+            <div className="text-sm text-center text-muted-foreground">
               Don't have an account?{" "}
               <Link to="/signup" className="text-primary hover:underline font-medium">
                 Sign up here

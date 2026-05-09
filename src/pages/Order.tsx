@@ -11,7 +11,7 @@ import { FlavorSelectionDialog } from "@/components/FlavorSelectionDialog";
 import { MeatSelectionDialog } from "@/components/MeatSelectionDialog";
 import { MenuItemModal } from "@/components/MenuItemModal";
 import { Plus, Star, ChevronDown, ChevronUp, Search, X } from "lucide-react";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback, memo, useDeferredValue } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
@@ -48,7 +48,7 @@ interface ItemCardProps {
   }) => void;
 }
 
-const ItemCard = ({ item, index, language, addToCartLabel, onAddToCart, onOpenModal }: ItemCardProps) => {
+const ItemCard = memo(({ item, index, language, addToCartLabel, onAddToCart, onOpenModal }: ItemCardProps) => {
   const { ref: cardRef, isVisible: cardVisible } = useScrollAnimation({
     threshold: 0.1,
     rootMargin: "-50px"
@@ -140,7 +140,7 @@ const ItemCard = ({ item, index, language, addToCartLabel, onAddToCart, onOpenMo
       </Card>
     </div>
   );
-};
+});
 
 interface SubcategorySectionProps {
   subcategory: string;
@@ -151,7 +151,7 @@ interface SubcategorySectionProps {
   onOpenModal: ItemCardProps['onOpenModal'];
 }
 
-const SubcategorySection = ({ subcategory, items, language, addToCartLabel, onAddToCart, onOpenModal }: SubcategorySectionProps) => {
+const SubcategorySection = memo(({ subcategory, items, language, addToCartLabel, onAddToCart, onOpenModal }: SubcategorySectionProps) => {
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.1 });
 
   return (
@@ -180,7 +180,7 @@ const SubcategorySection = ({ subcategory, items, language, addToCartLabel, onAd
       </div>
     </div>
   );
-};
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -200,8 +200,10 @@ const Order = () => {
   const [menuItemModalOpen, setMenuItemModalOpen] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<any>(null);
 
-  // Search
+  // Search — useDeferredValue lets the input stay responsive while the
+  // expensive filter/render runs at lower priority (no manual debounce needed).
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Category filter (desktop sidebar + mobile pills)
@@ -232,9 +234,10 @@ const Order = () => {
   const toggleAll = () =>
     setSelectedCategories(allSelected ? new Set() : new Set(allTopCategories));
 
-  // Items pipeline: strip variants → apply category filter → apply search
+  // Items pipeline: strip variants → apply category filter → apply search.
+  // Uses deferredSearchQuery so typing doesn't block the input field.
   const visibleItems = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = deferredSearchQuery.trim().toLowerCase();
     return menuItems
       .filter(item => !item.isVariant)
       .filter(item => selectedCategories.has(item.topCategory))
@@ -243,20 +246,20 @@ const Order = () => {
         item.name.toLowerCase().includes(q) ||
         (item.description || "").toLowerCase().includes(q)
       );
-  }, [searchQuery, selectedCategories]);
+  }, [deferredSearchQuery, selectedCategories]);
 
   // Group by topCategory → subcategory (only used when not searching)
   const groupedItems = useMemo(() => {
-    if (searchQuery.trim()) return null;
+    if (deferredSearchQuery.trim()) return null;
     return visibleItems.reduce((acc, item) => {
       if (!acc[item.topCategory]) acc[item.topCategory] = {};
       if (!acc[item.topCategory][item.subcategory]) acc[item.topCategory][item.subcategory] = [];
       acc[item.topCategory][item.subcategory].push(item);
       return acc;
     }, {} as Record<string, Record<string, typeof visibleItems>>);
-  }, [visibleItems, searchQuery]);
+  }, [visibleItems, deferredSearchQuery]);
 
-  const handleAddToCart = (item: { id: string; name: string; price: number; image?: string }) => {
+  const handleAddToCart = useCallback((item: { id: string; name: string; price: number; image?: string }) => {
     // Chicken wing flavors
     if (item.id === "k7") {
       setPendingFlavor(item);
@@ -271,7 +274,7 @@ const Order = () => {
       return;
     }
     addToCart(item);
-  };
+  }, [addToCart]);
 
   const handleFlavorSelect = (flavor: string) => {
     if (!pendingFlavor) return;
@@ -294,7 +297,6 @@ const Order = () => {
       title="Order Online - Pickup & Delivery | Ricos Tacos Brooklyn"
       description="Order authentic Mexican street tacos online for pickup or delivery. Al pastor, birria, carnitas & more. Fast pickup from 505 51st Street, Sunset Park, Brooklyn NY."
       canonicalPath="/order"
-      noindex={true}
     />
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 relative">
       <Navigation />
@@ -468,7 +470,7 @@ const Order = () => {
           <main className="w-full min-w-0">
 
             {/* Search results: flat grid */}
-            {searchQuery.trim() ? (
+            {deferredSearchQuery.trim() ? (
               <div>
                 <p className="text-sm text-muted-foreground mb-6">
                   {visibleItems.length === 0
