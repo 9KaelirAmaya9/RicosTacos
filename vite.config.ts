@@ -4,6 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import Prerenderer from "@prerenderer/rollup-plugin";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
+import { imagetools } from "vite-imagetools";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -13,6 +14,17 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    imagetools({
+      defaultDirectives: (url) => {
+        // Auto-convert all menu JPGs to WebP — menu images are displayed as thumbnails
+        // (max ~300px wide on screen), so cap at 600px for 2× retina and compress at q=72.
+        // Cuts payload from 13MB JPG → ~3MB WebP with no perceptible quality loss.
+        if (url.pathname.includes('/menu/') && /\.jpe?g$/i.test(url.pathname)) {
+          return new URLSearchParams('format=webp&quality=72&w=600');
+        }
+        return new URLSearchParams();
+      },
+    }),
     mode === "development" && componentTagger(),
     mode === "production" && sentryVitePlugin({
       org: "ricos-tacos",

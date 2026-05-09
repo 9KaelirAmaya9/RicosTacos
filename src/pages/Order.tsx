@@ -65,8 +65,10 @@ const ItemCard = memo(({ item, index, language, addToCartLabel, onAddToCart, onO
     >
       <Card className="overflow-hidden hover:shadow-elegant transition-all duration-300 group flex flex-col border-2 border-transparent hover:border-primary/10 bg-card h-full">
         {item.image && (
-          <div
-            className="relative h-40 md:h-44 overflow-hidden flex-shrink-0 cursor-pointer select-none"
+          <button
+            type="button"
+            className="relative h-40 md:h-44 overflow-hidden flex-shrink-0 w-full select-none"
+            aria-label={`View details for ${getMenuItemName(item.id, language, item.name)}`}
             onClick={() => onOpenModal({
               id: item.id,
               name: getMenuItemName(item.id, language, item.name),
@@ -94,7 +96,7 @@ const ItemCard = memo(({ item, index, language, addToCartLabel, onAddToCart, onO
                 <span className="pointer-events-none">Best</span>
               </Badge>
             )}
-          </div>
+          </button>
         )}
         <div className="p-4 flex flex-col flex-1 bg-card">
           <h3 className="font-serif text-base md:text-lg font-semibold line-clamp-2 mb-2">
@@ -301,7 +303,7 @@ const Order = () => {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 relative">
       <Navigation />
 
-      <div className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
+      <div id="main-content" className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
 
         {/* ── Header: title + pickup/delivery card ── */}
         <div className="text-center mb-6 sm:mb-8 px-4">
@@ -333,8 +335,10 @@ const Order = () => {
         {/* ── Search bar (all breakpoints) ── */}
         <div className="px-4 mb-4">
           <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <label htmlFor="menu-search" className="sr-only">Search menu items</label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
             <Input
+              id="menu-search"
               ref={searchRef}
               type="search"
               placeholder="Search tacos, burritos, drinks…"
@@ -360,6 +364,7 @@ const Order = () => {
             {/* All pill */}
             <button
               onClick={toggleAll}
+              aria-pressed={allSelected}
               className={cn(
                 "snap-start shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition-colors whitespace-nowrap",
                 allSelected
@@ -373,6 +378,7 @@ const Order = () => {
               <button
                 key={cat}
                 onClick={() => toggleCategory(cat)}
+                aria-pressed={selectedCategories.has(cat)}
                 className={cn(
                   "snap-start shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition-colors whitespace-nowrap",
                   selectedCategories.has(cat)

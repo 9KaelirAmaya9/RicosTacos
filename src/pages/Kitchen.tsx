@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -540,6 +541,7 @@ const Kitchen = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet><title>Kitchen Display | Ricos Tacos</title></Helmet>
       {loading && (
         <div className="max-w-7xl mx-auto px-6 pt-4 flex items-center gap-2 text-sm text-muted-foreground">
           <ChefHat className="h-4 w-4 animate-pulse text-primary" />

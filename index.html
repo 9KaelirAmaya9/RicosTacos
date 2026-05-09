@@ -137,17 +137,33 @@
     }
     </script>
 
-    <!-- Google Analytics 4 + Google Ads -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PW1DK1L3J0"></script>
+    <!-- Google Analytics 4 + Google Ads — deferred via requestIdleCallback so it
+         never blocks the critical render path. Falls back to setTimeout for Safari. -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-PW1DK1L3J0', {
-        page_title: document.title,
-        page_location: window.location.href
-      });
-      gtag('config', 'AW-16961291835');
+      (function() {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        window.gtag = gtag;
+        gtag('js', new Date());
+
+        function loadGA() {
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=G-PW1DK1L3J0';
+          document.head.appendChild(s);
+          gtag('config', 'G-PW1DK1L3J0', {
+            page_title: document.title,
+            page_location: window.location.href
+          });
+          gtag('config', 'AW-16961291835');
+        }
+
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(loadGA, { timeout: 4000 });
+        } else {
+          setTimeout(loadGA, 3000);
+        }
+      })();
     </script>
 
     <!-- Fonts -->

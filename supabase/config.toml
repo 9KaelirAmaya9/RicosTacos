@@ -5,8 +5,8 @@ verify_jwt = true
 # Requires auth for external calls, allows internal calls from webhook
 
 [functions.create-checkout-session]
-verify_jwt = false
-# Guest checkout allowed - validation in code prevents abuse
+verify_jwt = true
+# Deprecated — never called by the app; locked down to prevent unauthorized access
 
 [functions.stripe-webhook]
 verify_jwt = false
@@ -17,7 +17,7 @@ verify_jwt = false
 # Guest checkout allowed - validation in code prevents abuse
 
 [functions.create-embedded-checkout]
-verify_jwt = false
+verify_jwt = true
 # Guest checkout allowed - validation in code prevents abuse
 
 [functions.validate-delivery-address]

@@ -640,7 +640,7 @@ const Cart = () => {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <Navigation />
 
-      <div className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
+      <div id="main-content" className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold mb-8 sm:mb-12 text-center">
@@ -700,10 +700,12 @@ const Cart = () => {
                           placeholder="Your full name"
                           required
                           autoComplete="name"
+                          aria-invalid={touched.name && customerInfo.name.length < 2 ? "true" : undefined}
+                          aria-describedby={touched.name && customerInfo.name.length < 2 ? "name-error" : undefined}
                           className={touched.name && customerInfo.name.length < 2 ? "border-destructive" : ""}
                         />
                         {touched.name && customerInfo.name.length < 2 && (
-                          <p className="text-xs text-destructive mt-1">Name must be at least 2 characters</p>
+                          <p id="name-error" role="alert" className="text-xs text-destructive mt-1">Name must be at least 2 characters</p>
                         )}
                       </div>
 
@@ -725,10 +727,12 @@ const Cart = () => {
                           required
                           autoComplete="tel"
                           inputMode="tel"
+                          aria-invalid={touched.phone && customerInfo.phone.replace(/\D/g, '').length < 10 ? "true" : undefined}
+                          aria-describedby={touched.phone && customerInfo.phone.replace(/\D/g, '').length < 10 ? "phone-error" : undefined}
                           className={touched.phone && customerInfo.phone.replace(/\D/g, '').length < 10 ? "border-destructive" : ""}
                         />
                         {touched.phone && customerInfo.phone.replace(/\D/g, '').length < 10 && (
-                          <p className="text-xs text-destructive mt-1">Phone must be at least 10 digits</p>
+                          <p id="phone-error" role="alert" className="text-xs text-destructive mt-1">Phone must be at least 10 digits</p>
                         )}
                       </div>
 
@@ -744,10 +748,12 @@ const Cart = () => {
                           required
                           autoComplete="email"
                           inputMode="email"
+                          aria-invalid={touched.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim()) ? "true" : undefined}
+                          aria-describedby={touched.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim()) ? "email-error" : undefined}
                           className={touched.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim()) ? "border-destructive" : ""}
                         />
                         {touched.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim()) && (
-                          <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
+                          <p id="email-error" role="alert" className="text-xs text-destructive mt-1">Please enter a valid email address</p>
                         )}
                       </div>
 
@@ -892,7 +898,7 @@ const Cart = () => {
                       </Button>
 
                       {deliveryError && (
-                        <p className="text-sm text-destructive mt-2">{deliveryError}</p>
+                        <p role="alert" className="text-sm text-destructive mt-2">{deliveryError}</p>
                       )}
 
                       {paymentTimedOut && (

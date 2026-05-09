@@ -106,7 +106,7 @@ const Index = () => {
       </section>
 
       {/* About Section */}
-      <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-b from-background to-muted/30 texture-warm relative overflow-hidden" aria-labelledby="about-heading">
+      <section id="main-content" className="py-12 sm:py-16 md:py-20 bg-gradient-to-b from-background to-muted/30 texture-warm relative overflow-hidden" aria-labelledby="about-heading">
         <FloatingShapes />
         {/* Decorative corner accents with flowing border */}
         <div className="absolute top-0 left-0 w-24 h-24 rounded-br-full overflow-hidden" aria-hidden="true">

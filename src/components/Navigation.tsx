@@ -49,6 +49,12 @@ export const Navigation = () => {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:rounded-md focus:shadow-lg focus:ring-2 focus:ring-ring"
+      >
+        Skip to main content
+      </a>
       {/* Top serape stripe */}
       <SerapeStripe className="h-1.5" />
 
@@ -161,6 +167,7 @@ export const Navigation = () => {
                     <NavigationMenuLink asChild>
                       <Link
                         to={to}
+                        aria-current={isActive(to) ? "page" : undefined}
                         className={`relative px-3 lg:px-4 py-2 text-sm font-medium transition-colors duration-200
                           ${isActive(to) ? "text-[#E31E24]" : "text-foreground hover:text-[#E31E24]"}
                           after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full
@@ -247,11 +254,12 @@ export const Navigation = () => {
             <SerapeStripe className="h-1" />
 
             <div className="container mx-auto px-4 py-4">
-              <nav className="flex flex-col gap-1 mb-4">
+              <nav aria-label="Mobile navigation" className="flex flex-col gap-1 mb-4">
                 {navLinks.map(({ to, label }) => (
                   <Link
                     key={to}
                     to={to}
+                    aria-current={isActive(to) ? "page" : undefined}
                     className={`flex items-center px-3 py-3.5 rounded-lg text-base font-medium transition-colors
                       ${isActive(to)
                         ? "bg-[#E31E24]/10 text-[#E31E24]"

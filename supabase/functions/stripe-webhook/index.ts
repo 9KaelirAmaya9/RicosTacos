@@ -12,6 +12,14 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://losricostacos.com';
 
+const esc = (s: string): string =>
+  String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
@@ -86,25 +94,25 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
     ? (async () => {
         const itemsHtml = items
           .map((item: { name: string; quantity: number; price: number }) =>
-            `<tr><td style="padding:4px 8px">${item.quantity}×</td><td style="padding:4px 8px">${item.name}</td><td style="padding:4px 8px;text-align:right">$${(item.price * item.quantity).toFixed(2)}</td></tr>`
+            `<tr><td style="padding:4px 8px">${Number(item.quantity)}×</td><td style="padding:4px 8px">${esc(item.name)}</td><td style="padding:4px 8px;text-align:right">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td></tr>`
           )
           .join('');
 
         const deliveryRow = order.order_type === 'delivery' && order.delivery_address
-          ? `<p><strong>Deliver to:</strong> ${order.delivery_address}</p>`
+          ? `<p><strong>Deliver to:</strong> ${esc(order.delivery_address)}</p>`
           : `<p><strong>Type:</strong> Pickup</p>`;
 
         const notesRow = order.notes
-          ? `<p><strong>Special instructions:</strong> ${order.notes}</p>`
+          ? `<p><strong>Special instructions:</strong> ${esc(order.notes)}</p>`
           : '';
 
         const html = `
     <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
       <h2 style="background:#E31E24;color:#fff;padding:16px;margin:0;border-radius:8px 8px 0 0">
-        🚨 New Order — #${order.order_number}
+        🚨 New Order — #${esc(order.order_number)}
       </h2>
       <div style="border:1px solid #eee;border-top:none;padding:16px;border-radius:0 0 8px 8px">
-        <p><strong>Customer:</strong> ${order.customer_name} — ${order.customer_phone}</p>
+        <p><strong>Customer:</strong> ${esc(order.customer_name)} — ${esc(order.customer_phone)}</p>
         ${deliveryRow}
         ${notesRow}
         <table style="width:100%;border-collapse:collapse;margin:12px 0">

@@ -1,10 +1,20 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@3.2.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Escape HTML special chars to prevent injection into email body
+const esc = (s: string): string =>
+  String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
 
 interface OrderConfirmationRequest {
   orderNumber: string;
@@ -31,13 +41,13 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    
+
     if (!resendApiKey) {
       console.log("RESEND_API_KEY not configured - email not sent (testing mode)");
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: "Email service not configured. Set up RESEND_API_KEY to enable email notifications." 
+        JSON.stringify({
+          success: false,
+          message: "Email service not configured. Set up RESEND_API_KEY to enable email notifications."
         }),
         {
           status: 200,
@@ -46,19 +56,54 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const resend = new Resend(resendApiKey);
     const orderData: OrderConfirmationRequest = await req.json();
+
+    // Verify the order actually exists before sending any email — prevents this
+    // endpoint from being used as an open spam relay. Fail closed: if we can't
+    // verify, we don't send. SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are
+    // always injected by the Supabase Edge Function runtime.
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("[send-order-confirmation] Missing runtime env vars — cannot verify order");
+      return new Response(
+        JSON.stringify({ success: false, message: "Service misconfigured" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: orderRow, error: orderErr } = await adminClient
+      .from("orders")
+      .select("order_number, customer_email")
+      .eq("order_number", orderData.orderNumber)
+      .maybeSingle();
+
+    if (orderErr || !orderRow) {
+      console.warn("[send-order-confirmation] Order not found, rejecting request:", orderData.orderNumber);
+      return new Response(
+        JSON.stringify({ success: false, message: "Order not found" }),
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Only send to the email on file — ignore whatever the client sent
+    if (orderRow.customer_email) {
+      orderData.customerEmail = orderRow.customer_email;
+    }
+
+    const resend = new Resend(resendApiKey);
 
     const itemsList = orderData.items
       .map(
         (item) =>
           `<tr>
             <td style="padding: 12px; border-bottom: 1px solid #eee;">
-              <strong>${item.name}</strong><br>
-              <span style="color: #666;">$${item.price.toFixed(2)} × ${item.quantity}</span>
+              <strong>${esc(item.name)}</strong><br>
+              <span style="color: #666;">$${Number(item.price).toFixed(2)} × ${Number(item.quantity)}</span>
             </td>
             <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
-              <strong>$${(item.price * item.quantity).toFixed(2)}</strong>
+              <strong>$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</strong>
             </td>
           </tr>`
       )
@@ -76,11 +121,11 @@ const handler = async (req: Request): Promise<Response> => {
             <h1 style="margin: 0; font-size: 28px;">¡Gracias! Order Confirmed</h1>
             <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your payment was successful</p>
           </div>
-          
+
           <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
             <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #d97706;">
               <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;">Order Number</p>
-              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #d97706; font-family: 'Courier New', monospace;">${orderData.orderNumber}</p>
+              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #d97706; font-family: 'Courier New', monospace;">${esc(orderData.orderNumber)}</p>
               <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
                 ${orderData.orderType === "delivery" ? "🚗 Delivery Order" : "🏪 Pickup Order"}
               </p>
@@ -88,9 +133,9 @@ const handler = async (req: Request): Promise<Response> => {
 
             <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
               <h2 style="margin: 0 0 15px 0; font-size: 18px; color: #333;">Customer Information</h2>
-              <p style="margin: 5px 0;"><strong>Name:</strong> ${orderData.customerName}</p>
-              <p style="margin: 5px 0;"><strong>Email:</strong> ${orderData.customerEmail}</p>
-              ${orderData.deliveryAddress ? `<p style="margin: 5px 0;"><strong>Delivery Address:</strong> ${orderData.deliveryAddress}</p>` : ''}
+              <p style="margin: 5px 0;"><strong>Name:</strong> ${esc(orderData.customerName)}</p>
+              <p style="margin: 5px 0;"><strong>Email:</strong> ${esc(orderData.customerEmail)}</p>
+              ${orderData.deliveryAddress ? `<p style="margin: 5px 0;"><strong>Delivery Address:</strong> ${esc(orderData.deliveryAddress)}</p>` : ''}
             </div>
 
             <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -99,15 +144,15 @@ const handler = async (req: Request): Promise<Response> => {
                 ${itemsList}
                 <tr>
                   <td style="padding: 12px; border-top: 2px solid #333;">Subtotal</td>
-                  <td style="padding: 12px; text-align: right; border-top: 2px solid #333;">$${orderData.subtotal.toFixed(2)}</td>
+                  <td style="padding: 12px; text-align: right; border-top: 2px solid #333;">$${Number(orderData.subtotal).toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 12px;">Tax</td>
-                  <td style="padding: 12px; text-align: right;">$${orderData.tax.toFixed(2)}</td>
+                  <td style="padding: 12px; text-align: right;">$${Number(orderData.tax).toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 12px; border-top: 2px solid #333; font-size: 18px;"><strong>Total Paid</strong></td>
-                  <td style="padding: 12px; text-align: right; border-top: 2px solid #333; font-size: 18px; color: #d97706;"><strong>$${orderData.total.toFixed(2)}</strong></td>
+                  <td style="padding: 12px; text-align: right; border-top: 2px solid #333; font-size: 18px; color: #d97706;"><strong>$${Number(orderData.total).toFixed(2)}</strong></td>
                 </tr>
               </table>
             </div>
@@ -115,7 +160,7 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #d97706;">
               <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;">What's Next?</h3>
               <ul style="margin: 0; padding-left: 20px;">
-                ${orderData.orderType === "delivery" 
+                ${orderData.orderType === "delivery"
                   ? `
                     <li>Your order is being prepared by our kitchen</li>
                     <li>We'll notify you when it's out for delivery</li>
@@ -134,7 +179,7 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
               <p style="margin: 0; color: #666; font-size: 14px;">
                 Thank you for choosing Ricos Tacos!<br>
-                <a href="${SITE_URL}" style="color: #d97706; text-decoration: none;">Visit our website</a>
+                <a href="${esc(SITE_URL)}" style="color: #d97706; text-decoration: none;">Visit our website</a>
               </p>
             </div>
           </div>
@@ -145,15 +190,15 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "Ricos Tacos <orders@losricostacos.com>",
       to: [orderData.customerEmail],
-      subject: `Order Confirmation - ${orderData.orderNumber}`,
+      subject: `Order Confirmation - ${esc(orderData.orderNumber)}`,
       html: emailHtml,
     });
 
     console.log("Order confirmation email sent successfully:", emailResponse);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "Order confirmation email sent successfully"
       }),
       {
@@ -164,9 +209,9 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error sending order confirmation email:", error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message 
+      JSON.stringify({
+        success: false,
+        error: error.message
       }),
       {
         status: 500,
