@@ -92,12 +92,24 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
   // ── Build email promise (Resend) ──────────────────────────────────────────────
   const emailPromise: Promise<void> = (resendKey && restaurantEmail)
     ? (async () => {
+        const LOGO_URL = `${SITE_URL}/logo.png`;
+        const SERAPE_STRIPE = `
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+  <tr>
+    <td width="20%" height="6" style="background:#E31E24;font-size:0;line-height:0;">&nbsp;</td>
+    <td width="20%" height="6" style="background:#F59E0B;font-size:0;line-height:0;">&nbsp;</td>
+    <td width="20%" height="6" style="background:#16A34A;font-size:0;line-height:0;">&nbsp;</td>
+    <td width="20%" height="6" style="background:#1D4ED8;font-size:0;line-height:0;">&nbsp;</td>
+    <td width="20%" height="6" style="background:#E31E24;font-size:0;line-height:0;">&nbsp;</td>
+  </tr>
+</table>`;
+
         const itemsHtml = items
-          .map((item: { name: string; quantity: number; price: number }) =>
-            `<tr>
-              <td style="padding:8px 8px;border-bottom:1px solid #f0f0f0;font-size:14px;">${esc(item.name)}</td>
-              <td style="padding:8px 8px;border-bottom:1px solid #f0f0f0;text-align:center;color:#888;font-size:14px;">${Number(item.quantity)}</td>
-              <td style="padding:8px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600;font-size:14px;">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+          .map((item: { name: string; quantity: number; price: number }, i: number) =>
+            `<tr style="background:${i % 2 === 0 ? '#FFFFFF' : '#FFF9F5'};">
+              <td style="padding:10px 12px;border-bottom:1px solid #F0EDE8;font-size:14px;color:#1A1A1A;">${esc(item.name)}</td>
+              <td style="padding:10px 12px;border-bottom:1px solid #F0EDE8;text-align:center;font-size:14px;color:#888;" width="48">${Number(item.quantity)}</td>
+              <td style="padding:10px 12px;border-bottom:1px solid #F0EDE8;text-align:right;font-weight:600;font-size:14px;color:#1A1A1A;" width="80">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
             </tr>`
           )
           .join('');
@@ -107,60 +119,124 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
           : '';
 
         const notesRow = order.notes
-          ? `<div style="margin-top:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 12px;font-size:13px;color:#555;">
-              📝 <strong>Note:</strong> ${esc(order.notes)}
-            </div>`
+          ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-top:12px;">
+              <tr>
+                <td style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:10px 14px;font-size:13px;color:#555;">
+                  📝 <strong>Note:</strong> ${esc(order.notes)}
+                </td>
+              </tr>
+            </table>`
           : '';
 
         const html = `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-<div style="max-width:480px;margin:24px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>New Order Alert — Ricos Tacos Kitchen</title>
+</head>
+<body style="margin:0;padding:0;background:#FFF5EE;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 
-  <div style="background:#E31E24;padding:20px 20px 16px;">
-    <p style="margin:0 0 2px;font-size:11px;color:rgba(255,255,255,.7);letter-spacing:.1em;text-transform:uppercase;">New Order — Action Required</p>
-    <h2 style="margin:0;color:#fff;font-size:22px;font-weight:700;">🚨 #${esc(order.order_number)}</h2>
-    <p style="margin:6px 0 0;color:rgba(255,255,255,.9);font-size:14px;">
-      ${order.order_type === 'delivery' ? '🚗 Delivery' : '🏪 Pickup'} &nbsp;·&nbsp; $${Number(order.total).toFixed(2)}
-    </p>
-  </div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background:#FFF5EE;">
+<tr><td align="center" style="padding:20px 12px;">
 
-  <div style="padding:16px 20px;background:#fff8f8;border-bottom:1px solid #fde0e0;">
-    <p style="margin:0 0 4px;font-size:15px;font-weight:600;color:#333;">${esc(order.customer_name)}</p>
-    <p style="margin:0;font-size:14px;color:#555;">
-      <a href="tel:${esc(order.customer_phone.replace(/\D/g,''))}" style="color:#E31E24;text-decoration:none;font-weight:600;">${esc(order.customer_phone)}</a>
-    </p>
-    ${deliveryRow}
-  </div>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"
+    style="max-width:520px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.09);">
 
-  <div style="padding:16px 20px;">
-    <table style="width:100%;border-collapse:collapse;font-size:14px;">
-      <thead>
-        <tr style="background:#f8f8f8;">
-          <th style="padding:6px 8px;text-align:left;font-size:11px;color:#aaa;letter-spacing:.07em;text-transform:uppercase;font-weight:600;">Item</th>
-          <th style="padding:6px 8px;text-align:center;font-size:11px;color:#aaa;letter-spacing:.07em;text-transform:uppercase;font-weight:600;">Qty</th>
-          <th style="padding:6px 8px;text-align:right;font-size:11px;color:#aaa;letter-spacing:.07em;text-transform:uppercase;font-weight:600;">Price</th>
-        </tr>
-      </thead>
-      <tbody>${itemsHtml}</tbody>
-    </table>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:4px;border-top:2px solid #f0f0f0;">
-      <tr>
-        <td style="padding:10px 8px 0;font-weight:700;font-size:16px;color:#333;">Total</td>
-        <td style="padding:10px 8px 0;text-align:right;font-weight:700;font-size:16px;color:#E31E24;">$${Number(order.total).toFixed(2)}</td>
-      </tr>
-    </table>
-    ${notesRow}
-  </div>
+    <!-- Logo header -->
+    <tr>
+      <td style="background:#F9F5EC;padding:22px 24px 18px;text-align:center;border-bottom:1px solid #EDE8DC;">
+        <img src="${LOGO_URL}" alt="Ricos Tacos" width="80" height="80"
+          style="display:block;margin:0 auto 10px;width:80px;height:80px;object-fit:contain;border-radius:6px;">
+        <p style="margin:0;font-size:11px;color:#C8920A;letter-spacing:.14em;text-transform:uppercase;font-weight:600;">Kitchen Alert</p>
+      </td>
+    </tr>
 
-  <div style="padding:12px 20px 20px;">
-    <a href="${SITE_URL}/kitchen" style="display:block;background:#E31E24;color:#fff;text-align:center;padding:14px 20px;border-radius:7px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:.01em;">
-      Open Kitchen Dashboard →
-    </a>
-  </div>
+    <!-- Serape stripe -->
+    <tr><td style="padding:0;">${SERAPE_STRIPE}</td></tr>
 
-</div>
+    <!-- Alert banner -->
+    <tr>
+      <td style="background:#E31E24;padding:22px 24px 18px;text-align:center;">
+        <p style="margin:0 0 4px;font-size:11px;color:rgba(255,255,255,.75);letter-spacing:.12em;text-transform:uppercase;">New Order — Action Required</p>
+        <h2 style="margin:0 0 10px;color:#fff;font-size:26px;font-weight:700;letter-spacing:-.3px;">🚨 #${esc(order.order_number)}</h2>
+        <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:0 auto;">
+          <tr>
+            <td style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:5px 16px;">
+              <span style="font-size:13px;color:#fff;font-weight:600;">${order.order_type === 'delivery' ? '🚗 Delivery' : '🏪 Pickup'} &nbsp;·&nbsp; $${Number(order.total).toFixed(2)}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Customer info -->
+    <tr>
+      <td style="background:#FFF8F5;border-bottom:1px solid #FAE8E0;padding:16px 24px;">
+        <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#1A1A1A;">${esc(order.customer_name)}</p>
+        <p style="margin:0;font-size:14px;">
+          <a href="tel:${esc(order.customer_phone.replace(/\D/g,''))}"
+            style="color:#E31E24;text-decoration:none;font-weight:600;font-size:15px;">${esc(order.customer_phone)}</a>
+        </p>
+        ${deliveryRow}
+      </td>
+    </tr>
+
+    <!-- Items -->
+    <tr>
+      <td style="padding:20px 24px 0;">
+        <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#AAA;letter-spacing:.12em;text-transform:uppercase;">Order Items</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"
+          style="border-radius:8px;overflow:hidden;border:1px solid #F0EDE8;">
+          <tr style="background:#F5F1EB;">
+            <th style="padding:8px 12px;text-align:left;font-size:11px;color:#888;letter-spacing:.08em;text-transform:uppercase;font-weight:600;">Item</th>
+            <th style="padding:8px 12px;text-align:center;font-size:11px;color:#888;letter-spacing:.08em;text-transform:uppercase;font-weight:600;" width="48">Qty</th>
+            <th style="padding:8px 12px;text-align:right;font-size:11px;color:#888;letter-spacing:.08em;text-transform:uppercase;font-weight:600;" width="80">Price</th>
+          </tr>
+          ${itemsHtml}
+        </table>
+        ${notesRow}
+      </td>
+    </tr>
+
+    <!-- Total -->
+    <tr>
+      <td style="padding:0 24px 0;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"
+          style="margin-top:8px;border-top:2px solid #F0EDE8;background:#FFF5EE;border-radius:0 0 8px 8px;">
+          <tr>
+            <td style="padding:14px 12px;font-size:18px;font-weight:700;color:#1A1A1A;">Total</td>
+            <td style="padding:14px 12px;font-size:18px;font-weight:700;text-align:right;color:#E31E24;">$${Number(order.total).toFixed(2)}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- CTA -->
+    <tr>
+      <td style="padding:20px 24px 24px;">
+        <a href="${SITE_URL}/kitchen"
+          style="display:block;background:#E31E24;color:#fff;text-align:center;padding:16px 20px;border-radius:7px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:.02em;">
+          Open Kitchen Dashboard →
+        </a>
+      </td>
+    </tr>
+
+    <!-- Serape stripe -->
+    <tr><td style="padding:0;">${SERAPE_STRIPE}</td></tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background:#E31E24;padding:18px 24px;text-align:center;">
+        <p style="margin:0;font-size:12px;color:rgba(255,255,255,.7);">Ricos Tacos Brooklyn &nbsp;·&nbsp; 505 51st Street, Brooklyn NY 11220</p>
+      </td>
+    </tr>
+
+  </table>
+</td></tr>
+</table>
+
 </body>
 </html>`;
 
