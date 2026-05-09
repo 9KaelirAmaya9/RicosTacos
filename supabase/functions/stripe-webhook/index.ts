@@ -94,44 +94,75 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
     ? (async () => {
         const itemsHtml = items
           .map((item: { name: string; quantity: number; price: number }) =>
-            `<tr><td style="padding:4px 8px">${Number(item.quantity)}×</td><td style="padding:4px 8px">${esc(item.name)}</td><td style="padding:4px 8px;text-align:right">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td></tr>`
+            `<tr>
+              <td style="padding:8px 8px;border-bottom:1px solid #f0f0f0;font-size:14px;">${esc(item.name)}</td>
+              <td style="padding:8px 8px;border-bottom:1px solid #f0f0f0;text-align:center;color:#888;font-size:14px;">${Number(item.quantity)}</td>
+              <td style="padding:8px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600;font-size:14px;">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+            </tr>`
           )
           .join('');
 
         const deliveryRow = order.order_type === 'delivery' && order.delivery_address
-          ? `<p><strong>Deliver to:</strong> ${esc(order.delivery_address)}</p>`
-          : `<p><strong>Type:</strong> Pickup</p>`;
-
-        const notesRow = order.notes
-          ? `<p><strong>Special instructions:</strong> ${esc(order.notes)}</p>`
+          ? `<p style="margin:6px 0 0;font-size:13px;color:#666;">📍 ${esc(order.delivery_address)}</p>`
           : '';
 
-        const html = `
-    <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-      <h2 style="background:#E31E24;color:#fff;padding:16px;margin:0;border-radius:8px 8px 0 0">
-        🚨 New Order — #${esc(order.order_number)}
-      </h2>
-      <div style="border:1px solid #eee;border-top:none;padding:16px;border-radius:0 0 8px 8px">
-        <p><strong>Customer:</strong> ${esc(order.customer_name)} — ${esc(order.customer_phone)}</p>
-        ${deliveryRow}
-        ${notesRow}
-        <table style="width:100%;border-collapse:collapse;margin:12px 0">
-          <thead><tr style="background:#f5f5f5">
-            <th style="padding:4px 8px;text-align:left">Qty</th>
-            <th style="padding:4px 8px;text-align:left">Item</th>
-            <th style="padding:4px 8px;text-align:right">Price</th>
-          </tr></thead>
-          <tbody>${itemsHtml}</tbody>
-        </table>
-        <p style="text-align:right;font-size:1.1em"><strong>Total: $${Number(order.total).toFixed(2)}</strong></p>
-        <p style="margin-top:16px">
-          <a href="${SITE_URL}/kitchen" style="background:#E31E24;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold">
-            Open Kitchen Dashboard →
-          </a>
-        </p>
-      </div>
-    </div>
-  `;
+        const notesRow = order.notes
+          ? `<div style="margin-top:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 12px;font-size:13px;color:#555;">
+              📝 <strong>Note:</strong> ${esc(order.notes)}
+            </div>`
+          : '';
+
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+<div style="max-width:480px;margin:24px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);">
+
+  <div style="background:#E31E24;padding:20px 20px 16px;">
+    <p style="margin:0 0 2px;font-size:11px;color:rgba(255,255,255,.7);letter-spacing:.1em;text-transform:uppercase;">New Order — Action Required</p>
+    <h2 style="margin:0;color:#fff;font-size:22px;font-weight:700;">🚨 #${esc(order.order_number)}</h2>
+    <p style="margin:6px 0 0;color:rgba(255,255,255,.9);font-size:14px;">
+      ${order.order_type === 'delivery' ? '🚗 Delivery' : '🏪 Pickup'} &nbsp;·&nbsp; $${Number(order.total).toFixed(2)}
+    </p>
+  </div>
+
+  <div style="padding:16px 20px;background:#fff8f8;border-bottom:1px solid #fde0e0;">
+    <p style="margin:0 0 4px;font-size:15px;font-weight:600;color:#333;">${esc(order.customer_name)}</p>
+    <p style="margin:0;font-size:14px;color:#555;">
+      <a href="tel:${esc(order.customer_phone.replace(/\D/g,''))}" style="color:#E31E24;text-decoration:none;font-weight:600;">${esc(order.customer_phone)}</a>
+    </p>
+    ${deliveryRow}
+  </div>
+
+  <div style="padding:16px 20px;">
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <thead>
+        <tr style="background:#f8f8f8;">
+          <th style="padding:6px 8px;text-align:left;font-size:11px;color:#aaa;letter-spacing:.07em;text-transform:uppercase;font-weight:600;">Item</th>
+          <th style="padding:6px 8px;text-align:center;font-size:11px;color:#aaa;letter-spacing:.07em;text-transform:uppercase;font-weight:600;">Qty</th>
+          <th style="padding:6px 8px;text-align:right;font-size:11px;color:#aaa;letter-spacing:.07em;text-transform:uppercase;font-weight:600;">Price</th>
+        </tr>
+      </thead>
+      <tbody>${itemsHtml}</tbody>
+    </table>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:4px;border-top:2px solid #f0f0f0;">
+      <tr>
+        <td style="padding:10px 8px 0;font-weight:700;font-size:16px;color:#333;">Total</td>
+        <td style="padding:10px 8px 0;text-align:right;font-weight:700;font-size:16px;color:#E31E24;">$${Number(order.total).toFixed(2)}</td>
+      </tr>
+    </table>
+    ${notesRow}
+  </div>
+
+  <div style="padding:12px 20px 20px;">
+    <a href="${SITE_URL}/kitchen" style="display:block;background:#E31E24;color:#fff;text-align:center;padding:14px 20px;border-radius:7px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:.01em;">
+      Open Kitchen Dashboard →
+    </a>
+  </div>
+
+</div>
+</body>
+</html>`;
 
         const resp = await fetch('https://api.resend.com/emails', {
           method: 'POST',
