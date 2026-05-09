@@ -39,6 +39,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://losricostacos.com';
   const LOGO_URL = `${SITE_URL}/logo.png`;
+  const HERO_URL = `${SITE_URL}/RicosTacos.png`;
 
   try {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
@@ -94,6 +95,78 @@ const handler = async (req: Request): Promise<Response> => {
     const total      = Number(order.total);
     const deliveryFee = total - subtotal - tax;
 
+    // ── Personalized ETA ──────────────────────────────────────────────────────
+    const PREP_MINUTES = 15;
+    const RESTAURANT_LAT = 40.6501;
+    const RESTAURANT_LNG = -74.0060;
+    const GMAPS_KEY = Deno.env.get('GOOGLE_MAPS_SERVER_API_KEY');
+
+    let etaBadge: string;
+    let etaDetail: string;
+
+    if (isDelivery && order.delivery_address) {
+      let driveMinutes: number | null = null;
+
+      // 1. Try cached zone by ZIP (already stored during address validation)
+      const zipMatch = (order.delivery_address as string).match(/\b(\d{5})\b/);
+      if (zipMatch?.[1]) {
+        const { data: zone } = await adminClient
+          .from('delivery_zones')
+          .select('estimated_minutes')
+          .eq('zip_code', zipMatch[1])
+          .eq('is_active', true)
+          .maybeSingle();
+        if (zone?.estimated_minutes) driveMinutes = zone.estimated_minutes;
+      }
+
+      // 2. Fallback: geocode the address, then Distance Matrix with live traffic
+      if (!driveMinutes && GMAPS_KEY) {
+        try {
+          const gcRes = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(order.delivery_address)}&key=${GMAPS_KEY}`
+          );
+          const gcData = await gcRes.json();
+          if (gcData.status === 'OK' && gcData.results?.[0]) {
+            const { lat, lng } = gcData.results[0].geometry.location;
+            const dmRes = await fetch(
+              `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${RESTAURANT_LAT},${RESTAURANT_LNG}&destinations=${lat},${lng}&mode=driving&departure_time=now&traffic_model=best_guess&key=${GMAPS_KEY}`
+            );
+            const dmData = await dmRes.json();
+            const el = dmData?.rows?.[0]?.elements?.[0];
+            if (el?.status === 'OK') {
+              driveMinutes = Math.ceil((el.duration_in_traffic?.value ?? el.duration?.value ?? 0) / 60);
+            }
+          }
+        } catch (e) {
+          console.warn('[confirmation] ETA calculation failed (non-critical):', e);
+        }
+      }
+
+      if (driveMinutes) {
+        const totalMinutes = PREP_MINUTES + driveMinutes;
+        const etaDate = new Date(Date.now() + totalMinutes * 60 * 1000);
+        const etaTime = etaDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+        etaBadge = `🛵 Delivery by ${etaTime} (~${totalMinutes} min)`;
+        etaDetail = `<p style="margin:0 0 7px;font-size:14px;color:#333;">🍳 Your order is being prepared now.</p>
+           <p style="margin:0 0 7px;font-size:14px;color:#333;">🚗 Estimated delivery: <strong>by ${etaTime}</strong> (~${totalMinutes} min)</p>
+           <p style="margin:0;font-size:14px;color:#333;">📍 Delivering to: ${esc(order.delivery_address)}</p>`;
+      } else {
+        etaBadge = '🛵 Estimated delivery: 35–50 minutes';
+        etaDetail = `<p style="margin:0 0 7px;font-size:14px;color:#333;">🍳 Your order is being prepared now.</p>
+           <p style="margin:0 0 7px;font-size:14px;color:#333;">🚗 Estimated delivery time: <strong>35–50 minutes</strong></p>
+           <p style="margin:0;font-size:14px;color:#333;">📍 Delivering to: ${esc(order.delivery_address)}</p>`;
+      }
+    } else {
+      const pickupMinutes = 20;
+      const pickupDate = new Date(Date.now() + pickupMinutes * 60 * 1000);
+      const pickupTime = pickupDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+      etaBadge = `🏃 Ready for pickup by ${pickupTime} (~${pickupMinutes} min)`;
+      etaDetail = `<p style="margin:0 0 7px;font-size:14px;color:#333;">🍳 Your order is being prepared now.</p>
+         <p style="margin:0 0 7px;font-size:14px;color:#333;">⏱ Ready for pickup at: <strong>${pickupTime}</strong> (~${pickupMinutes} min)</p>
+         <p style="margin:0;font-size:14px;color:#333;">📍 Pick up at: <strong>505 51st Street, Brooklyn NY 11220</strong></p>`;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Item rows — alternating warm tint for readability
     const itemRows = items.map((item, i) =>
       `<tr style="background:${i % 2 === 0 ? '#FFFFFF' : '#FFF9F5'};">
@@ -120,13 +193,7 @@ const handler = async (req: Request): Promise<Response> => {
         </table>`
       : '';
 
-    const whatNextContent = isDelivery
-      ? `<p style="margin:0 0 7px;font-size:14px;color:#333;">🍳 Our kitchen is preparing your order now.</p>
-         <p style="margin:0 0 7px;font-size:14px;color:#333;">🚗 Estimated delivery time: <strong>45–60 minutes</strong></p>
-         <p style="margin:0;font-size:14px;color:#333;">📍 Delivering to: ${order.delivery_address ? esc(order.delivery_address) : 'your address'}</p>`
-      : `<p style="margin:0 0 7px;font-size:14px;color:#333;">🍳 Our kitchen is preparing your order now.</p>
-         <p style="margin:0 0 7px;font-size:14px;color:#333;">⏱ Ready for pickup in about <strong>20–30 minutes</strong></p>
-         <p style="margin:0;font-size:14px;color:#333;">📍 Pick up at: <strong>505 51st Street, Brooklyn NY 11220</strong></p>`;
+    const whatNextContent = etaDetail;
 
     const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -146,12 +213,16 @@ const handler = async (req: Request): Promise<Response> => {
   <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"
     style="max-width:560px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.09);">
 
-    <!-- ── Logo header (cream bg to match logo) ── -->
+    <!-- ── Hero illustration ── -->
     <tr>
-      <td style="background:${CREAM_BG};padding:28px 24px 20px;text-align:center;border-bottom:1px solid #EDE8DC;">
-        <img src="${LOGO_URL}" alt="Ricos Tacos" width="120" height="120"
-          style="display:block;margin:0 auto 12px;width:120px;height:120px;object-fit:contain;border-radius:8px;">
-        <p style="margin:0;font-size:11px;color:${GOLD};letter-spacing:.14em;text-transform:uppercase;font-weight:600;">Auténtica Comida Mexicana</p>
+      <td style="background:#C9D8AE;padding:28px 24px 20px;text-align:center;border-bottom:1px solid #B4C698;">
+        <img src="${HERO_URL}" alt="Ricos Tacos — Auténtica Comida Mexicana" width="300" height="300"
+          style="display:block;margin:0 auto 16px;width:300px;height:300px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.15);">
+        <p style="margin:0 0 4px;font-size:24px;color:#2D5016;font-weight:800;letter-spacing:.01em;font-family:Georgia,serif;">Ricos Tacos</p>
+        <p style="margin:0 0 10px;font-size:11px;color:#4A5E2A;letter-spacing:.16em;text-transform:uppercase;font-weight:700;">Auténtica Comida Mexicana</p>
+        <p style="margin:0;display:inline-block;background:#2D5016;color:#fff;font-size:13px;font-weight:700;padding:5px 16px;border-radius:20px;">
+          ${etaBadge}
+        </p>
       </td>
     </tr>
 
@@ -256,16 +327,16 @@ const handler = async (req: Request): Promise<Response> => {
     <!-- ── Footer ── -->
     <tr>
       <td style="background:${RED};padding:24px;text-align:center;">
-        <img src="${LOGO_URL}" alt="Ricos Tacos" width="56" height="56"
-          style="display:block;margin:0 auto 12px;width:56px;height:56px;object-fit:contain;border-radius:6px;opacity:.92;">
+        <img src="${LOGO_URL}" alt="Ricos Tacos" width="52" height="52"
+          style="display:block;margin:0 auto 12px;width:52px;height:52px;object-fit:contain;border-radius:6px;">
         <p style="margin:0 0 3px;font-size:14px;font-weight:700;color:#fff;">Ricos Tacos Brooklyn</p>
-        <p style="margin:0 0 3px;font-size:12px;color:rgba(255,255,255,.75);">505 51st Street, Brooklyn NY 11220</p>
+        <p style="margin:0 0 3px;font-size:12px;color:rgba(255,255,255,.8);">505 51st Street, Brooklyn NY 11220</p>
         <p style="margin:0 0 10px;font-size:12px;">
-          <a href="tel:7186334816" style="color:rgba(255,255,255,.9);text-decoration:none;">(718) 633-4816</a>
+          <a href="tel:7186334816" style="color:#fff;text-decoration:none;font-weight:600;">(718) 633-4816</a>
           <span style="color:rgba(255,255,255,.4);">&nbsp;·&nbsp;</span>
           <span style="color:rgba(255,255,255,.7);">Open 9 AM – 2 AM daily</span>
         </p>
-        <p style="margin:0;font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.12em;text-transform:uppercase;">From Puebla. For Brooklyn.</p>
+        <p style="margin:0;font-size:10px;color:rgba(255,255,255,.55);letter-spacing:.14em;text-transform:uppercase;">From Puebla. For Brooklyn.</p>
       </td>
     </tr>
 

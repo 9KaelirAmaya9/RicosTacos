@@ -93,6 +93,7 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
   const emailPromise: Promise<void> = (resendKey && restaurantEmail)
     ? (async () => {
         const LOGO_URL = `${SITE_URL}/logo.png`;
+        const HERO_URL = `${SITE_URL}/RicosTacos.png`;
         const SERAPE_STRIPE = `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
   <tr>
@@ -113,6 +114,66 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
             </tr>`
           )
           .join('');
+
+        // ── Personalized ETA ──────────────────────────────────────────────────
+        const ETA_PREP = 15;
+        const REST_LAT = 40.6501;
+        const REST_LNG = -74.0060;
+        const GMAPS_KEY = Deno.env.get('GOOGLE_MAPS_SERVER_API_KEY');
+
+        let kitchenEtaBadge: string;
+
+        if (order.order_type === 'delivery' && order.delivery_address) {
+          let driveMinutes: number | null = null;
+
+          const zipMatch = (order.delivery_address as string).match(/\b(\d{5})\b/);
+          if (zipMatch?.[1]) {
+            const { data: zone } = await supabase
+              .from('delivery_zones')
+              .select('estimated_minutes')
+              .eq('zip_code', zipMatch[1])
+              .eq('is_active', true)
+              .maybeSingle();
+            if (zone?.estimated_minutes) driveMinutes = zone.estimated_minutes;
+          }
+
+          if (!driveMinutes && GMAPS_KEY) {
+            try {
+              const gcRes = await fetch(
+                `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(order.delivery_address)}&key=${GMAPS_KEY}`
+              );
+              const gcData = await gcRes.json();
+              if (gcData.status === 'OK' && gcData.results?.[0]) {
+                const { lat, lng } = gcData.results[0].geometry.location;
+                const dmRes = await fetch(
+                  `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${REST_LAT},${REST_LNG}&destinations=${lat},${lng}&mode=driving&departure_time=now&traffic_model=best_guess&key=${GMAPS_KEY}`
+                );
+                const dmData = await dmRes.json();
+                const el = dmData?.rows?.[0]?.elements?.[0];
+                if (el?.status === 'OK') {
+                  driveMinutes = Math.ceil((el.duration_in_traffic?.value ?? el.duration?.value ?? 0) / 60);
+                }
+              }
+            } catch (e) {
+              console.warn('[WEBHOOK] Kitchen ETA calculation failed (non-critical):', e);
+            }
+          }
+
+          if (driveMinutes) {
+            const totalMinutes = ETA_PREP + driveMinutes;
+            const etaDate = new Date(Date.now() + totalMinutes * 60 * 1000);
+            const etaTime = etaDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+            kitchenEtaBadge = `🛵 Deliver by ${etaTime} (~${totalMinutes} min)`;
+          } else {
+            kitchenEtaBadge = '🛵 Target: 35–50 min delivery';
+          }
+        } else {
+          const pickupMinutes = 20;
+          const pickupDate = new Date(Date.now() + pickupMinutes * 60 * 1000);
+          const pickupTime = pickupDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+          kitchenEtaBadge = `🏃 Ready by ${pickupTime} (~${pickupMinutes} min)`;
+        }
+        // ──────────────────────────────────────────────────────────────────────
 
         const deliveryRow = order.order_type === 'delivery' && order.delivery_address
           ? `<p style="margin:6px 0 0;font-size:13px;color:#666;">📍 ${esc(order.delivery_address)}</p>`
@@ -144,12 +205,16 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
   <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"
     style="max-width:520px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.09);">
 
-    <!-- Logo header -->
+    <!-- Hero illustration -->
     <tr>
-      <td style="background:#F9F5EC;padding:22px 24px 18px;text-align:center;border-bottom:1px solid #EDE8DC;">
-        <img src="${LOGO_URL}" alt="Ricos Tacos" width="80" height="80"
-          style="display:block;margin:0 auto 10px;width:80px;height:80px;object-fit:contain;border-radius:6px;">
-        <p style="margin:0;font-size:11px;color:#C8920A;letter-spacing:.14em;text-transform:uppercase;font-weight:600;">Kitchen Alert</p>
+      <td style="background:#C9D8AE;padding:22px 24px 18px;text-align:center;border-bottom:1px solid #B4C698;">
+        <img src="${HERO_URL}" alt="Ricos Tacos" width="240" height="240"
+          style="display:block;margin:0 auto 14px;width:240px;height:240px;border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.14);">
+        <p style="margin:0 0 4px;font-size:22px;color:#2D5016;font-weight:800;letter-spacing:.01em;font-family:Georgia,serif;">Ricos Tacos</p>
+        <p style="margin:0 0 8px;font-size:11px;color:#4A5E2A;letter-spacing:.16em;text-transform:uppercase;font-weight:700;">Kitchen Alert</p>
+        <p style="margin:0;display:inline-block;background:#2D5016;color:#fff;font-size:12px;font-weight:700;padding:4px 14px;border-radius:20px;">
+          ${kitchenEtaBadge}
+        </p>
       </td>
     </tr>
 
