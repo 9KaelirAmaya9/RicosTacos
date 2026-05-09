@@ -235,8 +235,8 @@ const Cart = () => {
       return;
     }
 
-    if (cartTotal < MIN_ORDER) {
-      toast.error(`Minimum order is $${MIN_ORDER.toFixed(2)}. Add $${(MIN_ORDER - cartTotal).toFixed(2)} more to continue.`, { duration: 5000 });
+    if (orderType === "delivery" && cartTotal < MIN_ORDER) {
+      toast.error(`Minimum order for delivery is $${MIN_ORDER.toFixed(2)}. Add $${(MIN_ORDER - cartTotal).toFixed(2)} more to continue.`, { duration: 5000 });
       return;
     }
 
