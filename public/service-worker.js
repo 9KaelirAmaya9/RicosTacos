@@ -1,20 +1,90 @@
-// Ricos Tacos — Service Worker for Web Push Notifications
-// Handles background push events even when the browser tab is closed.
-//
-// v2 — adds postMessage to Kitchen page clients so the audio alarm fires
-// immediately when a push arrives, even if the tab is open in the background.
+// Ricos Tacos — Service Worker
+// v3 — offline asset caching + stale-while-revalidate for pages + push notifications
 
 const KITCHEN_URL = '/kitchen';
+const CACHE_NAME = 'ricos-tacos-v1';
 
-self.addEventListener('install', () => {
-  console.log('[SW] Installing — skip waiting');
+// Static shell: cache these on install so the app loads instantly offline
+const PRECACHE_URLS = [
+  '/',
+  '/menu',
+  '/location',
+  '/catering',
+  '/manifest.json',
+  '/logo.png',
+  '/RicosTacos.png',
+];
+
+self.addEventListener('install', (event) => {
+  console.log('[SW] Installing v3');
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
+  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating — claiming clients');
-  event.waitUntil(self.clients.claim());
+  console.log('[SW] Activating — pruning old caches');
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
 });
+
+// ── Fetch strategy ────────────────────────────────────────────────────────────
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Only handle same-origin GETs — let Supabase/Stripe/Maps pass through
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  // Hashed assets (/assets/…) — cache-first, they never change
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(request).then((cached) => cached || fetchAndCache(request))
+    );
+    return;
+  }
+
+  // Images/fonts in /public — cache-first
+  if (/\.(png|jpe?g|webp|svg|gif|woff2?)$/i.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cached) => cached || fetchAndCache(request))
+    );
+    return;
+  }
+
+  // HTML navigation requests — stale-while-revalidate so pages load instantly
+  // from cache while the network updates in the background
+  if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(staleWhileRevalidate(request));
+    return;
+  }
+});
+
+function fetchAndCache(request) {
+  return fetch(request).then((response) => {
+    if (response.ok) {
+      const clone = response.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+    }
+    return response;
+  });
+}
+
+function staleWhileRevalidate(request) {
+  return caches.open(CACHE_NAME).then((cache) =>
+    cache.match(request).then((cached) => {
+      const networkFetch = fetch(request).then((response) => {
+        if (response.ok) cache.put(request, response.clone());
+        return response;
+      }).catch(() => null);
+      return cached || networkFetch;
+    })
+  );
+}
 
 // ── Push event ────────────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {

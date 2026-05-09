@@ -1,25 +1,50 @@
 {
-  "name": "Ricos Tacos — Kitchen",
-  "short_name": "RT Kitchen",
-  "description": "Ricos Tacos kitchen order dashboard",
-  "start_url": "/kitchen",
+  "name": "Ricos Tacos Brooklyn",
+  "short_name": "Ricos Tacos",
+  "description": "Auténtica Comida Mexicana — Order pickup or delivery from Ricos Tacos, Sunset Park Brooklyn.",
+  "start_url": "/menu",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0f0f0f",
+  "background_color": "#F9F5EC",
   "theme_color": "#E31E24",
   "orientation": "portrait-primary",
+  "categories": ["food", "restaurants"],
+  "lang": "en-US",
   "icons": [
     {
       "src": "/logo.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/logo.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/RicosTacos.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Order Now",
+      "short_name": "Order",
+      "description": "Go straight to the menu and start your order",
+      "url": "/menu",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Track My Order",
+      "short_name": "Track",
+      "description": "Check the status of your recent order",
+      "url": "/order-history",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
 }
