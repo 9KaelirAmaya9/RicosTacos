@@ -41,3 +41,30 @@ jobs:
           VITE_MAPBOX_PUBLIC_TOKEN: ${{ secrets.VITE_MAPBOX_PUBLIC_TOKEN }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+  deploy-functions:
+    name: Deploy edge functions
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy all edge functions
+        run: |
+          supabase functions deploy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --no-verify-jwt create-payment-intent
+          supabase functions deploy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} stripe-webhook
+          supabase functions deploy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} send-order-confirmation
+          supabase functions deploy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} send-order-notification
+          supabase functions deploy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} notify-order-ready
+          supabase functions deploy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} validate-delivery-google
+          supabase functions deploy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} validate-delivery-address
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
