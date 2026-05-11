@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ interface UserWithRoles {
 }
 
 export const RoleManagement = () => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
@@ -70,9 +72,6 @@ export const RoleManagement = () => {
         .select("user_id, role");
 
       if (rolesError) throw rolesError;
-
-      // Get current user's email for reference
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
 
       // Fetch emails from orders table (users who have placed orders)
       const { data: ordersWithEmails } = await supabase
