@@ -40,6 +40,7 @@ interface AuthState {
   session: Session | null;
   roles: AppRole[];
   loading: boolean;
+  rolesLoading: boolean;
   error: string | null;
 }
 
@@ -76,7 +77,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AuthState>({
-    user: null, session: null, roles: [], loading: true, error: null,
+    user: null, session: null, roles: [], loading: true, rolesLoading: false, error: null,
   });
 
   const initInProgress = useRef(false);
@@ -156,7 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const hardStop = setTimeout(() => {
       if (settled) return; // setState already called — don't overwrite good state
       console.warn("[Auth] Hard stop after 8s");
-      setState(prev => ({ ...prev, loading: false, error: "Session check timed out. Please sign in again." }));
+      setState(prev => ({ ...prev, loading: false, rolesLoading: false, error: "Session check timed out. Please sign in again." }));
       initInProgress.current = false;
     }, 8000);
 
@@ -166,7 +167,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data: { user }, error } = await supabase.auth.getUser();
         if (error || !user) {
           settled = true;
-          setState({ user: null, session: null, roles: [], loading: false, error: null });
+          setState({ user: null, session: null, roles: [], loading: false, rolesLoading: false, error: null });
           initInProgress.current = false;
           return;
         }
@@ -175,24 +176,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const roles = await fetchRoles(user.id, forceRoles, freshSession?.access_token);
         settled = true;
         setSentryUser({ id: user.id, email: user.email });
-        setState({ user, session: freshSession ?? null, roles, loading: false, error: null });
+        setState({ user, session: freshSession ?? null, roles, loading: false, rolesLoading: false, error: null });
       } else {
         // Fresh sign-in: set user+session immediately (loading=true) so ProtectedRoute
         // shows spinner instead of redirecting with stale user=null state
         if (forceRoles) {
-          setState(prev => ({ ...prev, loading: true, user: session.user, session }));
+          setState(prev => ({ ...prev, rolesLoading: true, loading: false, user: session.user, session }));
         }
         // Session already in hand — pass its access_token directly to fetchRoles
         // NOTE: hardStop stays active until fetchRoles completes (not cleared early)
         const roles = await fetchRoles(session.user.id, forceRoles, session.access_token);
         settled = true;
         setSentryUser({ id: session.user.id, email: session.user.email });
-        setState({ user: session.user, session, roles, loading: false, error: null });
+        setState({ user: session.user, session, roles, loading: false, rolesLoading: false, error: null });
       }
     } catch (e: any) {
       settled = true;
       console.error("[Auth] init error:", e.message);
-      setState({ user: null, session: null, roles: [], loading: false, error: "Authentication error. Please sign in again." });
+      setState({ user: null, session: null, roles: [], loading: false, rolesLoading: false, error: "Authentication error. Please sign in again." });
     } finally {
       clearTimeout(hardStop);
       initInProgress.current = false;
@@ -218,7 +219,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (event === "SIGNED_OUT") {
         clearCache();
         clearSentryUser();
-        setState({ user: null, session: null, roles: [], loading: false, error: null });
+        setState({ user: null, session: null, roles: [], loading: false, rolesLoading: false, error: null });
         return;
       }
       if (event === "SIGNED_IN") {
@@ -246,8 +247,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refetchRoles = useCallback(async () => {
     if (!state.user) return;
     clearCache();
+    setState(prev => ({ ...prev, rolesLoading: true }));
     const roles = await fetchRoles(state.user.id, true, state.session?.access_token);
-    setState(prev => ({ ...prev, roles }));
+    setState(prev => ({ ...prev, roles, rolesLoading: false }));
   }, [state.user, state.session, fetchRoles]);
 
   return (

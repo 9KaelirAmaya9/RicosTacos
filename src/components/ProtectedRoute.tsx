@@ -15,16 +15,17 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { user, loading, hasRole } = useAuth();
+  const { user, loading, rolesLoading, hasRole } = useAuth();
   const [timedOut, setTimedOut] = useState(false);
 
-  // Safety net: if AuthContext loading is stuck past 10s, treat as unauthenticated
+  // Safety net: if AuthContext initial loading is stuck past 10s, treat as unauthenticated
   useEffect(() => {
     if (!loading) return;
     const t = window.setTimeout(() => setTimedOut(true), 10000);
     return () => window.clearTimeout(t);
   }, [loading]);
 
+  // Initial auth check — we don't know yet if the user is logged in
   if (loading && !timedOut) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -39,6 +40,16 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         to={`/auth?redirect=${encodeURIComponent(window.location.pathname)}`}
         replace
       />
+    );
+  }
+
+  // User is authenticated — fetching role permissions (short network call)
+  if (rolesLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center gap-3">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span className="text-sm text-muted-foreground">Verifying access…</span>
+      </div>
     );
   }
 

@@ -46,18 +46,18 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Sign in timed out. Please try again.")), 15000)
+      );
+      const { data, error } = await Promise.race([
+        supabase.auth.signInWithPassword({ email: email.trim(), password }),
+        timeout,
+      ]);
 
       if (error) throw error;
 
-      // Supabase returns session immediately on successful sign-in
       if (data?.session) {
         toast.success("Signed in successfully!");
-        // Small delay to ensure session is fully propagated
-        await new Promise(resolve => setTimeout(resolve, 100));
         navigate(redirectTo, { replace: true });
       } else {
         throw new Error("No session returned after sign in");
