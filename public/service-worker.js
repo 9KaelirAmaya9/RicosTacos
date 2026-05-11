@@ -2,7 +2,7 @@
 // v3 — offline asset caching + stale-while-revalidate for pages + push notifications
 
 const KITCHEN_URL = '/kitchen';
-const CACHE_NAME = 'ricos-tacos-v1';
+const CACHE_NAME = 'ricos-tacos-v2';
 
 // Static shell: cache these on install so the app loads instantly offline
 const PRECACHE_URLS = [
