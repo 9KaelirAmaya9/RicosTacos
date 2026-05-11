@@ -167,6 +167,14 @@ export const RoleManagement = () => {
 
   const handleRemoveRole = async (userId: string, role: string) => {
     if (isMutating) return;
+
+    // Block self-removal of admin role — prevents accidental lockout
+    if (userId === currentUser?.id && role === "admin") {
+      toast.error("You cannot remove your own admin role. Ask another admin to do this.");
+      setRemoveTarget(null);
+      return;
+    }
+
     setIsMutating(true);
     try {
       const { error } = await supabase
@@ -211,9 +219,24 @@ export const RoleManagement = () => {
         userId = orderMatch.user_id;
       }
 
+      // Fallback: search profiles by name (auto-set from email prefix on signup)
+      // Catches staff who signed up but haven't placed any orders yet
+      if (!userId) {
+        const emailPrefix = email.split("@")[0];
+        const { data: profileMatch } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .ilike("name", emailPrefix)
+          .limit(1)
+          .maybeSingle();
+        if (profileMatch?.user_id) {
+          userId = profileMatch.user_id;
+        }
+      }
+
       if (!userId) {
         toast.error(
-          "No account found with that email. The staff member must sign up first, then you can assign their role here or by searching their profile."
+          "No account found for that email. Make sure the staff member has signed up at losricostacos.com/auth before assigning a role."
         );
         return;
       }
