@@ -50,13 +50,15 @@ interface AuthContextValue extends AuthState {
   refetchRoles: () => Promise<void>;
 }
 
-// ─── sessionStorage role cache (5 min TTL) ────────────────────────────────────
+// ─── localStorage role cache (90s TTL) ───────────────────────────────────────
+// localStorage persists across PWA restarts (unlike sessionStorage which clears
+// on every app open in standalone mode). userId guard + TTL keep it safe.
 const CACHE_KEY = "rt_roles_cache";
-const CACHE_TTL = 90 * 1000; // 90s — stale empty-role state self-heals quickly
+const CACHE_TTL = 90 * 1000;
 
 function readCache(userId: string): AppRole[] | null {
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const c = JSON.parse(raw);
     if (c.userId !== userId || Date.now() - c.fetchedAt > CACHE_TTL) return null;
@@ -65,11 +67,11 @@ function readCache(userId: string): AppRole[] | null {
 }
 
 function writeCache(userId: string, roles: AppRole[]) {
-  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ userId, roles, fetchedAt: Date.now() })); } catch {}
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ userId, roles, fetchedAt: Date.now() })); } catch {}
 }
 
 function clearCache() {
-  try { sessionStorage.removeItem(CACHE_KEY); } catch {}
+  try { localStorage.removeItem(CACHE_KEY); } catch {}
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -163,20 +165,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       if (!session) {
-        // No session passed — ask the server (only on initial mount with no localStorage session)
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (error || !user) {
-          settled = true;
-          setState({ user: null, session: null, roles: [], loading: false, rolesLoading: false, error: null });
-          initInProgress.current = false;
-          return;
-        }
-        // Get the full session to extract the access token for fetchRoles
-        const { data: { session: freshSession } } = await supabase.auth.getSession();
-        const roles = await fetchRoles(user.id, forceRoles, freshSession?.access_token);
+        // getSession() already read localStorage — if it returned null, there is no session.
+        // Calling getUser() here would acquire the GoTrueClient lock with no token to send,
+        // deadlocking any concurrent signInWithPassword() call.
         settled = true;
-        setSentryUser({ id: user.id, email: user.email });
-        setState({ user, session: freshSession ?? null, roles, loading: false, rolesLoading: false, error: null });
+        setState({ user: null, session: null, roles: [], loading: false, rolesLoading: false, error: null });
+        initInProgress.current = false;
+        return;
       } else {
         // Fresh sign-in: set user+session immediately (loading=true) so ProtectedRoute
         // shows spinner instead of redirecting with stale user=null state
