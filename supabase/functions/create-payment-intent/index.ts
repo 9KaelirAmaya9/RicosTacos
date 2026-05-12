@@ -29,7 +29,7 @@ function generateOrderNumber(): string {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === "OPTIONS" || req.method === "HEAD") {
     return new Response(null, { headers: corsHeaders });
   }
 
