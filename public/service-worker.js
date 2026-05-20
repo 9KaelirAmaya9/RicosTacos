@@ -1,5 +1,5 @@
 // Ricos Tacos — Service Worker
-// v3 — offline asset caching + stale-while-revalidate for pages + push notifications
+// v2 — offline asset caching + stale-while-revalidate for pages + push notifications
 
 const KITCHEN_URL = '/kitchen';
 const CACHE_NAME = 'ricos-tacos-v2';
@@ -80,7 +80,7 @@ function staleWhileRevalidate(request) {
       const networkFetch = fetch(request).then((response) => {
         if (response.ok) cache.put(request, response.clone());
         return response;
-      }).catch(() => null);
+      }).catch(() => caches.match('/'));
       return cached || networkFetch;
     })
   );

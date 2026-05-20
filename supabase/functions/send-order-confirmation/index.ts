@@ -305,19 +305,23 @@ const handler = async (req: Request): Promise<Response> => {
       </td>
     </tr>
 
-    <!-- ── CTA ── -->
+    <!-- ── CTAs: Track Order (primary) + Order Again (secondary) ── -->
     <tr>
       <td style="padding:0 24px 28px;text-align:center;">
-        <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:0 auto;">
+        <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:0 auto 12px;">
           <tr>
             <td style="background:${RED};border-radius:7px;">
-              <a href="${esc(SITE_URL)}/order"
-                style="display:inline-block;background:${RED};color:#fff;font-weight:700;font-size:14px;padding:14px 40px;border-radius:7px;text-decoration:none;letter-spacing:.03em;">
-                Order Again →
+              <a href="${esc(SITE_URL)}/order-success?order_number=${encodeURIComponent(order.order_number)}"
+                style="display:inline-block;background:${RED};color:#fff;font-weight:700;font-size:15px;padding:15px 44px;border-radius:7px;text-decoration:none;letter-spacing:.03em;">
+                📍 Track My Order →
               </a>
             </td>
           </tr>
         </table>
+        <a href="${esc(SITE_URL)}/order"
+          style="display:inline-block;font-size:13px;color:#888;text-decoration:underline;">
+          Order again
+        </a>
       </td>
     </tr>
 

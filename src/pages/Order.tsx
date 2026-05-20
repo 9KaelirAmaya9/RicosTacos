@@ -14,6 +14,7 @@ import { Plus, Star, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { useState, useMemo, useRef, useCallback, memo, useDeferredValue } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
+import { useMenuAvailability } from "@/hooks/useMenuAvailability";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -189,6 +190,7 @@ const SubcategorySection = memo(({ subcategory, items, language, addToCartLabel,
 const Order = () => {
   const { t, language } = useLanguage();
   const { orderType, setOrderType, addToCart } = useCart();
+  const { inactiveIds } = useMenuAvailability();
 
   // Flavor dialog (chicken wings)
   const [flavorDialogOpen, setFlavorDialogOpen] = useState(false);
@@ -236,19 +238,20 @@ const Order = () => {
   const toggleAll = () =>
     setSelectedCategories(allSelected ? new Set() : new Set(allTopCategories));
 
-  // Items pipeline: strip variants → apply category filter → apply search.
+  // Items pipeline: strip variants → exclude 86'd items → apply category filter → apply search.
   // Uses deferredSearchQuery so typing doesn't block the input field.
   const visibleItems = useMemo(() => {
     const q = deferredSearchQuery.trim().toLowerCase();
     return menuItems
       .filter(item => !item.isVariant)
+      .filter(item => !inactiveIds.has(item.id))
       .filter(item => selectedCategories.has(item.topCategory))
       .filter(item =>
         !q ||
         item.name.toLowerCase().includes(q) ||
         (item.description || "").toLowerCase().includes(q)
       );
-  }, [deferredSearchQuery, selectedCategories]);
+  }, [deferredSearchQuery, selectedCategories, inactiveIds]);
 
   // Group by topCategory → subcategory (only used when not searching)
   const groupedItems = useMemo(() => {

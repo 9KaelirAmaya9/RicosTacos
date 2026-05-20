@@ -13,6 +13,7 @@ import { Plus, Filter } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useMenuAvailability } from "@/hooks/useMenuAvailability";
 import {
   Select,
   SelectContent,
@@ -24,6 +25,7 @@ import {
 const Menu = () => {
   const { t, language } = useLanguage();
   const { addToCart } = useCart();
+  const { inactiveIds } = useMenuAvailability();
   const [flavorDialogOpen, setFlavorDialogOpen] = useState(false);
   const [pendingItem, setPendingItem] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -89,18 +91,20 @@ const Menu = () => {
     );
   }, [selectedCategory]);
 
-  // Memoize category items mapping
+  // Memoize category items mapping — excludes items 86'd by kitchen/admin
   const categoryItemsMap = useMemo(() => {
     type MenuItemType = typeof menuItems[number];
     const map = new Map<string, MenuItemType[]>();
     menuCategories.forEach(category => {
-      const items = menuItems.filter(item => item.category === category);
+      const items = menuItems.filter(
+        item => item.category === category && !inactiveIds.has(item.id)
+      );
       if (items.length > 0) {
         map.set(category, items);
       }
     });
     return map;
-  }, []);
+  }, [inactiveIds]);
 
   return (
     <>
@@ -146,7 +150,7 @@ const Menu = () => {
                   <SelectValue placeholder={t("menu.filterPlaceholder") || "Filter by category"} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  <SelectItem value="all">{t("menu.allCategories") || "All Categories"}</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {menuCategories.map((category) => (
                     <SelectItem key={category} value={category}>
                       {getCategoryTranslation(language, category)}

@@ -204,7 +204,7 @@ export const menuItems: MenuItem[] = [
   { id: "d04", name: "Chilaquiles Regulares con Huevos", description: "Crispy tortilla chips in salsa with fried eggs, cream, onions and cheese", price: 11.95, category: "Desayunos Mexicanos", topCategory: "Breakfast", subcategory: "Chilaquiles", image: chilaquilesCecina },
   { id: "p12", name: "Chilaquiles con Carne", description: "Crispy tortilla chips in salsa with grilled beef and fried eggs", price: 14.95, category: "Desayunos Mexicanos", topCategory: "Breakfast", subcategory: "Chilaquiles", image: chilaquilesCecina },
   { id: "d05", name: "Chilaquiles con Carne y Huevos", description: "Crispy tortilla chips in salsa with meat and fried eggs, cream, onions and cheese", price: 17.95, category: "Desayunos Mexicanos", topCategory: "Breakfast", subcategory: "Chilaquiles", image: chilaquilesCecina },
-  { id: "b5", name: "Burrito Chorizo", description: "Spicy Mexican sausage with eggs, beans, and cheese", price: 14.00, category: "Desayunos Mexicanos", topCategory: "Breakfast", subcategory: "Breakfast Burritos", image: burritoChorizo },
+  { id: "b5", name: "Burrito Chorizo", description: "Spicy Mexican sausage with eggs, beans, and cheese", price: 16.00, category: "Desayunos Mexicanos", topCategory: "Breakfast", subcategory: "Breakfast Burritos", image: burritoChorizo },
 
   // Carnes/Meats (Meat Options for Tacos)
   { id: "m1", name: "Al Pastor", description: "Juicy marinated pork with pineapple, grilled to perfection on the trompo", price: 5.00, category: "Carnes/Meats", topCategory: "Meats & Proteins", subcategory: "Pork", image: alPastor, bestSeller: true },
@@ -278,18 +278,18 @@ export const menuItems: MenuItem[] = [
 
   // Burritos
   // Combined item shown in the Order page — individual variants kept for /menu
-  { id: "burrito-combo", name: "Burrito", description: "Your choice of filling wrapped in a warm flour tortilla with rice, beans, and salsa. Choose from 11 meats.", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBirria, hasMeatVariants: true },
-  { id: "b1", name: "Birria", description: "Rich braised beef with rice, beans, and melted cheese", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBirria, isVariant: true },
-  { id: "b2", name: "Pollo", description: "Tender chicken with rice, beans, and fresh salsa", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPollo, isVariant: true },
-  { id: "b3", name: "Bistec Asado", description: "Grilled steak burrito packed with flavor", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBistec, isVariant: true },
-  { id: "b4", name: "Carnitas", description: "Crispy pork with all the fixings in a warm tortilla", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoCarnitas, isVariant: true },
-  { id: "b6", name: "Lengua", description: "Tender beef tongue with rice, beans, and cilantro", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoLengua, isVariant: true },
-  { id: "b7", name: "Al Pastor", description: "Marinated pork with pineapple, wrapped to perfection", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPastor, isVariant: true },
-  { id: "b8", name: "Picadillo de Res", description: "Hearty ground beef stew with potatoes and spices", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPicadillo, isVariant: true },
-  { id: "b9", name: "Vegetariano", description: "Fresh beans, rice, cheese, lettuce, and guacamole", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoVegetariano, isVariant: true },
-  { id: "b10", name: "Cecina", description: "Smoky salted beef with traditional accompaniments", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoCecina, isVariant: true },
-  { id: "b11", name: "Arabe", description: "Middle Eastern-style spiced pork burrito", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoArabe, isVariant: true },
-  { id: "b12", name: "Mole", description: "Rich chocolate-chile sauce with chicken, unforgettable", price: 14.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoMole, isVariant: true },
+  { id: "burrito-combo", name: "Burrito", description: "Your choice of filling wrapped in a warm flour tortilla with rice, beans, and salsa. Choose from 11 meats.", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBirria, hasMeatVariants: true },
+  { id: "b1", name: "Birria", description: "Rich braised beef with rice, beans, and melted cheese", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBirria, isVariant: true },
+  { id: "b2", name: "Pollo", description: "Tender chicken with rice, beans, and fresh salsa", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPollo, isVariant: true },
+  { id: "b3", name: "Bistec Asado", description: "Grilled steak burrito packed with flavor", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoBistec, isVariant: true },
+  { id: "b4", name: "Carnitas", description: "Crispy pork with all the fixings in a warm tortilla", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoCarnitas, isVariant: true },
+  { id: "b6", name: "Lengua", description: "Tender beef tongue with rice, beans, and cilantro", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoLengua, isVariant: true },
+  { id: "b7", name: "Al Pastor", description: "Marinated pork with pineapple, wrapped to perfection", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPastor, isVariant: true },
+  { id: "b8", name: "Picadillo de Res", description: "Hearty ground beef stew with potatoes and spices", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoPicadillo, isVariant: true },
+  { id: "b9", name: "Vegetariano", description: "Fresh beans, rice, cheese, lettuce, and guacamole", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoVegetariano, isVariant: true },
+  { id: "b10", name: "Cecina", description: "Smoky salted beef with traditional accompaniments", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoCecina, isVariant: true },
+  { id: "b11", name: "Arabe", description: "Middle Eastern-style spiced pork burrito", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoArabe, isVariant: true },
+  { id: "b12", name: "Mole", description: "Rich chocolate-chile sauce with chicken, unforgettable", price: 16.00, category: "Burritos", topCategory: "Tacos & Wraps", subcategory: "Burritos", image: burritoMole, isVariant: true },
 
   // Sopas (Soups)
   { id: "s1", name: "Pozole Chica", description: "Hearty hominy soup with tender pork in red chile broth", price: 7.00, category: "Sopas", topCategory: "Soups", subcategory: "Traditional Soups", image: pozole },
@@ -297,7 +297,7 @@ export const menuItems: MenuItem[] = [
   { id: "s6", name: "Birria de Res (Consomé)", description: "Rich beef consommé with tender meat, for dipping", price: 13.99, category: "Sopas", topCategory: "Soups", subcategory: "Specialty Soups", image: birriaConsomme },
 
   // Main Platillos (Main Dishes)
-  { id: "p1", name: "Molcajete", description: "Sizzling volcanic stone bowl with grilled meats, nopales, and cheese", price: 25.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Signature Platters", image: molcajete, bestSeller: true },
+  { id: "p1", name: "Molcajete", description: "Sizzling volcanic stone bowl with grilled meats, nopales, and cheese", price: 35.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Signature Platters", image: molcajete, bestSeller: true },
   { id: "p2", name: "Cochinita Pibil", description: "Slow-roasted Yucatan pork in citrus-achiote marinade with pickled onions", price: 25.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Regional Specialties", image: cochinitaPlatillo },
   { id: "p3", name: "Birria", description: "Traditional slow-braised beef in rich chile broth with tortillas", price: 13.99, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Regional Specialties", image: birriaPlatillo, bestSeller: true },
   { id: "p4", name: "Ricos Chiles Rellenos", description: "Poblano peppers stuffed with cheese, in savory tomato sauce", price: 16.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Traditional Favorites", image: chilesRellenos },
@@ -308,7 +308,7 @@ export const menuItems: MenuItem[] = [
   { id: "p9", name: "Enchilada Poblanas", description: "Tortillas in rich mole poblano sauce with chicken", price: 15.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Enchiladas", image: enchiladasPoblanas },
   { id: "p10", name: "Enchiladas Rojas", description: "Rolled tortillas in smoky red chile sauce with melted cheese", price: 15.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Enchiladas", image: enchiladasRojas },
   { id: "p11", name: "Enchiladas Verdes", description: "Tortillas in tangy tomatillo sauce with cream and cheese", price: 15.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Enchiladas", image: enchiladasVerdes },
-  { id: "p13", name: "Cecina", description: "Thin-sliced salted beef, grilled with nopales and fresh cheese", price: 16.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Grilled Meats", image: cecinaPlatillo },
+  { id: "p13", name: "Cecina", description: "Thin-sliced salted beef, grilled with nopales and fresh cheese", price: 18.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Grilled Meats", image: cecinaPlatillo },
   { id: "p14", name: "Mojarra Frita", description: "Whole fried tilapia, crispy outside and tender inside", price: 19.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Seafood", image: mojarraFrita },
   { id: "p15", name: "Coctel de Camarones", description: "Chilled shrimp cocktail in tangy tomato sauce with avocado", price: 15.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Seafood", image: coctelCamarones },
   { id: "p16", name: "Mole Poblano", description: "Chicken in rich chocolate-chile sauce, a Mexican classic", price: 15.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Traditional Favorites", image: molePoblano, bestSeller: true },
@@ -346,15 +346,15 @@ export const menuItems: MenuItem[] = [
   { id: "s5", name: "Caldo de Camaron (Sopa de Mariscos)", description: "Spicy shrimp soup with vegetables, bold and satisfying", price: 15.00, category: "Fines de Semana", topCategory: "Soups", subcategory: "Weekend Specials", image: caldoCamaron },
 
   // Quesadillas
-  { id: "a3", name: "Quesadillas Regular", description: "Melted cheese in handmade tortilla, simple perfection", price: 10.00, category: "Quesadillas", topCategory: "Tacos & Wraps", subcategory: "Quesadillas", image: quesadilla },
-  { id: "a4", name: "Quesadillas Toda", description: "Loaded quesadilla with meat and all the toppings", price: 10.00, category: "Quesadillas", topCategory: "Tacos & Wraps", subcategory: "Quesadillas", image: quesadillaToda },
+  { id: "a3", name: "Quesadillas Regular", description: "Melted cheese in handmade tortilla, simple perfection", price: 12.00, category: "Quesadillas", topCategory: "Tacos & Wraps", subcategory: "Quesadillas", image: quesadilla },
+  { id: "a4", name: "Quesadillas Toda", description: "Loaded quesadilla with meat and all the toppings", price: 16.00, category: "Quesadillas", topCategory: "Tacos & Wraps", subcategory: "Quesadillas", image: quesadillaToda },
 
   // Antojitos Mexicanos
   { id: "a1", name: "Especial Tacos Orientales", description: "Eastern-style tacos with unique spice blend", price: 5.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: tacosOrientales },
   { id: "a2", name: "Cemitas de Milaneza", description: "Pueblan sandwich with breaded meat and avocado", price: 12.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: cemitas },
-  { id: "a5", name: "Sopas", description: "Thick corn tortilla with beans and toppings", price: 4.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: sopasAntojito },
+  { id: "a5", name: "Sopas", description: "Thick corn tortilla with beans and toppings", price: 6.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: sopasAntojito },
   { id: "a6", name: "Haurache Grande", description: "Large oblong masa base with beans, meat, and salsa", price: 10.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: huarache },
-  { id: "a7", name: "Nachos", description: "Crispy chips loaded with cheese, meat, and fresh toppings", price: 11.00, category: "Antojitos", topCategory: "Kids & Sides", subcategory: "Appetizers", image: nachos },
+  { id: "a7", name: "Nachos", description: "Crispy chips loaded with cheese, meat, and fresh toppings", price: 15.00, category: "Antojitos", topCategory: "Kids & Sides", subcategory: "Appetizers", image: nachos },
   { id: "a8", name: "Guacamole w. Chips", description: "Fresh avocado dip with lime and cilantro, addictive", price: 8.00, category: "Antojitos", topCategory: "Kids & Sides", subcategory: "Appetizers", image: guacamoleChips },
   { id: "a9", name: "Tacos Dorados", description: "Crispy rolled tacos with lettuce, cream, and salsa", price: 10.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: tacosDorados },
   { id: "a10", name: "Tacos Plazeros", description: "Specialty tacos with choice of meats and toppings", price: 7.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: tacosPlazeros },

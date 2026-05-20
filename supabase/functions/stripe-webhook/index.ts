@@ -337,8 +337,35 @@ async function notifyRestaurant(orderNumber: string): Promise<void> {
 }
 
 // ── Shared: handle a confirmed paid order ────────────────────────────────────
-async function handlePaidOrder(orderNumber: string): Promise<void> {
-  // 1. Update order status to 'paid' — only if still 'pending'.
+async function handlePaidOrder(
+  orderNumber: string,
+  stripeEventId: string,
+  eventType: string,
+): Promise<void> {
+  // 1. Idempotency gate — INSERT the event ID; unique constraint fires on retry.
+  //    Stripe retries on timeout or 5xx; this prevents duplicate SMS/email/status
+  //    flips when both payment_intent.succeeded and checkout.session.completed
+  //    arrive for the same order, or when Stripe retries a slow delivery.
+  const { error: dedupError } = await supabase
+    .from('webhook_events')
+    .insert({
+      stripe_event_id: stripeEventId,
+      event_type: eventType,
+      order_number: orderNumber,
+      success: false,
+    });
+
+  if (dedupError) {
+    if (dedupError.code === '23505') {
+      // Unique violation — this event was already processed successfully.
+      console.log('[WEBHOOK] Duplicate event skipped:', stripeEventId);
+      return;
+    }
+    // Any other error: log but continue so the order is never silently dropped.
+    console.error('[WEBHOOK] webhook_events insert failed (continuing):', dedupError.message);
+  }
+
+  // 2. Update order status to 'paid' — only if still 'pending'.
   //    Returns the updated row so we know whether this event is the first to win.
   const { data: updated, error: updateError } = await supabase
     .from('orders')
@@ -352,10 +379,13 @@ async function handlePaidOrder(orderNumber: string): Promise<void> {
   }
 
   // If no rows were updated the order was already paid by a prior event — skip notifications.
-  // This prevents duplicate SMS/email when both payment_intent.succeeded and
-  // checkout.session.completed fire for the same order.
   if (!updated || updated.length === 0) {
     console.log('[WEBHOOK] Order already paid, skipping notifications:', orderNumber);
+    // Still mark the event record as success so it won't be retried.
+    await supabase
+      .from('webhook_events')
+      .update({ success: true })
+      .eq('stripe_event_id', stripeEventId);
     return;
   }
 
@@ -392,6 +422,14 @@ async function handlePaidOrder(orderNumber: string): Promise<void> {
   } catch (pushErr) {
     console.warn('[WEBHOOK] Push notification failed (non-critical):', pushErr);
   }
+
+  // 5. Mark event as fully processed — future duplicates will be skipped at step 1.
+  await supabase
+    .from('webhook_events')
+    .update({ success: true })
+    .eq('stripe_event_id', stripeEventId);
+
+  console.log('[WEBHOOK] Event processed successfully:', stripeEventId);
 }
 
 serve(async (req) => {
@@ -438,7 +476,7 @@ serve(async (req) => {
 
       if (orderNumber) {
         console.log('[WEBHOOK] Payment succeeded for order:', orderNumber);
-        backgroundWork = handlePaidOrder(orderNumber);
+        backgroundWork = handlePaidOrder(orderNumber, event.id, event.type);
       } else {
         console.warn('[WEBHOOK] payment_intent.succeeded has no order_number in metadata');
       }
@@ -457,7 +495,7 @@ serve(async (req) => {
       }
 
       console.log('[WEBHOOK] Checkout session completed for order:', orderNumber);
-      backgroundWork = handlePaidOrder(orderNumber);
+      backgroundWork = handlePaidOrder(orderNumber, event.id, event.type);
     }
 
     // Build the 200 response FIRST, then start background work.

@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,12 +7,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Clock, Package, ChefHat, Printer, BellOff, MapPin, StickyNote, AlertTriangle } from "lucide-react";
+import { Clock, Package, ChefHat, Printer, BellOff, MapPin, StickyNote, AlertTriangle, CheckSquare, Square, XCircle, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { printReceipt } from "@/utils/printReceipt";
 import { captureException } from "@/utils/sentry";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { useOrderAlarm } from "@/hooks/useOrderAlarm";
+import { useMenuAvailability } from "@/hooks/useMenuAvailability";
+import { menuItems as allMenuItems } from "@/data/menuData";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import type { Order } from "@/types/orders";
 
@@ -75,6 +80,57 @@ const Kitchen = () => {
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const { startAlarm, stopAlarm, unlockAudio } = useOrderAlarm();
   const { autoSubscribe } = usePushNotifications();
+
+  // ── Item-level checkoff (client-side per session) ─────────────────────────
+  // Key format: `${orderId}::${itemIndex}`. Cleared when order is marked ready.
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const toggleItemCheck = useCallback((orderId: string, idx: number) => {
+    const key = `${orderId}::${idx}`;
+    setCheckedItems(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }, []);
+
+  // ── 86 panel ──────────────────────────────────────────────────────────────
+  const [show86Panel, setShow86Panel] = useState(false);
+  const [eightySixSearch, setEightySixSearch] = useState("");
+  const { inactiveIds } = useMenuAvailability();
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const toggle86 = useCallback(async (id: string, currentlyInactive: boolean) => {
+    setTogglingId(id);
+    const { error } = await supabase
+      .from("menu_items")
+      .update({ active: currentlyInactive })  // flip: inactive→active, active→inactive
+      .eq("id", id);
+    setTogglingId(null);
+    if (error) {
+      toast.error(`Failed to update ${id}`);
+    } else {
+      toast.success(currentlyInactive ? `✅ ${id} — back on menu` : `🚫 ${id} — 86'd`);
+    }
+  }, []);
+
+  // All unique items that appear in current active orders — shown first in 86 panel
+  const orderItemIds = useMemo(
+    () => new Set(orders.flatMap(o => (o.items ?? []).map((i: { name: string }) => i.name))),
+    [orders]
+  );
+
+  const panelItems = useMemo(() => {
+    const q = eightySixSearch.trim().toLowerCase();
+    return allMenuItems
+      .filter(i => !i.isVariant)
+      .filter(i => !q || i.name.toLowerCase().includes(q) || i.id.toLowerCase().includes(q))
+      .sort((a, b) => {
+        // Items currently in active orders float to the top
+        const aInOrder = orderItemIds.has(a.name) ? 0 : 1;
+        const bInOrder = orderItemIds.has(b.name) ? 0 : 1;
+        return aInOrder - bInOrder || a.name.localeCompare(b.name);
+      });
+  }, [eightySixSearch, orderItemIds]);
 
   // Auto-subscribe to OS push notifications as soon as the session is ready.
   // If the user already granted permission, this is silent and instant.
@@ -395,6 +451,15 @@ const Kitchen = () => {
   }, [clearStopTimeout, stopAlarm]);
 
   const handlePrintReceipt = (order: Order) => {
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+
+    if (isStandalone) {
+      toast.info("To print: open in Safari, tap Share → Print", { duration: 6000 });
+      return;
+    }
+
     try {
       printReceipt({
         orderNumber: order.order_number,
@@ -539,6 +604,15 @@ const Kitchen = () => {
     (o) => o.status === "paid" || o.status === "confirmed"
   );
 
+  // SLA target: delivery orders get 45 min, pickup gets 20 min.
+  // Returns { pct: 0-100, overdue: boolean, label: string }
+  const getSLA = useCallback((order: Order) => {
+    const targetMin = order.order_type === "delivery" ? 45 : 20;
+    const ageMin = (currentTime.getTime() - new Date(order.created_at).getTime()) / 60000;
+    const pct = Math.min(100, (ageMin / targetMin) * 100);
+    return { pct, overdue: ageMin > targetMin, label: `${Math.round(ageMin)}/${targetMin} min` };
+  }, [currentTime]);
+
   return (
     <div className="min-h-screen bg-background">
       <Helmet><title>Kitchen Display | Ricos Tacos</title></Helmet>
@@ -565,7 +639,18 @@ const Kitchen = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 self-end sm:self-auto">
+            <div className="flex items-center gap-3 self-end sm:self-auto flex-wrap justify-end">
+              {/* 86 panel toggle */}
+              <Button
+                variant={inactiveIds.size > 0 ? "destructive" : "outline"}
+                size="sm"
+                className="gap-2 text-sm h-9"
+                onClick={() => setShow86Panel(true)}
+              >
+                <XCircle className="h-4 w-4" />
+                86 Items {inactiveIds.size > 0 && `(${inactiveIds.size})`}
+              </Button>
+
               {/* Sound controls */}
               {!audioEnabled ? (
                 <Button
@@ -702,7 +787,7 @@ const Kitchen = () => {
                 key={order.id}
                 className={`border-4 hover:shadow-2xl transition-shadow flex flex-col ${getUrgencyClass(order)} ${
                   order.status === "paid" || order.status === "confirmed"
-                    ? "ring-4 ring-green-400 ring-offset-2 animate-pulse"
+                    ? "ring-4 ring-green-400 ring-offset-2"
                     : ""
                 }`}
               >
@@ -728,7 +813,9 @@ const Kitchen = () => {
                       </Badge>
                       <Badge
                         variant="secondary"
-                        className="text-sm px-2 py-0.5 bg-white/30 font-bold uppercase tracking-wide"
+                        className={`text-sm px-2 py-0.5 bg-white/30 font-bold uppercase tracking-wide ${
+                          order.status === "paid" || order.status === "confirmed" ? "animate-pulse" : ""
+                        }`}
                       >
                         {getStatusLabel(order.status)}
                       </Badge>
@@ -781,25 +868,71 @@ const Kitchen = () => {
                     </div>
                   )}
 
-                  {/* Items */}
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground mb-3 font-semibold uppercase tracking-wide">
-                      Items
-                    </p>
-                    <div className="space-y-2">
-                      {order.items.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center bg-muted/50 p-3 md:p-4 rounded-xl gap-3"
-                        >
-                          <span className="font-bold text-2xl md:text-3xl bg-primary text-primary-foreground rounded-full h-11 w-11 md:h-13 md:w-13 flex items-center justify-center shrink-0">
-                            {item.quantity}
+                  {/* SLA progress bar */}
+                  {(() => {
+                    const sla = getSLA(order);
+                    return (
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className={`font-semibold ${sla.overdue ? 'text-red-500' : 'text-muted-foreground'}`}>
+                            {sla.overdue ? '⚠️ Overdue' : '⏱ SLA'}
                           </span>
-                          <span className="font-medium text-xl md:text-2xl break-words">
-                            {item.name}
+                          <span className={`tabular-nums ${sla.overdue ? 'text-red-500 font-bold' : 'text-muted-foreground'}`}>
+                            {sla.label}
                           </span>
                         </div>
-                      ))}
+                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-1000 ${
+                              sla.overdue ? 'bg-red-500' : sla.pct > 75 ? 'bg-amber-400' : 'bg-green-500'
+                            }`}
+                            style={{ width: `${sla.pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Items — tap to check off as plated */}
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wide">
+                        Items
+                      </p>
+                      {order.items.every((_: unknown, idx: number) => checkedItems.has(`${order.id}::${idx}`)) && (
+                        <span className="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-950/40 px-2 py-0.5 rounded-full">
+                          ✓ All plated
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      {order.items.map((item, idx) => {
+                        const key = `${order.id}::${idx}`;
+                        const done = checkedItems.has(key);
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => toggleItemCheck(order.id, idx)}
+                            className={`w-full flex items-center p-3 md:p-4 rounded-xl gap-3 text-left transition-all ${
+                              done
+                                ? 'bg-green-50 dark:bg-green-950/40 opacity-60'
+                                : 'bg-muted/50 hover:bg-muted'
+                            }`}
+                          >
+                            {done
+                              ? <CheckSquare className="h-6 w-6 text-green-600 shrink-0" />
+                              : <Square className="h-6 w-6 text-muted-foreground shrink-0" />
+                            }
+                            <span className="font-bold text-2xl md:text-3xl bg-primary text-primary-foreground rounded-full h-11 w-11 flex items-center justify-center shrink-0">
+                              {item.quantity}
+                            </span>
+                            <span className={`font-medium text-xl md:text-2xl break-words ${done ? 'line-through text-muted-foreground' : ''}`}>
+                              {item.name}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -815,7 +948,15 @@ const Kitchen = () => {
                     )}
                     {order.status === "preparing" && (
                       <Button
-                        onClick={() => updateStatus(order.id, "ready")}
+                        onClick={() => {
+                          updateStatus(order.id, "ready");
+                          // Clear checkoffs for this order when marked ready
+                          setCheckedItems(prev => {
+                            const next = new Set(prev);
+                            order.items.forEach((_: unknown, idx: number) => next.delete(`${order.id}::${idx}`));
+                            return next;
+                          });
+                        }}
                         className="w-full text-2xl md:text-3xl font-semibold h-16 md:h-20"
                       >
                         Mark Ready
@@ -836,6 +977,80 @@ const Kitchen = () => {
           </div>
         )}
       </div>
+
+      {/* ── 86 Quick-Toggle Panel ────────────────────────────────────────────── */}
+      <Sheet open={show86Panel} onOpenChange={setShow86Panel}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" />
+              86 Items
+            </SheetTitle>
+            <p className="text-sm text-muted-foreground">
+              Toggle items off the menu instantly. Changes appear on the customer-facing menu within seconds.
+              {inactiveIds.size > 0 && (
+                <span className="ml-1 font-semibold text-destructive">{inactiveIds.size} currently 86'd.</span>
+              )}
+            </p>
+          </SheetHeader>
+
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search items…"
+              value={eightySixSearch}
+              onChange={e => setEightySixSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {/* Items currently in active orders shown first */}
+          {!eightySixSearch && orderItemIds.size > 0 && (
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-2 px-1">
+              In current orders
+            </p>
+          )}
+
+          <div className="divide-y divide-border">
+            {panelItems.map(item => {
+              const is86d = inactiveIds.has(item.id);
+              const isInOrder = orderItemIds.has(item.name);
+              const isToggling = togglingId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center justify-between py-3 gap-3 ${is86d ? 'opacity-50' : ''}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${is86d ? 'line-through text-muted-foreground' : ''}`}>
+                      {item.name}
+                      {isInOrder && !eightySixSearch && (
+                        <span className="ml-2 text-[10px] font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                          in order
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-mono">{item.id}</p>
+                  </div>
+                  <Switch
+                    checked={!is86d}
+                    disabled={isToggling}
+                    onCheckedChange={() => toggle86(item.id, is86d)}
+                    aria-label={`${is86d ? 'Restore' : '86'} ${item.name}`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          {panelItems.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No items match</p>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -64,6 +64,30 @@ const Cart = () => {
   const [paymentTimedOut, setPaymentTimedOut] = useState(false);
   const [sessionExpiredError, setSessionExpiredError] = useState(false);
   const [clearAllOpen, setClearAllOpen] = useState(false);
+
+  // ── Kitchen load → estimated wait time ────────────────────────────────────
+  // Fetches count of orders currently being prepared. One anon REST call on
+  // mount (no auth needed — count only, no PII returned). Used to show a
+  // realistic wait time before the customer hits "Proceed to Checkout".
+  const [preparingCount, setPreparingCount] = useState<number | null>(null);
+  useEffect(() => {
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["paid", "confirmed", "preparing"])
+      .then(({ count }) => {
+        if (typeof count === "number") setPreparingCount(count);
+      })
+      .catch(() => {}); // non-critical
+  }, []);
+
+  const waitEstimate = useMemo(() => {
+    if (preparingCount === null) return null;
+    const base = orderType === "delivery" ? 45 : 20;
+    // Each order ahead adds ~3 min of extra load, cap at +15 min
+    const extra = Math.min(preparingCount * 3, 15);
+    return base + extra;
+  }, [preparingCount, orderType]);
 
   useEffect(() => {
     // Check auth status - store the user object so checkout never needs to call any auth API
@@ -755,6 +779,21 @@ const Cart = () => {
                     </div>
 
                     <div className="space-y-4">
+                      {/* Estimated wait time — shown once kitchen load is known */}
+                      {waitEstimate !== null && (
+                        <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm">
+                          <span className="text-lg">⏱</span>
+                          <span className="text-amber-800 dark:text-amber-200 font-medium">
+                            Estimated {orderType === "delivery" ? "delivery" : "pickup"}: <strong>~{waitEstimate} min</strong>
+                          </span>
+                          {preparingCount !== null && preparingCount > 2 && (
+                            <span className="text-amber-600 dark:text-amber-400 text-xs ml-auto shrink-0">
+                              Kitchen busy
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       {/* Order Summary — aria-live so screen readers announce total changes */}
                       <div
                         className="space-y-2 py-4 border-t border-border"
