@@ -1,8 +1,8 @@
 // Ricos Tacos — Service Worker
-// v2 — offline asset caching + stale-while-revalidate for pages + push notifications
+// v3 — network-first HTML + force reload on SW update to prevent stale chunk mismatch
 
 const KITCHEN_URL = '/kitchen';
-const CACHE_NAME = 'ricos-tacos-v2';
+const CACHE_NAME = 'ricos-tacos-v3';
 
 // Static shell: cache these on install so the app loads instantly offline
 const PRECACHE_URLS = [
@@ -26,9 +26,19 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activating — pruning old caches');
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      )
+      .then(() => self.clients.claim())
+      .then(() =>
+        // Force all open tabs to reload so they get fresh HTML with current chunk hashes.
+        // Without this, tabs loaded by the old SW keep referencing old asset filenames
+        // that no longer exist on the server → ERR_FAILED on every dynamic import.
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) =>
+          clients.forEach((client) => client.navigate(client.url))
+        )
+      )
   );
 });
 
@@ -56,10 +66,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML navigation requests — stale-while-revalidate so pages load instantly
-  // from cache while the network updates in the background
+  // HTML navigation — network-first so the browser always gets fresh HTML with
+  // current chunk hashes. Stale-while-revalidate caused ERR_FAILED on every
+  // dynamic import after a deploy (old HTML referenced old chunk filenames).
   if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(networkFirst(request));
     return;
   }
 });
@@ -74,16 +85,16 @@ function fetchAndCache(request) {
   });
 }
 
-function staleWhileRevalidate(request) {
-  return caches.open(CACHE_NAME).then((cache) =>
-    cache.match(request).then((cached) => {
-      const networkFetch = fetch(request).then((response) => {
-        if (response.ok) cache.put(request, response.clone());
-        return response;
-      }).catch(() => caches.match('/'));
-      return cached || networkFetch;
+function networkFirst(request) {
+  return fetch(request)
+    .then((response) => {
+      if (response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+      }
+      return response;
     })
-  );
+    .catch(() => caches.match(request).then((cached) => cached || caches.match('/')));
 }
 
 // ── Push event ────────────────────────────────────────────────────────────────
