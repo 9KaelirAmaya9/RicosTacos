@@ -18,161 +18,84 @@ interface ReceiptData {
 }
 
 export const printReceipt = (order: ReceiptData) => {
-  const receiptHTML = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Receipt - Order ${order.orderNumber}</title>
-      <style>
-        @media print {
-          body { margin: 0; }
-          @page { margin: 0.5in; }
-        }
-        body {
-          font-family: 'Courier New', monospace;
-          max-width: 300px;
-          margin: 20px auto;
-          padding: 20px;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 20px;
-          border-bottom: 2px dashed #000;
-          padding-bottom: 10px;
-        }
-        .restaurant-name {
-          font-size: 18px;
-          font-weight: bold;
-          margin-bottom: 5px;
-        }
-        .order-info {
-          margin: 15px 0;
-          font-size: 12px;
-        }
-        .items {
-          margin: 15px 0;
-          border-top: 1px dashed #000;
-          border-bottom: 1px dashed #000;
-          padding: 10px 0;
-        }
-        .item {
-          display: flex;
-          justify-content: space-between;
-          margin: 5px 0;
-          font-size: 11px;
-        }
-        .item-name { flex: 1; }
-        .item-qty { width: 30px; text-align: center; }
-        .item-price { width: 60px; text-align: right; }
-        .totals { margin: 15px 0; font-size: 12px; }
-        .total-row {
-          display: flex;
-          justify-content: space-between;
-          margin: 5px 0;
-        }
-        .total-row.grand {
-          font-weight: bold;
-          font-size: 14px;
-          border-top: 2px solid #000;
-          padding-top: 5px;
-          margin-top: 10px;
-        }
-        .footer {
-          text-align: center;
-          margin-top: 20px;
-          padding-top: 10px;
-          border-top: 2px dashed #000;
-          font-size: 10px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div class="restaurant-name">Ricos Tacos Puebla</div>
-        <div>Brooklyn, NY</div>
-        <div>(718) 633-4816</div>
-      </div>
-
-      <div class="order-info">
-        <div><strong>Order #:</strong> ${order.orderNumber}</div>
-        <div><strong>Date:</strong> ${new Date(order.createdAt).toLocaleString('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' })}</div>
-        <div><strong>Customer:</strong> ${order.customerName}</div>
-        <div><strong>Type:</strong> ${order.orderType.toUpperCase()}</div>
-        ${order.deliveryAddress ? `<div><strong>Address:</strong> ${order.deliveryAddress}</div>` : ''}
-        ${order.notes ? `<div><strong>Notes:</strong> ${order.notes}</div>` : ''}
-      </div>
-
-      <div class="items">
-        ${order.items.map(item => `
-          <div class="item">
-            <span class="item-name">${item.name}</span>
-            <span class="item-qty">x${item.quantity}</span>
-            <span class="item-price">$${(item.price * item.quantity).toFixed(2)}</span>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="totals">
-        <div class="total-row">
-          <span>Subtotal:</span>
-          <span>$${order.subtotal.toFixed(2)}</span>
-        </div>
-        <div class="total-row">
-          <span>Tax (8.875%):</span>
-          <span>$${order.tax.toFixed(2)}</span>
-        </div>
-        <div class="total-row grand">
-          <span>TOTAL:</span>
-          <span>$${order.total.toFixed(2)}</span>
-        </div>
-      </div>
-
-      <div class="footer">
-        <div>Thank you for your order!</div>
-        <div>Follow us @RicosTacosPuebla</div>
-      </div>
-    </body>
-    </html>
+  // Inject receipt content directly into the main document and call window.print().
+  // This works on iOS Safari and PWA standalone mode — calling print() on a hidden
+  // off-screen iframe is silently blocked by Safari's security policy.
+  const css = `
+    #ricos-receipt { max-width: 300px; margin: 20px auto; padding: 20px; font-family: 'Courier New', monospace; }
+    @media print {
+      body > *:not(#ricos-receipt) { display: none !important; }
+      #ricos-receipt { display: block !important; }
+      @page { margin: 0.5in; }
+    }
+    .r-header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #000; padding-bottom: 10px; }
+    .r-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+    .r-info { margin: 15px 0; font-size: 12px; }
+    .r-items { margin: 15px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0; }
+    .r-item { display: flex; justify-content: space-between; margin: 5px 0; font-size: 11px; }
+    .r-item-name { flex: 1; }
+    .r-item-qty { width: 30px; text-align: center; }
+    .r-item-price { width: 60px; text-align: right; }
+    .r-totals { margin: 15px 0; font-size: 12px; }
+    .r-row { display: flex; justify-content: space-between; margin: 5px 0; }
+    .r-row.grand { font-weight: bold; font-size: 14px; border-top: 2px solid #000; padding-top: 5px; margin-top: 10px; }
+    .r-footer { text-align: center; margin-top: 20px; padding-top: 10px; border-top: 2px dashed #000; font-size: 10px; }
   `;
 
-  // Use a hidden iframe instead of window.open so popup blockers don't interfere.
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:0;';
-  document.body.appendChild(iframe);
+  const content = `
+    <div class="r-header">
+      <div class="r-name">Ricos Tacos Puebla</div>
+      <div>Brooklyn, NY</div>
+      <div>(718) 633-4816</div>
+    </div>
+    <div class="r-info">
+      <div><strong>Order #:</strong> ${order.orderNumber}</div>
+      <div><strong>Date:</strong> ${new Date(order.createdAt).toLocaleString('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' })}</div>
+      <div><strong>Customer:</strong> ${order.customerName}</div>
+      <div><strong>Type:</strong> ${order.orderType.toUpperCase()}</div>
+      ${order.deliveryAddress ? `<div><strong>Address:</strong> ${order.deliveryAddress}</div>` : ''}
+      ${order.notes ? `<div><strong>Notes:</strong> ${order.notes}</div>` : ''}
+    </div>
+    <div class="r-items">
+      ${order.items.map(item => `
+        <div class="r-item">
+          <span class="r-item-name">${item.name}</span>
+          <span class="r-item-qty">x${item.quantity}</span>
+          <span class="r-item-price">$${(item.price * item.quantity).toFixed(2)}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="r-totals">
+      <div class="r-row"><span>Subtotal:</span><span>$${order.subtotal.toFixed(2)}</span></div>
+      <div class="r-row"><span>Tax (8.875%):</span><span>$${order.tax.toFixed(2)}</span></div>
+      <div class="r-row grand"><span>TOTAL:</span><span>$${order.total.toFixed(2)}</span></div>
+    </div>
+    <div class="r-footer">
+      <div>Thank you for your order!</div>
+      <div>Follow us @RicosTacosPuebla</div>
+    </div>
+  `;
 
-  const doc = iframe.contentDocument ?? iframe.contentWindow?.document;
-  if (!doc) {
-    document.body.removeChild(iframe);
-    return;
-  }
+  // Clean up any previous receipt (e.g. rapid double-print)
+  document.getElementById('ricos-receipt')?.remove();
+  document.getElementById('ricos-receipt-style')?.remove();
 
-  doc.open();
-  doc.write(receiptHTML);
-  doc.close();
-  // doc.close() synchronously completes the document — for inline-only HTML
-  // (no external fonts/sheets/images) readyState is already 'complete' by the
-  // time we reach the next line. Adding a 'load' listener at that point is too
-  // late: the event has already fired and will never fire again, so print()
-  // would never be called. Use a short setTimeout instead so the browser has
-  // one rendering cycle to paint the content before the print dialog opens.
+  const style = document.createElement('style');
+  style.id = 'ricos-receipt-style';
+  style.textContent = css;
+  document.head.appendChild(style);
 
-  const doPrint = () => {
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
-    // Clean up after the print dialog closes
-    setTimeout(() => {
-      if (document.body.contains(iframe)) {
-        document.body.removeChild(iframe);
-      }
-    }, 1000);
-  };
+  const div = document.createElement('div');
+  div.id = 'ricos-receipt';
+  div.innerHTML = content;
+  document.body.appendChild(div);
 
-  if (iframe.contentDocument?.readyState === 'complete') {
-    // Already loaded (synchronous doc.write path) — small delay lets the
-    // browser finish any pending layout/paint before opening the dialog.
-    setTimeout(doPrint, 100);
-  } else {
-    // Fallback for browsers that fire load asynchronously
-    iframe.contentWindow?.addEventListener('load', doPrint);
-  }
+  window.print();
+
+  // Remove after the print dialog closes (synchronous on desktop; give extra
+  // time on iOS where the dialog may linger briefly before dismissal)
+  setTimeout(() => {
+    document.getElementById('ricos-receipt')?.remove();
+    document.getElementById('ricos-receipt-style')?.remove();
+  }, 1000);
 };

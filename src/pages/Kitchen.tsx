@@ -451,15 +451,6 @@ const Kitchen = () => {
   }, [clearStopTimeout, stopAlarm]);
 
   const handlePrintReceipt = (order: Order) => {
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
-
-    if (isStandalone) {
-      toast.info("To print: open in Safari, tap Share → Print", { duration: 6000 });
-      return;
-    }
-
     try {
       printReceipt({
         orderNumber: order.order_number,
@@ -965,7 +956,7 @@ const Kitchen = () => {
                     <Button
                       variant="outline"
                       onClick={() => handlePrintReceipt(order)}
-                      className="w-full gap-3 text-xl md:text-2xl h-13 md:h-15"
+                      className="w-full gap-3 text-xl md:text-2xl h-12 md:h-14"
                     >
                       <Printer className="h-6 w-6" />
                       Print Receipt

@@ -428,7 +428,7 @@ export default function AdminOrders() {
                     <TableHead>Items</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-background">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -481,7 +481,7 @@ export default function AdminOrders() {
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell onClick={e => e.stopPropagation()}>
+                        <TableCell className="sticky right-0 bg-background" onClick={e => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="sm"
