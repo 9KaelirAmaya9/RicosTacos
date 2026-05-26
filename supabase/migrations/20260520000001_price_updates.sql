@@ -20,3 +20,9 @@ UPDATE public.menu_items SET price = 35.00 WHERE id = 'p1';
 
 -- Cecina con Nopales (platillo): $16 → $18
 UPDATE public.menu_items SET price = 18.00 WHERE id = 'p13';
+
+-- New items
+INSERT INTO public.menu_items (id, name, price, active) VALUES
+  ('p25-mix', 'Fajitas Mix', 25.00, true),
+  ('a11-carne', 'Chalupas Carne', 10.00, true)
+ON CONFLICT (id) DO UPDATE SET price = EXCLUDED.price, active = EXCLUDED.active;

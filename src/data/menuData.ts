@@ -321,6 +321,7 @@ export const menuItems: MenuItem[] = [
   { id: "p23", name: "Filete de Pescado Asado a la Plancha", description: "Grilled fish fillet, simply seasoned and perfectly cooked", price: 18.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Seafood", image: filetePescado },
   { id: "p24", name: "Arrachera", description: "Tender marinated skirt steak, grilled to juicy perfection", price: 22.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Signature Platters", image: arrachera },
   { id: "p25", name: "Fajitas", description: "Sizzling peppers and onions with your choice of meat", price: 20.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Signature Platters", image: fajitas },
+  { id: "p25-mix", name: "Fajitas Mix", description: "Sizzling fajitas with a mix of pollo and carne", price: 25.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Signature Platters", image: fajitas },
   { id: "p26", name: "Alambre", description: "Grilled meat with bacon, peppers, onions, and melted cheese", price: 25.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Signature Platters", image: alambre },
   { id: "p27", name: "Parrilladas", description: "Mixed grill platter with assorted meats for sharing", price: 24.99, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Signature Platters", image: parrilladas },
 
@@ -359,6 +360,7 @@ export const menuItems: MenuItem[] = [
   { id: "a9", name: "Tacos Dorados", description: "Crispy rolled tacos with lettuce, cream, and salsa", price: 10.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: tacosDorados },
   { id: "a10", name: "Tacos Plazeros", description: "Specialty tacos with choice of meats and toppings", price: 7.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: tacosPlazeros },
   { id: "a11", name: "Chalupas", description: "Fried masa topped with meat, salsa, and cheese", price: 8.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: chalupas },
+  { id: "a11-carne", name: "Chalupas Carne", description: "Fried masa topped with carne, salsa, and cheese", price: 10.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: chalupas },
   { id: "a13", name: "Fajitas Arabe", description: "Middle Eastern-style fajitas with aromatic spices", price: 12.00, category: "Antojitos", topCategory: "Main Dishes", subcategory: "Signature Platters", image: fajitasArabe },
 
   // Bebidas (Drinks)
