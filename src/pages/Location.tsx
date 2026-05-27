@@ -5,7 +5,6 @@ import { Card } from "@/components/ui/card";
 import { MapPin, Clock, Phone } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import logo from "@/assets/logo-illustration.png";
-import DeliveryAddressValidator from "@/components/DeliveryAddressValidator";
 
 const Location = () => {
   const { t } = useLanguage();
@@ -109,11 +108,6 @@ const Location = () => {
                 referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
-          </div>
-
-          {/* Delivery Address Validator */}
-          <div className="max-w-4xl mx-auto mb-8">
-            <DeliveryAddressValidator />
           </div>
 
           {/* Services */}
