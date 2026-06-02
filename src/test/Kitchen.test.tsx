@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render } from '@testing-library/react';
 import { screen, waitFor, fireEvent } from '@testing-library/dom';
+import { renderWithProviders } from './utils';
 import Kitchen from '@/pages/Kitchen';
 
 // Mock Supabase
@@ -8,7 +8,7 @@ vi.mock('@/integrations/supabase/client', () => {
   const mockSupabase = {
     from: vi.fn(),
     channel: vi.fn(),
-    removeChannel: vi.fn(),
+    removeChannel: vi.fn().mockResolvedValue(undefined),
   };
   return {
     supabase: mockSupabase,
@@ -31,6 +31,30 @@ vi.mock('@/utils/printReceipt', () => ({
 // Mock NotificationSettings
 vi.mock('@/components/NotificationSettings', () => ({
   NotificationSettings: () => <div>Notification Settings</div>,
+}));
+
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ session: { access_token: 'test-token' }, user: null }),
+}));
+
+vi.mock('@/hooks/useOrderAlarm', () => {
+  const startAlarm = vi.fn();
+  const stopAlarm = vi.fn();
+  const unlockAudio = vi.fn(async () => true);
+  return { useOrderAlarm: () => ({ startAlarm, stopAlarm, unlockAudio }) };
+});
+
+vi.mock('@/hooks/usePushNotifications', () => {
+  const autoSubscribe = vi.fn();
+  return { usePushNotifications: () => ({ autoSubscribe }) };
+});
+
+vi.mock('@/hooks/useMenuAvailability', () => ({
+  useMenuAvailability: () => ({ inactiveIds: new Set() }),
+}));
+
+vi.mock('@/utils/sentry', () => ({
+  captureException: vi.fn(),
 }));
 
 const mockActiveOrders = [
@@ -70,7 +94,13 @@ describe('Kitchen Dashboard', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
+    // Kitchen fetches orders via raw fetch() against the Supabase REST API
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockActiveOrders,
+    }));
+
     const module = await import('@/integrations/supabase/client');
     mockSupabase = module.supabase;
 
@@ -96,27 +126,27 @@ describe('Kitchen Dashboard', () => {
   });
 
   it('should render loading state initially', () => {
-    // Make query pending
-    mockSupabase.from().select().in().order.mockReturnValue(
-      new Promise(() => {})
-    );
+    // Kitchen uses raw fetch() — make it hang to keep loading state
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
 
-    render(<Kitchen />);
-    expect(screen.getByText(/loading orders/i)).toBeInTheDocument();
+    renderWithProviders(<Kitchen />);
+    expect(screen.getByText(/loading kitchen orders/i)).toBeInTheDocument();
   });
 
   it('should display active orders', async () => {
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
+      // Header is always unique
       expect(screen.getByText('Kitchen Display')).toBeInTheDocument();
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
-      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+      // Customer names may appear multiple times (active orders + pending safety-net section)
+      expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Jane Smith').length).toBeGreaterThan(0);
     });
   });
 
   it('should show order details correctly', async () => {
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
       expect(screen.getByText('ORD-2024-001')).toBeInTheDocument();
@@ -127,16 +157,17 @@ describe('Kitchen Dashboard', () => {
   });
 
   it('should show "Start Preparing" button for pending orders', async () => {
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
-      const startButton = screen.getByText(/start preparing/i);
-      expect(startButton).toBeInTheDocument();
+      // May have multiple "Start Preparing" variants (pending safety-net + active order buttons)
+      const startButtons = screen.getAllByText(/start preparing/i);
+      expect(startButtons.length).toBeGreaterThan(0);
     });
   });
 
   it('should show "Mark Ready" button for preparing orders', async () => {
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
       const readyButton = screen.getByText(/mark ready/i);
@@ -155,17 +186,19 @@ describe('Kitchen Dashboard', () => {
       }),
     });
 
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
-      expect(screen.getByText(/start preparing/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/start preparing/i).length).toBeGreaterThan(0);
     });
 
-    const startButton = screen.getByText(/start preparing/i);
+    // Multiple buttons may exist — click the first one (pending safety-net section)
+    const startButton = screen.getAllByText(/start preparing/i)[0];
     fireEvent.click(startButton);
 
     await waitFor(() => {
-      expect(updateMock).toHaveBeenCalledWith('1');
+      // supabase.from("orders").update(...).eq("id", orderId) → eq called with ("id", "1")
+      expect(updateMock).toHaveBeenCalledWith('id', '1');
     });
   });
 
@@ -180,7 +213,7 @@ describe('Kitchen Dashboard', () => {
       }),
     });
 
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
       expect(screen.getByText(/mark ready/i)).toBeInTheDocument();
@@ -190,12 +223,12 @@ describe('Kitchen Dashboard', () => {
     fireEvent.click(readyButton);
 
     await waitFor(() => {
-      expect(updateMock).toHaveBeenCalledWith('2');
+      expect(updateMock).toHaveBeenCalledWith('id', '2');
     });
   });
 
   it('should display time elapsed for orders', async () => {
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
       // Should show time elapsed (e.g., "5 min ago")
@@ -210,7 +243,7 @@ describe('Kitchen Dashboard', () => {
       error: null,
     });
 
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
       expect(screen.getByText(/no active orders/i)).toBeInTheDocument();
@@ -220,7 +253,7 @@ describe('Kitchen Dashboard', () => {
   it('should handle print receipt', async () => {
     const { printReceipt } = await import('@/utils/printReceipt');
 
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
       expect(screen.getByText('ORD-2024-001')).toBeInTheDocument();
@@ -235,7 +268,7 @@ describe('Kitchen Dashboard', () => {
   });
 
   it('should show order type badge', async () => {
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
       expect(screen.getByText('delivery')).toBeInTheDocument();
@@ -244,7 +277,7 @@ describe('Kitchen Dashboard', () => {
   });
 
   it('should display order count in header', async () => {
-    render(<Kitchen />);
+    renderWithProviders(<Kitchen />);
 
     await waitFor(() => {
       expect(screen.getByText(/2 active orders/i)).toBeInTheDocument();

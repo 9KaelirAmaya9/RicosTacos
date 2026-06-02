@@ -56,10 +56,12 @@ export default defineConfig(({ mode }) => ({
           ],
         },
       },
-      plugins: mode === "production" && !process.env.VERCEL
+      // DISABLE_PRERENDER=1 skips prerendering (set in Vercel env vars if the build
+      // times out or Chromium isn't available in the build image).
+      plugins: mode === "production" && process.env.DISABLE_PRERENDER !== "1"
         ? [
             Prerenderer({
-              routes: ["/", "/menu", "/location", "/catering"],
+              routes: ["/", "/menu", "/order", "/location", "/catering"],
             }),
           ]
         : [],

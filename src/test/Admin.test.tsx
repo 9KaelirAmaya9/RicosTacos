@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render } from '@testing-library/react';
 import { screen, waitFor } from '@testing-library/dom';
-import { BrowserRouter } from 'react-router-dom';
+import { renderWithProviders } from './utils';
 import Admin from '@/pages/Admin';
 
 // Mock Supabase
@@ -13,6 +12,11 @@ vi.mock('@/integrations/supabase/client', () => {
       eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
     })),
+    channel: vi.fn(() => ({
+      on: vi.fn().mockReturnThis(),
+      subscribe: vi.fn(),
+    })),
+    removeChannel: vi.fn().mockResolvedValue(undefined),
   };
   return {
     supabase: mockSupabase,
@@ -23,7 +27,33 @@ vi.mock('@/integrations/supabase/client', () => {
 vi.mock('sonner', () => ({
   toast: {
     error: vi.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
   },
+}));
+
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ session: { access_token: 'test-token' }, user: { id: 'u1' }, roles: ['admin'] }),
+}));
+
+vi.mock('@/hooks/usePushNotifications', () => {
+  const autoSubscribe = vi.fn();
+  return { usePushNotifications: () => ({ autoSubscribe }) };
+});
+
+vi.mock('@/hooks/useOrderAlarm', () => {
+  const startAlarm = vi.fn();
+  const stopAlarm = vi.fn();
+  const unlockAudio = vi.fn(async () => true);
+  return { useOrderAlarm: () => ({ startAlarm, stopAlarm, unlockAudio }) };
+});
+
+vi.mock('@/components/NotificationSettings', () => ({
+  NotificationSettings: () => <div>Notification Settings</div>,
+}));
+
+vi.mock('@/utils/sentry', () => ({
+  captureException: vi.fn(),
 }));
 
 // Mock useNavigate
@@ -41,9 +71,22 @@ describe('Admin Dashboard', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+
+    // Admin fetches metrics via raw fetch() against the Supabase REST API
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+      headers: { get: () => '0' },
+    }));
+
     const module = await import('@/integrations/supabase/client');
     mockSupabase = module.supabase;
-    
+
+    mockSupabase.channel.mockReturnValue({
+      on: vi.fn().mockReturnThis(),
+      subscribe: vi.fn(),
+    });
+
     mockSupabase.from.mockReturnValue({
       select: vi.fn().mockReturnThis(),
       gte: vi.fn().mockReturnThis(),
@@ -58,11 +101,7 @@ describe('Admin Dashboard', () => {
       new Promise(() => {}) // Never resolves
     );
 
-    render(
-      <BrowserRouter>
-        <Admin />
-      </BrowserRouter>
-    );
+    renderWithProviders(<Admin />);
 
     expect(screen.getByText(/loading dashboard/i)).toBeInTheDocument();
   });
@@ -104,45 +143,30 @@ describe('Admin Dashboard', () => {
       select: selectMock,
     });
 
-    render(
-      <BrowserRouter>
-        <Admin />
-      </BrowserRouter>
-    );
+    renderWithProviders(<Admin />);
 
     await waitFor(() => {
       expect(screen.getByText(/admin dashboard/i)).toBeInTheDocument();
     });
 
-    // Check for metric cards
+    // Check for metric cards (always rendered — titles match the metricCards array in Admin.tsx)
     expect(screen.getByText(/today's orders/i)).toBeInTheDocument();
     expect(screen.getByText(/today's revenue/i)).toBeInTheDocument();
     expect(screen.getByText(/pending orders/i)).toBeInTheDocument();
-    expect(screen.getByText(/total orders/i)).toBeInTheDocument();
+    expect(screen.getByText(/this week/i)).toBeInTheDocument();
   });
 
   it('should display error message on failure', async () => {
-    const selectMock = vi.fn();
-    selectMock.mockReturnValue({
-      gte: vi.fn().mockReturnValue({
-        order: vi.fn().mockRejectedValue(new Error('Database error')),
-      }),
-    });
+    // Admin uses raw fetch() — make it reject to trigger the error UI.
+    // Admin.tsx has retry:3 + retryDelay:2000, so the error appears after ~6 seconds.
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
 
-    mockSupabase.from.mockReturnValue({
-      select: selectMock,
-    });
-
-    render(
-      <BrowserRouter>
-        <Admin />
-      </BrowserRouter>
-    );
+    renderWithProviders(<Admin />);
 
     await waitFor(() => {
-      expect(screen.getByText(/error/i)).toBeInTheDocument();
-    });
-  });
+      expect(screen.getByText(/failed to load dashboard metrics/i)).toBeInTheDocument();
+    }, { timeout: 10000 });
+  }, 12000);
 
   it('should have quick action buttons', async () => {
     // Mock successful data fetch
@@ -165,16 +189,12 @@ describe('Admin Dashboard', () => {
       select: selectMock,
     });
 
-    render(
-      <BrowserRouter>
-        <Admin />
-      </BrowserRouter>
-    );
+    renderWithProviders(<Admin />);
 
     await waitFor(() => {
-      expect(screen.getByText(/view all orders/i)).toBeInTheDocument();
-      expect(screen.getByText(/manage roles/i)).toBeInTheDocument();
-      expect(screen.getByText(/kitchen display/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/all orders/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/manage roles/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/kitchen display/i).length).toBeGreaterThan(0);
     });
   });
 });

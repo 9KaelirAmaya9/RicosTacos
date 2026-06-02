@@ -41,10 +41,14 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Restaurant",
+      "@type": ["Restaurant", "LocalBusiness"],
+      "@id": "https://losricostacos.com/#restaurant",
       "name": "Ricos Tacos",
-      "image": "https://losricostacos.com/logo.png",
-      "logo": "https://losricostacos.com/logo.png",
+      "image": ["https://losricostacos.com/og-image.jpg", "https://losricostacos.com/logo.png"],
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://losricostacos.com/logo.png"
+      },
       "description": "Sunset Park Brooklyn's neighborhood taqueria serving authentic recipes from Puebla, Mexico. From Puebla. For Brooklyn. Al pastor, birria, carnitas, barbacoa, lengua & more made fresh daily. Open 9 AM to 2 AM, 7 days a week. Pickup and delivery available.",
       "address": {
         "@type": "PostalAddress",
@@ -80,9 +84,119 @@
       "acceptsReservations": "False",
       "paymentAccepted": "Credit Card, Cash",
       "currenciesAccepted": "USD",
+      "dineIn": true,
+      "takeout": true,
+      "delivery": true,
       "sameAs": [
         "https://www.yelp.com/biz/ricos-tacos-brooklyn",
-        "https://www.facebook.com/pages/Ricos-Tacos/526770730695547"
+        "https://www.facebook.com/pages/Ricos-Tacos/526770730695547",
+        "https://www.grubhub.com/restaurant/ricos-tacos-505-51st-street-brooklyn/13219560"
+      ],
+      "potentialAction": {
+        "@type": "OrderAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://losricostacos.com/order",
+          "inLanguage": "en-US",
+          "actionPlatform": [
+            "http://schema.org/DesktopWebPlatform",
+            "http://schema.org/MobileWebPlatform"
+          ]
+        }
+      }
+    }
+    </script>
+
+    <!-- Menu Schema — enables Google to surface individual items in search results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Menu",
+      "@id": "https://losricostacos.com/#menu",
+      "name": "Ricos Tacos Menu",
+      "description": "Authentic Mexican street food from Puebla — tacos, taquitos, tostadas, tortas, burritos, soups, and full platillos",
+      "url": "https://losricostacos.com/menu",
+      "hasMenuSection": [
+        {
+          "@type": "MenuSection",
+          "name": "Tacos",
+          "description": "Specialty tacos on fresh corn tortillas — $5 each",
+          "hasMenuItem": [
+            { "@type": "MenuItem", "name": "Birria Taco", "description": "Rich, slow-braised beef in savory chile broth, perfectly spiced", "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Al Pastor Taco", "description": "Juicy marinated pork with pineapple, grilled to perfection on the trompo", "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Cochinita Pibil Taco", "description": "Slow-roasted pork marinated in citrus and achiote, tender and aromatic", "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Carnitas Taco", "description": "Crispy-edged, melt-in-your-mouth fried pork", "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Carne Azada Taco", "description": "Flame-grilled steak with smoky char and bold flavor", "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Tacos Arabes", "description": "Middle Eastern-inspired pork wrapped in flour tortilla", "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Lengua Taco", "description": "Tender, melt-in-your-mouth beef tongue, seasoned to perfection", "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Barbachera Taco", "description": "Traditional pit-barbecued meat, tender and aromatic", "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" } }
+          ]
+        },
+        {
+          "@type": "MenuSection",
+          "name": "Taquitos (Street Tacos)",
+          "description": "Classic street tacos on soft tortillas — $3 each",
+          "hasMenuItem": [
+            { "@type": "MenuItem", "name": "Al Pastor Taquito", "description": "Marinated pork with pineapple on soft tortilla", "offers": { "@type": "Offer", "price": "3.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Carnitas Taquito", "description": "Crispy-tender fried pork in a pillowy soft taco", "offers": { "@type": "Offer", "price": "3.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Suadero Taquito", "description": "Melt-in-your-mouth beef brisket, simply delicious", "offers": { "@type": "Offer", "price": "3.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Bistec Taquito", "description": "Simply grilled beef steak, classic and satisfying", "offers": { "@type": "Offer", "price": "3.00", "priceCurrency": "USD" } }
+          ]
+        },
+        {
+          "@type": "MenuSection",
+          "name": "Tostadas",
+          "description": "Crispy tortilla with meat and fresh toppings — $4 each",
+          "hasMenuItem": [
+            { "@type": "MenuItem", "name": "Birria Tostada", "description": "Rich braised beef on crispy tortilla with fresh toppings", "offers": { "@type": "Offer", "price": "4.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Al Pastor Tostada", "description": "Marinated pork with pineapple on a crunchy base", "offers": { "@type": "Offer", "price": "4.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Carnitas Tostada", "description": "Crispy pork with beans, lettuce, and tangy salsa", "offers": { "@type": "Offer", "price": "4.00", "priceCurrency": "USD" } }
+          ]
+        },
+        {
+          "@type": "MenuSection",
+          "name": "Tortas (Mexican Sandwiches)",
+          "description": "Loaded Mexican sandwiches on toasted telera roll",
+          "hasMenuItem": [
+            { "@type": "MenuItem", "name": "Torta de Birria", "description": "Rich braised beef on toasted telera roll with all the fixings", "offers": { "@type": "Offer", "price": "12.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Torta Cubana", "description": "Loaded sandwich with multiple meats, cheese, and everything", "offers": { "@type": "Offer", "price": "12.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Torta Al Pastor", "description": "Juicy pork with pineapple on toasted telera bread", "offers": { "@type": "Offer", "price": "12.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Torta Milaneza de Pollo", "description": "Golden breaded chicken breast, perfectly crispy and juicy", "offers": { "@type": "Offer", "price": "14.00", "priceCurrency": "USD" } }
+          ]
+        },
+        {
+          "@type": "MenuSection",
+          "name": "Burritos",
+          "description": "Warm flour tortilla with rice, beans, and your choice of filling — $16",
+          "hasMenuItem": [
+            { "@type": "MenuItem", "name": "Burrito de Birria", "description": "Rich braised beef with rice, beans, and melted cheese", "offers": { "@type": "Offer", "price": "16.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Burrito Al Pastor", "description": "Marinated pork with pineapple, wrapped to perfection", "offers": { "@type": "Offer", "price": "16.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Burrito Carnitas", "description": "Crispy pork with all the fixings in a warm tortilla", "offers": { "@type": "Offer", "price": "16.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Burrito Vegetariano", "description": "Fresh beans, rice, cheese, lettuce, and guacamole", "offers": { "@type": "Offer", "price": "16.00", "priceCurrency": "USD" } }
+          ]
+        },
+        {
+          "@type": "MenuSection",
+          "name": "Sopas (Soups)",
+          "hasMenuItem": [
+            { "@type": "MenuItem", "name": "Pozole Chica", "description": "Hearty hominy soup with tender pork in red chile broth", "offers": { "@type": "Offer", "price": "7.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Pozole Grande", "description": "Large bowl of traditional hominy soup, pure comfort", "offers": { "@type": "Offer", "price": "10.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Birria de Res Consomé", "description": "Rich beef consommé with tender meat, for dipping", "offers": { "@type": "Offer", "price": "13.99", "priceCurrency": "USD" } }
+          ]
+        },
+        {
+          "@type": "MenuSection",
+          "name": "Main Platillos",
+          "description": "Full plates with rice, beans, and tortillas",
+          "hasMenuItem": [
+            { "@type": "MenuItem", "name": "Molcajete", "description": "Sizzling volcanic stone bowl with grilled meats, nopales, and cheese", "offers": { "@type": "Offer", "price": "35.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Mole Poblano", "description": "Chicken in rich chocolate-chile sauce, a Mexican classic", "offers": { "@type": "Offer", "price": "15.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Birria Platillo", "description": "Traditional slow-braised beef in rich chile broth with tortillas", "offers": { "@type": "Offer", "price": "13.99", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Fajitas", "description": "Sizzling peppers and onions with your choice of meat", "offers": { "@type": "Offer", "price": "20.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Arrachera", "description": "Tender marinated skirt steak, grilled to juicy perfection", "offers": { "@type": "Offer", "price": "22.00", "priceCurrency": "USD" } },
+            { "@type": "MenuItem", "name": "Enchiladas Poblanas", "description": "Tortillas in rich mole poblano sauce with chicken", "offers": { "@type": "Offer", "price": "15.00", "priceCurrency": "USD" } }
+          ]
+        }
       ]
     }
     </script>

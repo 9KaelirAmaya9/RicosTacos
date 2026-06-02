@@ -1,36 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
-import { BrowserRouter } from 'react-router-dom';
+import { renderWithProviders } from './utils';
 import NotFound from '@/pages/NotFound';
 
 describe('NotFound Page', () => {
   it('renders 404 heading', () => {
-    render(
-      <BrowserRouter>
-        <NotFound />
-      </BrowserRouter>
-    );
+    renderWithProviders(<NotFound />);
     
     expect(screen.getByText('404')).toBeInTheDocument();
   });
 
   it('renders page not found message', () => {
-    render(
-      <BrowserRouter>
-        <NotFound />
-      </BrowserRouter>
-    );
+    renderWithProviders(<NotFound />);
     
     expect(screen.getByText(/page not found/i)).toBeInTheDocument();
   });
 
   it('has a link to home page', () => {
-    render(
-      <BrowserRouter>
-        <NotFound />
-      </BrowserRouter>
-    );
+    renderWithProviders(<NotFound />);
     
     const homeLink = screen.getByRole('link', { name: /return to home/i });
     expect(homeLink).toBeInTheDocument();

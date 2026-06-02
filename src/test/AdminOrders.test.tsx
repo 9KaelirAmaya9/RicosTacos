@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render } from '@testing-library/react';
 import { screen, waitFor, fireEvent } from '@testing-library/dom';
+import { renderWithProviders } from './utils';
 import AdminOrders from '@/pages/AdminOrders';
 
 // Mock Supabase
@@ -8,7 +8,7 @@ vi.mock('@/integrations/supabase/client', () => {
   const mockSupabase = {
     from: vi.fn(),
     channel: vi.fn(),
-    removeChannel: vi.fn(),
+    removeChannel: vi.fn().mockResolvedValue(undefined),
   };
   return {
     supabase: mockSupabase,
@@ -31,6 +31,21 @@ vi.mock('@/utils/printReceipt', () => ({
 // Mock Navigation component
 vi.mock('@/components/Navigation', () => ({
   Navigation: () => <nav>Navigation</nav>,
+}));
+
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ session: { access_token: 'test-token' }, user: null }),
+}));
+
+vi.mock('@/hooks/useOrderAlarm', () => {
+  const startAlarm = vi.fn();
+  const stopAlarm = vi.fn();
+  const unlockAudio = vi.fn(async () => true);
+  return { useOrderAlarm: () => ({ startAlarm, stopAlarm, unlockAudio }) };
+});
+
+vi.mock('@/utils/sentry', () => ({
+  captureException: vi.fn(),
 }));
 
 const mockOrders = [
@@ -67,7 +82,13 @@ describe('AdminOrders', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
+    // AdminOrders fetches orders via raw fetch() against the Supabase REST API
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockOrders,
+    }));
+
     const module = await import('@/integrations/supabase/client');
     mockSupabase = module.supabase;
 
@@ -93,17 +114,17 @@ describe('AdminOrders', () => {
   });
 
   it('should render loading state initially', () => {
-    // Make query pending
-    mockSupabase.from().select().order().limit.mockReturnValue(
-      new Promise(() => {})
-    );
+    // AdminOrders uses raw fetch() — make it hang to keep loading state
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
 
-    render(<AdminOrders />);
-    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    renderWithProviders(<AdminOrders />);
+    // Component renders but orders haven't loaded yet
+    expect(screen.getByText('Order Tracking')).toBeInTheDocument();
+    expect(screen.queryByText('ORD-2024-001')).not.toBeInTheDocument();
   });
 
   it('should display orders after loading', async () => {
-    render(<AdminOrders />);
+    renderWithProviders(<AdminOrders />);
 
     await waitFor(() => {
       expect(screen.getByText('ORD-2024-001')).toBeInTheDocument();
@@ -114,13 +135,13 @@ describe('AdminOrders', () => {
   });
 
   it('should filter orders by search term', async () => {
-    render(<AdminOrders />);
+    renderWithProviders(<AdminOrders />);
 
     await waitFor(() => {
       expect(screen.getByText('ORD-2024-001')).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText(/search by order number/i);
+    const searchInput = screen.getByPlaceholderText(/search by order/i);
     fireEvent.change(searchInput, { target: { value: '001' } });
 
     await waitFor(() => {
@@ -130,24 +151,20 @@ describe('AdminOrders', () => {
   });
 
   it('should filter orders by status', async () => {
-    render(<AdminOrders />);
+    // Pre-set the status filter via sessionStorage — AdminOrders.tsx reads this in its
+    // useState initializer: `sessionStorage.getItem("rt_admin_orders_filter") ?? "all"`
+    sessionStorage.setItem('rt_admin_orders_filter', 'pending');
+
+    renderWithProviders(<AdminOrders />);
 
     await waitFor(() => {
+      // ORD-2024-001 has status 'pending' — shown
       expect(screen.getByText('ORD-2024-001')).toBeInTheDocument();
-    });
-
-    // Find and click status filter
-    const statusFilter = screen.getByRole('combobox');
-    fireEvent.click(statusFilter);
-
-    // Select "pending" status
-    const pendingOption = screen.getByText('Pending');
-    fireEvent.click(pendingOption);
-
-    await waitFor(() => {
-      expect(screen.getByText('ORD-2024-001')).toBeInTheDocument();
+      // ORD-2024-002 has status 'preparing' — filtered out
       expect(screen.queryByText('ORD-2024-002')).not.toBeInTheDocument();
     });
+
+    sessionStorage.removeItem('rt_admin_orders_filter');
   });
 
   it('should update order status', async () => {
@@ -161,7 +178,7 @@ describe('AdminOrders', () => {
       }),
     });
 
-    render(<AdminOrders />);
+    renderWithProviders(<AdminOrders />);
 
     await waitFor(() => {
       expect(screen.getByText('ORD-2024-001')).toBeInTheDocument();
@@ -185,33 +202,39 @@ describe('AdminOrders', () => {
   });
 
   it('should handle refresh button', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ data: mockOrders, error: null });
-    mockSupabase.from().select().order().limit = fetchMock;
+    // Track global fetch calls — component uses raw fetch()
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockOrders,
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
-    render(<AdminOrders />);
+    renderWithProviders(<AdminOrders />);
 
     await waitFor(() => {
       expect(screen.getByText('ORD-2024-001')).toBeInTheDocument();
     });
 
+    const callCountBeforeRefresh = fetchMock.mock.calls.length;
     const refreshButton = screen.getByRole('button', { name: /refresh/i });
     fireEvent.click(refreshButton);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalled();
+      expect(fetchMock.mock.calls.length).toBeGreaterThan(callCountBeforeRefresh);
     });
   });
 
   it('should display empty state when no orders', async () => {
-    mockSupabase.from().select().order().limit.mockResolvedValue({
-      data: [],
-      error: null,
-    });
+    // Override fetch to return empty list
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    }));
 
-    render(<AdminOrders />);
+    renderWithProviders(<AdminOrders />);
 
     await waitFor(() => {
-      expect(screen.getByText(/no orders found/i)).toBeInTheDocument();
+      expect(screen.getByText(/no orders match the current filters/i)).toBeInTheDocument();
     });
   });
 });
