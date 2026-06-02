@@ -6,7 +6,7 @@ import { LanguageSwitch } from "./LanguageSwitch";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import logoGreen from "@/assets/logo-header-green.png";
+import logoGreen from "@/assets/logo-header-green.webp";
 import {
   NavigationMenu,
   NavigationMenuItem,

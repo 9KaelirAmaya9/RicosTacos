@@ -12,7 +12,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useRef } from "react";
 import heroImage from "@/assets/hero-tacos.jpg";
 import interiorImage from "@/assets/puebla-traditional.jpg";
-import logo from "@/assets/logo-illustration.png";
+import logo from "@/assets/logo-illustration.webp";
 
 const Index = () => {
   const { t } = useLanguage();
