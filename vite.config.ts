@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => ({
       plugins: mode === "production" && process.env.DISABLE_PRERENDER !== "1"
         ? [
             Prerenderer({
-              routes: ["/", "/menu", "/order", "/location", "/catering"],
+              routes: ["/", "/menu", "/order", "/location", "/catering", "/birria"],
             }),
           ]
         : [],

@@ -26,12 +26,17 @@ interface LanguageProviderProps {
 }
 
 export const LanguageProvider = ({ children }: LanguageProviderProps) => {
-  // Load language from localStorage or default to "en"
+  // Load language: stored preference → browser language → default "en"
   const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
       if (stored === 'en' || stored === 'es') {
         return stored;
+      }
+      // First visit — detect browser/OS language
+      const browserLang = navigator.language || '';
+      if (browserLang.toLowerCase().startsWith('es')) {
+        return 'es';
       }
     }
     return "en";

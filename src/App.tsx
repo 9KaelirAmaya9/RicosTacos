@@ -40,6 +40,7 @@ const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ServerError = lazy(() => import("./pages/ServerError"));
 const MenuCatalog = lazy(() => import("./pages/MenuCatalog"));
+const Birria = lazy(() => import("./pages/Birria"));
 const DebugAuth = lazy(() => import("./pages/DebugAuth"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 
@@ -107,6 +108,7 @@ const App = () => (
                     <Route path="/order" element={<Order />} />
                     <Route path="/location" element={<Location />} />
                     <Route path="/catering" element={<Catering />} />
+                    <Route path="/birria" element={<Birria />} />
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/signin" element={<SignIn />} />
