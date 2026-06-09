@@ -38,7 +38,7 @@ const birriaSchema = {
       "@type": "MenuItem",
       "name": "Birria Tostada",
       "description": "Rich braised beef on a crispy tortilla with fresh toppings",
-      "offers": { "@type": "Offer", "price": "4.00", "priceCurrency": "USD" }
+      "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" }
     },
     {
       "@type": "MenuItem",
@@ -125,7 +125,7 @@ const breadcrumbSchema = {
 
 const menuItems = [
   { name: "Birria Taco", price: "$5", description: "Slow-braised beef on a handmade corn tortilla. Cilantro, onion, lime. Consomé on the side.", image: birriaTaco, alt: "Birria taco with consomé at Ricos Tacos Brooklyn" },
-  { name: "Birria Tostada", price: "$4", description: "Crispy tortilla piled with braised beef, fresh toppings, and a drizzle of salsa.", image: birriaTostada, alt: "Birria tostada at Ricos Tacos Sunset Park Brooklyn" },
+  { name: "Birria Tostada", price: "$5", description: "Crispy tortilla piled with braised beef, fresh toppings, and a drizzle of salsa.", image: birriaTostada, alt: "Birria tostada at Ricos Tacos Sunset Park Brooklyn" },
   { name: "Birria Torta", price: "$12", description: "Toasted telera roll stuffed with birria beef, beans, avocado, and all the fixings.", image: tortaBirria, alt: "Birria torta at Ricos Tacos Brooklyn" },
   { name: "Birria Burrito", price: "$16", description: "Birria beef, Mexican rice, black beans, and melted cheese in a warm flour tortilla.", image: burritoBirria, alt: "Birria burrito at Ricos Tacos Sunset Park" },
   { name: "Birria de Res (Consomé)", price: "$13.99", description: "A full bowl of rich red chile beef broth with tender braised meat. The real deal.", image: birriaConsomme, alt: "Birria consomé at Ricos Tacos Brooklyn" },
@@ -151,7 +151,7 @@ const faqs = [
   },
   {
     q: "How much do birria tacos cost?",
-    a: "Birria tacos are $5 each. Tostadas $4. Torta $12. Burrito $16. Consomé $13.99. Platillo $13.99."
+    a: "Birria tacos are $5 each. Tostadas $5. Torta $12. Burrito $16. Consomé $13.99. Platillo $13.99."
   },
 ];
 
