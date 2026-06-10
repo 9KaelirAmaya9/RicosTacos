@@ -11,6 +11,8 @@ import { FlavorSelectionDialog } from "@/components/FlavorSelectionDialog";
 import { MeatSelectionDialog } from "@/components/MeatSelectionDialog";
 import { TostadaSelectionDialog } from "@/components/TostadaSelectionDialog";
 import { SmoothieSelectionDialog } from "@/components/SmoothieSelectionDialog";
+import { StreetTacoSelectionDialog } from "@/components/StreetTacoSelectionDialog";
+import { SpecialtyTacoSelectionDialog } from "@/components/SpecialtyTacoSelectionDialog";
 import { MenuItemModal } from "@/components/MenuItemModal";
 import { Plus, Minus, Star, Search, X, ShoppingCart } from "lucide-react";
 import { useState, useMemo, useRef, useCallback, memo, useDeferredValue, useEffect } from "react";
@@ -38,6 +40,8 @@ interface MenuItemData {
   hasMeatVariants?: boolean;
   hasTostadaVariants?: boolean;
   hasSmoothieVariants?: boolean;
+  hasStreetTacoVariants?: boolean;
+  hasSpecialtyTacoVariants?: boolean;
 }
 
 interface ItemCardProps {
@@ -267,6 +271,14 @@ const Order = () => {
   const [smoothieDialogOpen, setSmoothieDialogOpen] = useState(false);
   const [pendingSmoothie, setPendingSmoothie] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
 
+  // Street taco dialog
+  const [streetTacoDialogOpen, setStreetTacoDialogOpen] = useState(false);
+  const [pendingStreetTaco, setPendingStreetTaco] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
+
+  // Specialty taco dialog
+  const [specialtyTacoDialogOpen, setSpecialtyTacoDialogOpen] = useState(false);
+  const [pendingSpecialtyTaco, setPendingSpecialtyTaco] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
+
   // Item detail modal
   const [menuItemModalOpen, setMenuItemModalOpen] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<any>(null);
@@ -372,6 +384,16 @@ const Order = () => {
       setSmoothieDialogOpen(true);
       return;
     }
+    if (menuItem?.hasStreetTacoVariants) {
+      setPendingStreetTaco(item);
+      setStreetTacoDialogOpen(true);
+      return;
+    }
+    if (menuItem?.hasSpecialtyTacoVariants) {
+      setPendingSpecialtyTaco(item);
+      setSpecialtyTacoDialogOpen(true);
+      return;
+    }
     addToCart(item);
   }, [addToCart]);
 
@@ -408,6 +430,18 @@ const Order = () => {
     if (!pendingSmoothie) return;
     addToCart({ ...pendingSmoothie, name: `Licuado ${flavor} — ${size}`, price });
     setPendingSmoothie(null);
+  };
+
+  const handleStreetTacoSelect = (meat: string) => {
+    if (!pendingStreetTaco) return;
+    addToCart({ ...pendingStreetTaco, name: `Street Taco (${meat})` });
+    setPendingStreetTaco(null);
+  };
+
+  const handleSpecialtyTacoSelect = (option: string) => {
+    if (!pendingSpecialtyTaco) return;
+    addToCart({ ...pendingSpecialtyTaco, name: `${option} Taco` });
+    setPendingSpecialtyTaco(null);
   };
 
   return (
@@ -718,6 +752,18 @@ const Order = () => {
           onAddToCart={handleAddToCart}
         />
       )}
+
+      <StreetTacoSelectionDialog
+        open={streetTacoDialogOpen}
+        onOpenChange={setStreetTacoDialogOpen}
+        onSelectMeat={handleStreetTacoSelect}
+      />
+
+      <SpecialtyTacoSelectionDialog
+        open={specialtyTacoDialogOpen}
+        onOpenChange={setSpecialtyTacoDialogOpen}
+        onSelect={handleSpecialtyTacoSelect}
+      />
     </div>
     </>
   );

@@ -173,6 +173,8 @@ export interface MenuItem {
   hasMeatVariants?: boolean;
   hasTostadaVariants?: boolean;
   hasSmoothieVariants?: boolean;
+  hasStreetTacoVariants?: boolean;
+  hasSpecialtyTacoVariants?: boolean;
 }
 
 export const menuCategories = [
@@ -226,24 +228,26 @@ export const menuItems: MenuItem[] = [
   { id: "m15", name: "Oreja", description: "Crispy pig ear with incredible texture and flavor", price: 5.00, category: "Carnes/Meats", topCategory: "Meats & Proteins", subcategory: "Specialty Cuts", image: orejaTaco },
 
   // Tacos (Specialty Tacos)
-  { id: "t1", name: "Cochinita Pibil", description: "Slow-roasted pork marinated in citrus and achiote, tender and aromatic", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: cochinita, bestSeller: true },
-  { id: "t2", name: "Birria", description: "Rich, slow-braised beef in savory chile broth, perfectly spiced", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: birriaTaco, bestSeller: true },
-  { id: "t16", name: "Tacos Arabes", description: "Middle Eastern-inspired pork wrapped in flour tortilla", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: tacosArabes, bestSeller: true },
-  { id: "t18", name: "Barbachera", description: "Traditional pit-barbecued meat, tender and aromatic", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: barbacheraTaco },
-  { id: "t19", name: "Carne Azada", description: "Flame-grilled steak with smoky char and bold flavor", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: carneAsadaTaco },
-  { id: "t21", name: "Chillo", description: "Fresh fish fillet, lightly seasoned and perfectly grilled", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: chilloTaco },
+  { id: "specialty-taco-combo", name: "Specialty Taco", description: "Premium tacos on handmade corn tortillas. Choose from Birria, Cochinita Pibil, Carne Asada & more — 6 options.", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: birriaTaco, bestSeller: true, hasSpecialtyTacoVariants: true },
+  { id: "t1", name: "Cochinita Pibil", description: "Slow-roasted pork marinated in citrus and achiote, tender and aromatic", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: cochinita, bestSeller: true, isVariant: true },
+  { id: "t2", name: "Birria", description: "Rich, slow-braised beef in savory chile broth, perfectly spiced", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: birriaTaco, bestSeller: true, isVariant: true },
+  { id: "t16", name: "Tacos Arabes", description: "Middle Eastern-inspired pork wrapped in flour tortilla", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: tacosArabes, bestSeller: true, isVariant: true },
+  { id: "t18", name: "Barbachera", description: "Traditional pit-barbecued meat, tender and aromatic", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: barbacheraTaco, isVariant: true },
+  { id: "t19", name: "Carne Azada", description: "Flame-grilled steak with smoky char and bold flavor", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: carneAsadaTaco, isVariant: true },
+  { id: "t21", name: "Chillo", description: "Fresh fish fillet, lightly seasoned and perfectly grilled", price: 5.00, category: "Tacos", topCategory: "Tacos & Wraps", subcategory: "Specialty Tacos", image: chilloTaco, isVariant: true },
 
   // Taquitos (Soft Tacos)
-  { id: "tq1", name: "Al Pastor", description: "Juicy marinated pork with pineapple on soft tortilla", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoPastor },
-  { id: "tq2", name: "Carnitas", description: "Crispy-tender fried pork in a pillowy soft taco", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoCarnitas },
-  { id: "tq3", name: "Suadero", description: "Melt-in-your-mouth beef brisket, simply delicious", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoSuadero },
-  { id: "tq4", name: "Enchilada", description: "Spicy, chile-rubbed pork with bold flavors", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoEnchilada },
-  { id: "tq5", name: "Longaniza", description: "Aromatic pork sausage with traditional seasonings", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoLonganiza },
-  { id: "tq6", name: "Buche", description: "Crispy-tender pork stomach, unique and delicious", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoBuche },
-  { id: "tq7", name: "Bistec", description: "Simply grilled beef steak, classic and satisfying", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoBistec },
-  { id: "tq8", name: "Cueritos", description: "Tangy pickled pork skin, refreshing and zesty", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoCueritos },
-  { id: "tq9", name: "Pollo Asada", description: "Char-grilled chicken with smoky goodness", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoPollo },
-  { id: "tq10", name: "Cecina", description: "Thinly sliced salted beef, smoky and savory", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoCecina },
+  { id: "street-taco-combo", name: "Street Taco", description: "Handmade corn tortilla, cilantro, onion, and salsa. Choose your meat — 10 options.", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoPastor, bestSeller: true, hasStreetTacoVariants: true },
+  { id: "tq1", name: "Al Pastor", description: "Juicy marinated pork with pineapple on soft tortilla", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoPastor, isVariant: true },
+  { id: "tq2", name: "Carnitas", description: "Crispy-tender fried pork in a pillowy soft taco", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoCarnitas, isVariant: true },
+  { id: "tq3", name: "Suadero", description: "Melt-in-your-mouth beef brisket, simply delicious", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoSuadero, isVariant: true },
+  { id: "tq4", name: "Enchilada", description: "Spicy, chile-rubbed pork with bold flavors", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoEnchilada, isVariant: true },
+  { id: "tq5", name: "Longaniza", description: "Aromatic pork sausage with traditional seasonings", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoLonganiza, isVariant: true },
+  { id: "tq6", name: "Buche", description: "Crispy-tender pork stomach, unique and delicious", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoBuche, isVariant: true },
+  { id: "tq7", name: "Bistec", description: "Simply grilled beef steak, classic and satisfying", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoBistec, isVariant: true },
+  { id: "tq8", name: "Cueritos", description: "Tangy pickled pork skin, refreshing and zesty", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoCueritos, isVariant: true },
+  { id: "tq9", name: "Pollo Asada", description: "Char-grilled chicken with smoky goodness", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoPollo, isVariant: true },
+  { id: "tq10", name: "Cecina", description: "Thinly sliced salted beef, smoky and savory", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoCecina, isVariant: true },
 
   // Tostadas (Crispy Tortillas)
   { id: "tostada-combo", name: "Tostada", description: "Crispy tortilla with beans, lettuce, cream, and salsa. Choose your meat — 17 options.", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: birriaTostada, hasTostadaVariants: true },
