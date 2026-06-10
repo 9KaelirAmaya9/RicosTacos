@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import Prerenderer from "@prerenderer/rollup-plugin";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { imagetools } from "vite-imagetools";
 
@@ -56,15 +55,8 @@ export default defineConfig(({ mode }) => ({
           ],
         },
       },
-      // DISABLE_PRERENDER=1 skips prerendering (set in Vercel env vars if the build
-      // times out or Chromium isn't available in the build image).
-      plugins: mode === "production" && process.env.DISABLE_PRERENDER !== "1"
-        ? [
-            Prerenderer({
-              routes: ["/", "/menu", "/order", "/location", "/catering", "/birria", "/tacos-brooklyn"],
-            }),
-          ]
-        : [],
+      // Per-route HTML injection is handled by scripts/prerender.mjs (post-build).
+      plugins: [],
     },
   },
   resolve: {
