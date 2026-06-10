@@ -980,6 +980,11 @@ const Cart = () => {
                             <p className="text-sm text-muted-foreground">
                               ${item.price.toFixed(2)} each
                             </p>
+                            {item.note && (
+                              <p className="text-xs text-muted-foreground italic mt-0.5">
+                                Note: {item.note}
+                              </p>
+                            )}
                             <p className="text-sm font-semibold text-primary mt-1">
                               Subtotal: ${(item.price * item.quantity).toFixed(2)}
                             </p>

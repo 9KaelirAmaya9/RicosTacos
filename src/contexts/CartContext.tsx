@@ -8,6 +8,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   image?: string;
+  note?: string;
 }
 
 interface CartContextType {
@@ -16,6 +17,7 @@ interface CartContextType {
   setOrderType: (type: "pickup" | "delivery") => void;
   addToCart: (item: { id: string; name: string; price: number; image?: string }) => void;
   updateQuantity: (id: string, delta: number) => void;
+  updateNote: (id: string, note: string) => void;
   removeFromCart: (id: string) => void;
   clearCart: () => void;
   cartTotal: number;
@@ -218,6 +220,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     toast.success(`${item.name} added to cart!`);
   };
 
+  const updateNote = (id: string, note: string) => {
+    setCart(prev => prev.map(item => item.id === id ? { ...item, note: note || undefined } : item));
+  };
+
   const updateQuantity = (id: string, delta: number) => {
     // Optimistic update: apply the change immediately in React state.
     // The debounced persistence effect (500ms) will sync to DB/localStorage
@@ -259,6 +265,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         setOrderType,
         addToCart,
         updateQuantity,
+        updateNote,
         removeFromCart,
         clearCart,
         cartTotal,

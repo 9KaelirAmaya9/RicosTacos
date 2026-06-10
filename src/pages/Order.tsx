@@ -12,16 +12,14 @@ import { MeatSelectionDialog } from "@/components/MeatSelectionDialog";
 import { TostadaSelectionDialog } from "@/components/TostadaSelectionDialog";
 import { SmoothieSelectionDialog } from "@/components/SmoothieSelectionDialog";
 import { MenuItemModal } from "@/components/MenuItemModal";
-import { Plus, Minus, Star, ChevronDown, ChevronUp, Search, X, ShoppingCart } from "lucide-react";
-import { useState, useMemo, useRef, useCallback, memo, useDeferredValue } from "react";
+import { Plus, Minus, Star, Search, X, ShoppingCart } from "lucide-react";
+import { useState, useMemo, useRef, useCallback, memo, useDeferredValue, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import { useMenuAvailability } from "@/hooks/useMenuAvailability";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { cn } from "@/lib/utils";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // ── Extracted card components ─────────────────────────────────────────────────
 // Defined at module level so React gets a stable component identity across
@@ -48,15 +46,17 @@ interface ItemCardProps {
   language: "en" | "es";
   addToCartLabel: string;
   quantity: number;
+  note: string;
   onAddToCart: (item: { id: string; name: string; price: number; image?: string }) => void;
   onDecrement: (id: string) => void;
+  onNoteChange: (id: string, note: string) => void;
   onOpenModal: (item: {
     id: string; name: string; description?: string; price: number;
     image?: string; bestSeller?: boolean; subcategory: string;
   }) => void;
 }
 
-const ItemCard = memo(({ item, index, language, addToCartLabel, quantity, onAddToCart, onDecrement, onOpenModal }: ItemCardProps) => {
+const ItemCard = memo(({ item, index, language, addToCartLabel, quantity, note, onAddToCart, onDecrement, onNoteChange, onOpenModal }: ItemCardProps) => {
   const { ref: cardRef, isVisible: cardVisible } = useScrollAnimation({
     threshold: 0.1,
     rootMargin: "-50px"
@@ -135,31 +135,42 @@ const ItemCard = memo(({ item, index, language, addToCartLabel, quantity, onAddT
               </span>
             </div>
             {quantity > 0 ? (
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => onDecrement(item.id)}
-                  className="flex-none w-10 h-10 rounded-full border-2 border-primary/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors"
-                  style={{ touchAction: 'manipulation' }}
-                  aria-label="Remove one"
-                >
-                  <Minus className="h-4 w-4 text-primary" />
-                </button>
-                <span className="font-bold text-base text-primary tabular-nums">{quantity}</span>
-                <button
-                  type="button"
-                  onClick={() => onAddToCart({
-                    id: item.id,
-                    name: getMenuItemName(item.id, language, item.name),
-                    price: item.price,
-                    image: item.image,
-                  })}
-                  className="flex-none w-10 h-10 rounded-full bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors"
-                  style={{ touchAction: 'manipulation' }}
-                  aria-label="Add one more"
-                >
-                  <Plus className="h-4 w-4 text-primary-foreground" />
-                </button>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onDecrement(item.id)}
+                    className="flex-none w-10 h-10 rounded-full border-2 border-primary/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors"
+                    style={{ touchAction: 'manipulation' }}
+                    aria-label="Remove one"
+                  >
+                    <Minus className="h-4 w-4 text-primary" />
+                  </button>
+                  <span className="font-bold text-base text-primary tabular-nums">{quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => onAddToCart({
+                      id: item.id,
+                      name: getMenuItemName(item.id, language, item.name),
+                      price: item.price,
+                      image: item.image,
+                    })}
+                    className="flex-none w-10 h-10 rounded-full bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors"
+                    style={{ touchAction: 'manipulation' }}
+                    aria-label="Add one more"
+                  >
+                    <Plus className="h-4 w-4 text-primary-foreground" />
+                  </button>
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Note (e.g. no cilantro)"
+                  value={note}
+                  onChange={e => onNoteChange(item.id, e.target.value)}
+                  className="h-8 text-xs px-2"
+                  maxLength={80}
+                  aria-label={`Special instructions for ${item.name}`}
+                />
               </div>
             ) : (
               <Button
@@ -191,12 +202,14 @@ interface SubcategorySectionProps {
   language: "en" | "es";
   addToCartLabel: string;
   cartQuantities: Map<string, number>;
+  cartNotes: Map<string, string>;
   onAddToCart: ItemCardProps['onAddToCart'];
   onDecrement: ItemCardProps['onDecrement'];
+  onNoteChange: ItemCardProps['onNoteChange'];
   onOpenModal: ItemCardProps['onOpenModal'];
 }
 
-const SubcategorySection = memo(({ subcategory, items, language, addToCartLabel, cartQuantities, onAddToCart, onDecrement, onOpenModal }: SubcategorySectionProps) => {
+const SubcategorySection = memo(({ subcategory, items, language, addToCartLabel, cartQuantities, cartNotes, onAddToCart, onDecrement, onNoteChange, onOpenModal }: SubcategorySectionProps) => {
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.1 });
 
   return (
@@ -219,8 +232,10 @@ const SubcategorySection = memo(({ subcategory, items, language, addToCartLabel,
             language={language}
             addToCartLabel={addToCartLabel}
             quantity={cartQuantities.get(item.id) ?? 0}
+            note={cartNotes.get(item.id) ?? ""}
             onAddToCart={onAddToCart}
             onDecrement={onDecrement}
+            onNoteChange={onNoteChange}
             onOpenModal={onOpenModal}
           />
         ))}
@@ -233,7 +248,7 @@ const SubcategorySection = memo(({ subcategory, items, language, addToCartLabel,
 
 const Order = () => {
   const { t, language } = useLanguage();
-  const { orderType, setOrderType, addToCart, updateQuantity, cart, cartCount, cartTotal } = useCart();
+  const { orderType, setOrderType, addToCart, updateQuantity, updateNote, cart, cartCount, cartTotal } = useCart();
   const { inactiveIds } = useMenuAvailability();
 
   // Flavor dialog (chicken wings)
@@ -275,6 +290,11 @@ const Order = () => {
     [cart]
   );
 
+  const cartNotes = useMemo(
+    () => new Map(cart.map(ci => [ci.id, ci.note ?? ""])),
+    [cart]
+  );
+
   const allTopCategories = useMemo(
     () => Array.from(new Set(
       menuItems
@@ -283,28 +303,25 @@ const Order = () => {
     )),
     []
   );
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set(allTopCategories));
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  const toggleCategory = (category: string) => {
-    setSelectedCategories(prev => {
-      const next = new Set(prev);
-      if (next.has(category)) { next.delete(category); } else { next.add(category); }
-      return next;
+  // Track which section is currently in view for sidebar highlight
+  const [activeSection, setActiveSection] = useState<string>(allTopCategories[0] ?? "");
+
+  useEffect(() => {
+    if (deferredSearchQuery.trim()) return;
+    const observers: IntersectionObserver[] = [];
+    allTopCategories.forEach(cat => {
+      const el = document.getElementById(`section-${cat.replace(/\s+/g, "-")}`);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveSection(cat); },
+        { rootMargin: "-10% 0px -60% 0px", threshold: 0 }
+      );
+      obs.observe(el);
+      observers.push(obs);
     });
-  };
-
-  const toggleGroup = (group: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(group)) { next.delete(group); } else { next.add(group); }
-      return next;
-    });
-  };
-
-  const allSelected = selectedCategories.size === allTopCategories.length;
-  const toggleAll = () =>
-    setSelectedCategories(allSelected ? new Set() : new Set(allTopCategories));
+    return () => observers.forEach(o => o.disconnect());
+  }, [allTopCategories, deferredSearchQuery]);
 
   // Items pipeline: strip variants → exclude 86'd items → apply category filter → apply search.
   // Uses deferredSearchQuery so typing doesn't block the input field.
@@ -314,13 +331,12 @@ const Order = () => {
       .filter(item => !item.isVariant)
       .filter(item => item.topCategory !== "Meats & Proteins")
       .filter(item => !inactiveIds.has(item.id))
-      .filter(item => selectedCategories.has(item.topCategory))
       .filter(item =>
         !q ||
         item.name.toLowerCase().includes(q) ||
         (item.description || "").toLowerCase().includes(q)
       );
-  }, [deferredSearchQuery, selectedCategories, inactiveIds]);
+  }, [deferredSearchQuery, inactiveIds]);
 
   // Group by topCategory → subcategory (only used when not searching)
   const groupedItems = useMemo(() => {
@@ -362,6 +378,10 @@ const Order = () => {
   const handleDecrement = useCallback((id: string) => {
     updateQuantity(id, -1);
   }, [updateQuantity]);
+
+  const handleNoteChange = useCallback((id: string, note: string) => {
+    updateNote(id, note);
+  }, [updateNote]);
 
   const handleFlavorSelect = (flavor: string) => {
     if (!pendingFlavor) return;
@@ -456,9 +476,13 @@ const Order = () => {
                       </div>
                     )}
                     <div className="p-2">
-                      <p className="text-xs font-semibold line-clamp-1 mb-0.5">{getMenuItemName(item.id, language, item.name)}</p>
-                      <p className="text-xs text-primary font-bold">${item.price.toFixed(2)}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">+ Add</p>
+                      <p className="text-xs font-semibold line-clamp-1 mb-1">{getMenuItemName(item.id, language, item.name)}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-primary font-bold">${item.price.toFixed(2)}</p>
+                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                          <Plus className="h-3 w-3 text-primary-foreground pointer-events-none" />
+                        </div>
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -517,81 +541,37 @@ const Order = () => {
         {/* ── Sidebar + main grid ── */}
         <div className="px-4 lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 xl:grid-cols-[240px_1fr]">
 
-          {/* Desktop sidebar */}
+          {/* Desktop sidebar — scroll-nav */}
           <aside
             className="sticky top-20 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-4 shadow-lg hidden lg:block overflow-y-auto z-10"
             style={{ maxHeight: 'calc(100vh - 6rem)' }}
           >
-            <h3 className="font-semibold text-lg mb-4 text-center border-b border-border pb-2">
-              {t("order.filterBy")}
+            <h3 className="font-semibold text-xs mb-3 text-center border-b border-border pb-2 text-muted-foreground uppercase tracking-wider">
+              Menu
             </h3>
-
-            {/* All toggle */}
-            <div className="flex items-center gap-2 p-2 mb-1 hover:bg-accent rounded-md transition-colors cursor-pointer" onClick={toggleAll}>
-              <Checkbox
-                id="cat-all"
-                checked={allSelected}
-                onCheckedChange={toggleAll}
-                className="shrink-0"
-              />
-              <label htmlFor="cat-all" className="flex-1 text-sm font-medium cursor-pointer">
-                All Categories
-              </label>
-            </div>
-
-            <div className="space-y-1">
-              {allTopCategories.map((category) => {
-                const isCollapsed = collapsedGroups.has(category);
-                return (
-                  <Collapsible
-                    key={category}
-                    open={!isCollapsed}
-                    onOpenChange={() => toggleGroup(category)}
+            <nav aria-label="Menu categories">
+              <div className="space-y-0.5">
+                {allTopCategories.map(cat => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById(`section-${cat.replace(/\s+/g, "-")}`);
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                      setActiveSection(cat);
+                    }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      activeSection === cat
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                    )}
                   >
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 p-2 hover:bg-accent rounded-md transition-colors">
-                        <Checkbox
-                          id={`category-${category}`}
-                          checked={selectedCategories.has(category)}
-                          onCheckedChange={() => toggleCategory(category)}
-                          className="shrink-0"
-                        />
-                        <label
-                          htmlFor={`category-${category}`}
-                          className="flex-1 text-sm font-medium cursor-pointer"
-                        >
-                          {category}
-                        </label>
-                        <CollapsibleTrigger asChild>
-                          <button className="p-1 hover:bg-accent-foreground/10 rounded">
-                            {isCollapsed ? (
-                              <ChevronDown className="h-4 w-4" />
-                            ) : (
-                              <ChevronUp className="h-4 w-4" />
-                            )}
-                          </button>
-                        </CollapsibleTrigger>
-                      </div>
-
-                      <CollapsibleContent className="pl-8 space-y-1">
-                        {menuItems
-                          .filter(item => !item.isVariant && item.topCategory === category)
-                          .reduce((acc, item) => {
-                            if (!acc.includes(item.subcategory)) acc.push(item.subcategory);
-                            return acc;
-                          }, [] as string[])
-                          .map(subcategory => (
-                            <div key={subcategory} className="text-xs text-muted-foreground py-1">
-                              {subcategory}
-                            </div>
-                          ))
-                        }
-                      </CollapsibleContent>
-                    </div>
-                  </Collapsible>
-                );
-              })}
-            </div>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </nav>
           </aside>
 
           {/* Main content */}
@@ -615,8 +595,10 @@ const Order = () => {
                         language={language}
                         addToCartLabel={t("order.addToCart")}
                         quantity={cartQuantities.get(item.id) ?? 0}
+                        note={cartNotes.get(item.id) ?? ""}
                         onAddToCart={handleAddToCart}
                         onDecrement={handleDecrement}
+                        onNoteChange={handleNoteChange}
                         onOpenModal={(modalItem) => {
                           setSelectedMenuItem(modalItem);
                           setMenuItemModalOpen(true);
@@ -656,8 +638,10 @@ const Order = () => {
                           language={language}
                           addToCartLabel={t("order.addToCart")}
                           cartQuantities={cartQuantities}
+                          cartNotes={cartNotes}
                           onAddToCart={handleAddToCart}
                           onDecrement={handleDecrement}
+                          onNoteChange={handleNoteChange}
                           onOpenModal={(modalItem) => {
                             setSelectedMenuItem(modalItem);
                             setMenuItemModalOpen(true);
