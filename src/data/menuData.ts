@@ -171,6 +171,8 @@ export interface MenuItem {
   isVariant?: boolean;
   /** When true, tapping "Add to Cart" opens a modifier dialog instead */
   hasMeatVariants?: boolean;
+  hasTostadaVariants?: boolean;
+  hasSmoothieVariants?: boolean;
 }
 
 export const menuCategories = [
@@ -244,23 +246,24 @@ export const menuItems: MenuItem[] = [
   { id: "tq10", name: "Cecina", description: "Thinly sliced salted beef, smoky and savory", price: 3.00, category: "Taquitos", topCategory: "Tacos & Wraps", subcategory: "Street Tacos", image: taquitoCecina },
 
   // Tostadas (Crispy Tortillas)
-  { id: "ts1", name: "Birria", description: "Rich braised beef on crispy tortilla with fresh toppings", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: birriaTostada },
-  { id: "ts2", name: "Al Pastor", description: "Marinated pork with pineapple on a crunchy base", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: pastorTostada },
-  { id: "ts3", name: "Lengua", description: "Tender beef tongue with beans, lettuce, and cream", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: lenguaTostada },
-  { id: "ts4", name: "Cabeza", description: "Succulent beef head meat, layered with fresh ingredients", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: cabezaTostada },
-  { id: "ts5", name: "Carnitas", description: "Crispy pork with beans, lettuce, and tangy salsa", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: carnitasTostada },
-  { id: "ts6", name: "Suadero", description: "Tender beef brisket on crispy shell with all the fixings", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: suaderoTostada },
-  { id: "ts7", name: "Enchilada", description: "Spicy pork with cool toppings for perfect balance", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: enchiladaTostada },
-  { id: "ts8", name: "Longaniza", description: "Savory sausage with fresh vegetables and cream", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: longanizaTostada },
-  { id: "ts9", name: "Bistec", description: "Grilled steak on crunchy tortilla, simple perfection", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: bistecTostada },
-  { id: "ts10", name: "Pollo", description: "Shredded chicken with fresh toppings and zesty sauce", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: polloTostada },
-  { id: "ts11", name: "Tinga", description: "Smoky chipotle chicken in tomato sauce, absolutely addictive", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: tingaTostada },
-  { id: "ts12", name: "Pata de Res", description: "Tender beef foot in rich gelatinous broth, comfort food", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: pataTostada },
-  { id: "ts13", name: "Picadillo de Res", description: "Hearty beef stew with potatoes on crispy base", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: picadilloTostada },
-  { id: "ts14", name: "Vegetariana", description: "Fresh beans, lettuce, tomato, cheese, and avocado", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: vegetarianaTostada },
-  { id: "ts15", name: "De Camarones", description: "Plump shrimp with citrus and fresh vegetables", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: camaronesTostada },
-  { id: "ts16", name: "Cecina", description: "Smoky salted beef on crispy tortilla perfection", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: cecinaTostada },
-  { id: "ts17", name: "Arabe", description: "Middle Eastern-inspired pork with unique spices", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: arabeTostada },
+  { id: "tostada-combo", name: "Tostada", description: "Crispy tortilla with beans, lettuce, cream, and salsa. Choose your meat — 17 options.", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: birriaTostada, hasTostadaVariants: true },
+  { id: "ts1", name: "Birria", description: "Rich braised beef on crispy tortilla with fresh toppings", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: birriaTostada, isVariant: true },
+  { id: "ts2", name: "Al Pastor", description: "Marinated pork with pineapple on a crunchy base", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: pastorTostada, isVariant: true },
+  { id: "ts3", name: "Lengua", description: "Tender beef tongue with beans, lettuce, and cream", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: lenguaTostada, isVariant: true },
+  { id: "ts4", name: "Cabeza", description: "Succulent beef head meat, layered with fresh ingredients", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: cabezaTostada, isVariant: true },
+  { id: "ts5", name: "Carnitas", description: "Crispy pork with beans, lettuce, and tangy salsa", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: carnitasTostada, isVariant: true },
+  { id: "ts6", name: "Suadero", description: "Tender beef brisket on crispy shell with all the fixings", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: suaderoTostada, isVariant: true },
+  { id: "ts7", name: "Enchilada", description: "Spicy pork with cool toppings for perfect balance", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: enchiladaTostada, isVariant: true },
+  { id: "ts8", name: "Longaniza", description: "Savory sausage with fresh vegetables and cream", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: longanizaTostada, isVariant: true },
+  { id: "ts9", name: "Bistec", description: "Grilled steak on crunchy tortilla, simple perfection", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: bistecTostada, isVariant: true },
+  { id: "ts10", name: "Pollo", description: "Shredded chicken with fresh toppings and zesty sauce", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: polloTostada, isVariant: true },
+  { id: "ts11", name: "Tinga", description: "Smoky chipotle chicken in tomato sauce, absolutely addictive", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: tingaTostada, isVariant: true },
+  { id: "ts12", name: "Pata de Res", description: "Tender beef foot in rich gelatinous broth, comfort food", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: pataTostada, isVariant: true },
+  { id: "ts13", name: "Picadillo de Res", description: "Hearty beef stew with potatoes on crispy base", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: picadilloTostada, isVariant: true },
+  { id: "ts14", name: "Vegetariana", description: "Fresh beans, lettuce, tomato, cheese, and avocado", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: vegetarianaTostada, isVariant: true },
+  { id: "ts15", name: "De Camarones", description: "Plump shrimp with citrus and fresh vegetables", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: camaronesTostada, isVariant: true },
+  { id: "ts16", name: "Cecina", description: "Smoky salted beef on crispy tortilla perfection", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: cecinaTostada, isVariant: true },
+  { id: "ts17", name: "Arabe", description: "Middle Eastern-inspired pork with unique spices", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: arabeTostada, isVariant: true },
 
   // Tortas (Mexican Sandwiches)
   { id: "to1", name: "Birria", description: "Rich braised beef on toasted telera roll with all the fixings", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaBirria },
@@ -294,7 +297,7 @@ export const menuItems: MenuItem[] = [
   // Sopas (Soups)
   { id: "s1", name: "Pozole Chica", description: "Hearty hominy soup with tender pork in red chile broth", price: 8.00, category: "Sopas", topCategory: "Soups", subcategory: "Traditional Soups", image: pozole },
   { id: "s2", name: "Pozole Grande", description: "Large bowl of traditional hominy soup, pure comfort", price: 13.00, category: "Sopas", topCategory: "Soups", subcategory: "Traditional Soups", image: pozole },
-  { id: "s6", name: "Birria de Res (Consomé)", description: "Rich beef consommé with tender meat, for dipping", price: 13.99, category: "Sopas", topCategory: "Soups", subcategory: "Specialty Soups", image: birriaConsomme },
+  { id: "s6", name: "Birria de Res (Consomé)", description: "Rich beef consommé with tender meat, for dipping", price: 13.99, category: "Sopas", topCategory: "Soups", subcategory: "Specialty Soups", image: birriaConsomme, bestSeller: true },
 
   // Main Platillos (Main Dishes)
   { id: "p1", name: "Molcajete", description: "Sizzling volcanic stone bowl with grilled meats, nopales, and cheese", price: 35.00, category: "Main Platillos", topCategory: "Main Dishes", subcategory: "Signature Platters", image: molcajete, bestSeller: true },
@@ -356,7 +359,7 @@ export const menuItems: MenuItem[] = [
   { id: "a2", name: "Cemitas de Milaneza", description: "Pueblan sandwich with breaded meat and avocado", price: 12.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: cemitas },
   { id: "a5", name: "Sopas", description: "Thick corn tortilla with beans and toppings", price: 6.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: sopasAntojito },
   { id: "a6", name: "Haurache Grande", description: "Large oblong masa base with beans, meat, and salsa", price: 10.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: huarache },
-  { id: "a7", name: "Nachos", description: "Crispy chips loaded with cheese, meat, and fresh toppings", price: 15.00, category: "Antojitos", topCategory: "Kids & Sides", subcategory: "Appetizers", image: nachos },
+  { id: "a7", name: "Nachos", description: "Crispy chips loaded with cheese, meat, and fresh toppings", price: 15.00, category: "Antojitos", topCategory: "Kids & Sides", subcategory: "Appetizers", image: nachos, bestSeller: true },
   { id: "a8", name: "Guacamole w. Chips", description: "Fresh avocado dip with lime and cilantro, addictive", price: 8.00, category: "Antojitos", topCategory: "Kids & Sides", subcategory: "Appetizers", image: guacamoleChips },
   { id: "a9", name: "Tacos Dorados", description: "Crispy rolled tacos with lettuce, cream, and salsa", price: 10.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: tacosDorados },
   { id: "a10", name: "Tacos Plazeros", description: "Specialty tacos with choice of meats and toppings", price: 7.00, category: "Antojitos", topCategory: "Tacos & Wraps", subcategory: "Antojitos", image: tacosPlazeros },
@@ -367,18 +370,19 @@ export const menuItems: MenuItem[] = [
   // Bebidas (Drinks)
   { id: "d1", name: "Aguas Frescas Med", description: "Refreshing fruit water, naturally sweetened", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Fresh Drinks", image: aguasFrescas },
   { id: "d2", name: "Aguas Frescas Gde", description: "Large refreshing fruit water in seasonal flavors", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Fresh Drinks", image: aguasFrescas },
-  { id: "d3", name: "Licuados Chocomilk Reg", description: "Creamy chocolate milk smoothie, rich and satisfying", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoChocolate },
-  { id: "d4", name: "Licuados Chocomilk Large", description: "Large chocolate smoothie, indulgent and delicious", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoChocolate },
-  { id: "d5", name: "Licuados Mamey Reg", description: "Tropical mamey smoothie, creamy and exotic", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoMamey },
-  { id: "d6", name: "Licuados Mamey Large", description: "Large mamey smoothie, uniquely delicious", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoMamey },
-  { id: "d7", name: "Licuados Fresa Reg", description: "Fresh strawberry smoothie, sweet and refreshing", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoFresa },
-  { id: "d8", name: "Licuados Fresa Large", description: "Large strawberry smoothie, berry delicious", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoFresa },
-  { id: "d9", name: "Licuados Platano Reg", description: "Creamy banana smoothie, naturally sweet", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoPlatano },
-  { id: "d10", name: "Licuados Platano Large", description: "Large banana smoothie, smooth and satisfying", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoPlatano },
-  { id: "d11", name: "Licuados Mango Reg", description: "Tropical mango smoothie, vibrant and refreshing", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoMango },
-  { id: "d12", name: "Licuados Mango Large", description: "Large mango smoothie, taste of the tropics", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoMango },
-  { id: "d13", name: "Licuados Papaya Reg", description: "Smooth papaya smoothie, tropical and healthy", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoPapaya },
-  { id: "d14", name: "Licuados Papaya Large", description: "Large papaya smoothie, refreshing and nutritious", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoPapaya },
+  { id: "smoothie-combo", name: "Licuados", description: "Creamy fruit smoothie. Choose your flavor and size.", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoFresa, hasSmoothieVariants: true },
+  { id: "d3", name: "Licuados Chocomilk Reg", description: "Creamy chocolate milk smoothie, rich and satisfying", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoChocolate, isVariant: true },
+  { id: "d4", name: "Licuados Chocomilk Large", description: "Large chocolate smoothie, indulgent and delicious", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoChocolate, isVariant: true },
+  { id: "d5", name: "Licuados Mamey Reg", description: "Tropical mamey smoothie, creamy and exotic", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoMamey, isVariant: true },
+  { id: "d6", name: "Licuados Mamey Large", description: "Large mamey smoothie, uniquely delicious", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoMamey, isVariant: true },
+  { id: "d7", name: "Licuados Fresa Reg", description: "Fresh strawberry smoothie, sweet and refreshing", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoFresa, isVariant: true },
+  { id: "d8", name: "Licuados Fresa Large", description: "Large strawberry smoothie, berry delicious", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoFresa, isVariant: true },
+  { id: "d9", name: "Licuados Platano Reg", description: "Creamy banana smoothie, naturally sweet", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoPlatano, isVariant: true },
+  { id: "d10", name: "Licuados Platano Large", description: "Large banana smoothie, smooth and satisfying", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoPlatano, isVariant: true },
+  { id: "d11", name: "Licuados Mango Reg", description: "Tropical mango smoothie, vibrant and refreshing", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoMango, isVariant: true },
+  { id: "d12", name: "Licuados Mango Large", description: "Large mango smoothie, taste of the tropics", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoMango, isVariant: true },
+  { id: "d13", name: "Licuados Papaya Reg", description: "Smooth papaya smoothie, tropical and healthy", price: 5.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoPapaya, isVariant: true },
+  { id: "d14", name: "Licuados Papaya Large", description: "Large papaya smoothie, refreshing and nutritious", price: 6.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Smoothies", image: licuadoPapaya, isVariant: true },
   { id: "d15", name: "Jugo de Naranja", description: "Freshly squeezed orange juice, pure sunshine", price: 4.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Fresh Juices", image: jugoNaranja },
   { id: "d16", name: "Limonada", description: "Fresh-squeezed limeade, tart and refreshing", price: 4.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Fresh Drinks", image: limonada },
   { id: "d17", name: "Piña Colada", description: "Tropical pineapple-coconut blend, vacation in a glass", price: 8.00, category: "Bebidas", topCategory: "Beverages", subcategory: "Specialty Drinks", image: pinaColada },

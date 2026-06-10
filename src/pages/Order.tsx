@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FlavorSelectionDialog } from "@/components/FlavorSelectionDialog";
 import { MeatSelectionDialog } from "@/components/MeatSelectionDialog";
+import { TostadaSelectionDialog } from "@/components/TostadaSelectionDialog";
+import { SmoothieSelectionDialog } from "@/components/SmoothieSelectionDialog";
 import { MenuItemModal } from "@/components/MenuItemModal";
-import { Plus, Star, ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import { Plus, Minus, Star, ChevronDown, ChevronUp, Search, X, ShoppingCart } from "lucide-react";
 import { useState, useMemo, useRef, useCallback, memo, useDeferredValue } from "react";
+import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import { useMenuAvailability } from "@/hooks/useMenuAvailability";
@@ -35,6 +38,8 @@ interface MenuItemData {
   subcategory: string;
   topCategory: string;
   hasMeatVariants?: boolean;
+  hasTostadaVariants?: boolean;
+  hasSmoothieVariants?: boolean;
 }
 
 interface ItemCardProps {
@@ -42,14 +47,16 @@ interface ItemCardProps {
   index: number;
   language: "en" | "es";
   addToCartLabel: string;
+  quantity: number;
   onAddToCart: (item: { id: string; name: string; price: number; image?: string }) => void;
+  onDecrement: (id: string) => void;
   onOpenModal: (item: {
     id: string; name: string; description?: string; price: number;
     image?: string; bestSeller?: boolean; subcategory: string;
   }) => void;
 }
 
-const ItemCard = memo(({ item, index, language, addToCartLabel, onAddToCart, onOpenModal }: ItemCardProps) => {
+const ItemCard = memo(({ item, index, language, addToCartLabel, quantity, onAddToCart, onDecrement, onOpenModal }: ItemCardProps) => {
   const { ref: cardRef, isVisible: cardVisible } = useScrollAnimation({
     threshold: 0.1,
     rootMargin: "-50px"
@@ -114,8 +121,12 @@ const ItemCard = memo(({ item, index, language, addToCartLabel, onAddToCart, onO
               {getMenuItemDescription(item.id, language, item.description)}
             </p>
           )}
-          {item.hasMeatVariants && (
-            <p className="text-xs text-primary font-medium mb-2">Choose your meat →</p>
+          {(item.hasMeatVariants || item.hasTostadaVariants || item.hasSmoothieVariants) && (
+            <p className="text-xs text-primary font-medium mb-2">
+              {item.hasSmoothieVariants
+                ? (language === "es" ? "Elige sabor y tamaño →" : "Choose flavor & size →")
+                : (language === "es" ? "Elige tu carne →" : "Choose your meat →")}
+            </p>
           )}
           <div className="mt-auto space-y-2">
             <div className="text-center">
@@ -123,21 +134,50 @@ const ItemCard = memo(({ item, index, language, addToCartLabel, onAddToCart, onO
                 ${item.price.toFixed(2)}
               </span>
             </div>
-            <Button
-              type="button"
-              size="lg"
-              className="w-full gap-2"
-              onClick={() => onAddToCart({
-                id: item.id,
-                name: getMenuItemName(item.id, language, item.name),
-                price: item.price,
-                image: item.image,
-              })}
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            >
-              <Plus className="h-4 w-4 pointer-events-none" />
-              <span className="pointer-events-none">{addToCartLabel}</span>
-            </Button>
+            {quantity > 0 ? (
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => onDecrement(item.id)}
+                  className="flex-none w-10 h-10 rounded-full border-2 border-primary/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors"
+                  style={{ touchAction: 'manipulation' }}
+                  aria-label="Remove one"
+                >
+                  <Minus className="h-4 w-4 text-primary" />
+                </button>
+                <span className="font-bold text-base text-primary tabular-nums">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => onAddToCart({
+                    id: item.id,
+                    name: getMenuItemName(item.id, language, item.name),
+                    price: item.price,
+                    image: item.image,
+                  })}
+                  className="flex-none w-10 h-10 rounded-full bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors"
+                  style={{ touchAction: 'manipulation' }}
+                  aria-label="Add one more"
+                >
+                  <Plus className="h-4 w-4 text-primary-foreground" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                size="lg"
+                className="w-full gap-2"
+                onClick={() => onAddToCart({
+                  id: item.id,
+                  name: getMenuItemName(item.id, language, item.name),
+                  price: item.price,
+                  image: item.image,
+                })}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              >
+                <Plus className="h-4 w-4 pointer-events-none" />
+                <span className="pointer-events-none">{addToCartLabel}</span>
+              </Button>
+            )}
           </div>
         </div>
       </Card>
@@ -150,11 +190,13 @@ interface SubcategorySectionProps {
   items: MenuItemData[];
   language: "en" | "es";
   addToCartLabel: string;
+  cartQuantities: Map<string, number>;
   onAddToCart: ItemCardProps['onAddToCart'];
+  onDecrement: ItemCardProps['onDecrement'];
   onOpenModal: ItemCardProps['onOpenModal'];
 }
 
-const SubcategorySection = memo(({ subcategory, items, language, addToCartLabel, onAddToCart, onOpenModal }: SubcategorySectionProps) => {
+const SubcategorySection = memo(({ subcategory, items, language, addToCartLabel, cartQuantities, onAddToCart, onDecrement, onOpenModal }: SubcategorySectionProps) => {
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.1 });
 
   return (
@@ -176,7 +218,9 @@ const SubcategorySection = memo(({ subcategory, items, language, addToCartLabel,
             index={index}
             language={language}
             addToCartLabel={addToCartLabel}
+            quantity={cartQuantities.get(item.id) ?? 0}
             onAddToCart={onAddToCart}
+            onDecrement={onDecrement}
             onOpenModal={onOpenModal}
           />
         ))}
@@ -189,7 +233,7 @@ const SubcategorySection = memo(({ subcategory, items, language, addToCartLabel,
 
 const Order = () => {
   const { t, language } = useLanguage();
-  const { orderType, setOrderType, addToCart } = useCart();
+  const { orderType, setOrderType, addToCart, updateQuantity, cart, cartCount, cartTotal } = useCart();
   const { inactiveIds } = useMenuAvailability();
 
   // Flavor dialog (chicken wings)
@@ -199,6 +243,14 @@ const Order = () => {
   // Meat dialog (burritos)
   const [meatDialogOpen, setMeatDialogOpen] = useState(false);
   const [pendingMeat, setPendingMeat] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
+
+  // Tostada dialog
+  const [tostadaDialogOpen, setTostadaDialogOpen] = useState(false);
+  const [pendingTostada, setPendingTostada] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
+
+  // Smoothie dialog
+  const [smoothieDialogOpen, setSmoothieDialogOpen] = useState(false);
+  const [pendingSmoothie, setPendingSmoothie] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
 
   // Item detail modal
   const [menuItemModalOpen, setMenuItemModalOpen] = useState(false);
@@ -211,8 +263,24 @@ const Order = () => {
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Category filter (desktop sidebar + mobile pills)
+  const popularItems = useMemo(
+    () => menuItems.filter(
+      item => item.bestSeller && !item.isVariant && item.topCategory !== "Meats & Proteins" && !inactiveIds.has(item.id)
+    ),
+    [inactiveIds]
+  );
+
+  const cartQuantities = useMemo(
+    () => new Map(cart.map(ci => [ci.id, ci.quantity])),
+    [cart]
+  );
+
   const allTopCategories = useMemo(
-    () => Array.from(new Set(menuItems.filter(i => !i.isVariant).map(item => item.topCategory))),
+    () => Array.from(new Set(
+      menuItems
+        .filter(i => !i.isVariant && i.topCategory !== "Meats & Proteins")
+        .map(item => item.topCategory)
+    )),
     []
   );
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set(allTopCategories));
@@ -244,6 +312,7 @@ const Order = () => {
     const q = deferredSearchQuery.trim().toLowerCase();
     return menuItems
       .filter(item => !item.isVariant)
+      .filter(item => item.topCategory !== "Meats & Proteins")
       .filter(item => !inactiveIds.has(item.id))
       .filter(item => selectedCategories.has(item.topCategory))
       .filter(item =>
@@ -271,15 +340,28 @@ const Order = () => {
       setFlavorDialogOpen(true);
       return;
     }
-    // Burrito meat selection
     const menuItem = menuItems.find(m => m.id === item.id);
     if (menuItem?.hasMeatVariants) {
       setPendingMeat(item);
       setMeatDialogOpen(true);
       return;
     }
+    if (menuItem?.hasTostadaVariants) {
+      setPendingTostada(item);
+      setTostadaDialogOpen(true);
+      return;
+    }
+    if (menuItem?.hasSmoothieVariants) {
+      setPendingSmoothie(item);
+      setSmoothieDialogOpen(true);
+      return;
+    }
     addToCart(item);
   }, [addToCart]);
+
+  const handleDecrement = useCallback((id: string) => {
+    updateQuantity(id, -1);
+  }, [updateQuantity]);
 
   const handleFlavorSelect = (flavor: string) => {
     if (!pendingFlavor) return;
@@ -294,6 +376,18 @@ const Order = () => {
     if (!pendingMeat) return;
     addToCart({ ...pendingMeat, name: `${pendingMeat.name} (${meat})` });
     setPendingMeat(null);
+  };
+
+  const handleTostadaMeatSelect = (meat: string) => {
+    if (!pendingTostada) return;
+    addToCart({ ...pendingTostada, name: `${pendingTostada.name} (${meat})` });
+    setPendingTostada(null);
+  };
+
+  const handleSmoothieSelect = (flavor: string, size: string, price: number) => {
+    if (!pendingSmoothie) return;
+    addToCart({ ...pendingSmoothie, name: `Licuado ${flavor} — ${size}`, price });
+    setPendingSmoothie(null);
   };
 
   return (
@@ -335,6 +429,44 @@ const Order = () => {
           </div>
         </div>
 
+        {/* ── Popular Items strip ── */}
+        {popularItems.length > 0 && !deferredSearchQuery.trim() && (
+          <div className="px-4 mb-6">
+            <div className="max-w-5xl mx-auto">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3 text-center">
+                Popular Items
+              </p>
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x">
+                {popularItems.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleAddToCart({ id: item.id, name: item.name, price: item.price, image: item.image })}
+                    className="snap-start shrink-0 w-32 sm:w-36 bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:shadow-md transition-all duration-200 text-left group"
+                    style={{ touchAction: 'manipulation' }}
+                  >
+                    {item.image && (
+                      <div className="h-20 sm:h-24 overflow-hidden">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    )}
+                    <div className="p-2">
+                      <p className="text-xs font-semibold line-clamp-1 mb-0.5">{getMenuItemName(item.id, language, item.name)}</p>
+                      <p className="text-xs text-primary font-bold">${item.price.toFixed(2)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">+ Add</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Search bar (all breakpoints) ── */}
         <div className="px-4 mb-4">
           <div className="relative max-w-xl mx-auto">
@@ -361,39 +493,26 @@ const Order = () => {
           </div>
         </div>
 
-        {/* ── Mobile category pills (hidden on lg+) ── */}
-        <div className="lg:hidden px-4 mb-6">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none snap-x">
-            {/* All pill */}
-            <button
-              onClick={toggleAll}
-              aria-pressed={allSelected}
-              className={cn(
-                "snap-start shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition-colors whitespace-nowrap",
-                allSelected
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-foreground border-border hover:border-primary/50"
-              )}
-            >
-              All
-            </button>
-            {allTopCategories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => toggleCategory(cat)}
-                aria-pressed={selectedCategories.has(cat)}
-                className={cn(
-                  "snap-start shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition-colors whitespace-nowrap",
-                  selectedCategories.has(cat)
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card text-foreground border-border hover:border-primary/50"
-                )}
-              >
-                {cat}
-              </button>
-            ))}
+        {/* ── Mobile category pills — tap to scroll to section (hidden on lg+) ── */}
+        {!deferredSearchQuery.trim() && (
+          <div className="lg:hidden px-4 mb-6">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none snap-x">
+              {allTopCategories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    const el = document.getElementById(`section-${cat.replace(/\s+/g, "-")}`);
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className="snap-start shrink-0 px-4 py-2 rounded-full text-sm font-medium border border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors whitespace-nowrap"
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── Sidebar + main grid ── */}
         <div className="px-4 lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 xl:grid-cols-[240px_1fr]">
@@ -495,7 +614,9 @@ const Order = () => {
                         index={index}
                         language={language}
                         addToCartLabel={t("order.addToCart")}
+                        quantity={cartQuantities.get(item.id) ?? 0}
                         onAddToCart={handleAddToCart}
+                        onDecrement={handleDecrement}
                         onOpenModal={(modalItem) => {
                           setSelectedMenuItem(modalItem);
                           setMenuItemModalOpen(true);
@@ -509,7 +630,7 @@ const Order = () => {
               /* Normal grouped view */
               <div className="space-y-16">
                 {groupedItems && Object.entries(groupedItems).map(([topCategory, subcategories]) => (
-                  <div key={topCategory}>
+                  <div key={topCategory} id={`section-${topCategory.replace(/\s+/g, "-")}`}>
                     <div className="mb-8 text-center">
                       <h2 className="font-serif text-4xl md:text-5xl font-bold bg-gradient-to-r from-serape-red via-serape-pink to-serape-purple bg-clip-text text-transparent mb-3">
                         {topCategory}
@@ -534,7 +655,9 @@ const Order = () => {
                           items={items}
                           language={language}
                           addToCartLabel={t("order.addToCart")}
+                          cartQuantities={cartQuantities}
                           onAddToCart={handleAddToCart}
+                          onDecrement={handleDecrement}
                           onOpenModal={(modalItem) => {
                             setSelectedMenuItem(modalItem);
                             setMenuItemModalOpen(true);
@@ -550,6 +673,33 @@ const Order = () => {
         </div>
       </div>
 
+      {/* ── Sticky mini-cart bar ── appears once the user adds their first item */}
+      {cartCount > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 pointer-events-none">
+          <Link
+            to="/cart"
+            className="pointer-events-auto flex items-center justify-between max-w-lg mx-auto bg-primary text-primary-foreground rounded-2xl px-5 py-3.5 shadow-2xl hover:bg-primary/90 transition-colors animate-fade-in"
+            style={{ touchAction: 'manipulation' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <ShoppingCart className="h-5 w-5" />
+                <span className="absolute -top-2 -right-2 bg-white text-primary text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                  {cartCount}
+                </span>
+              </div>
+              <span className="font-semibold text-sm">
+                {cartCount} {cartCount === 1 ? "item" : "items"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-base">${cartTotal.toFixed(2)}</span>
+              <span className="text-sm opacity-90">→ View Cart</span>
+            </div>
+          </Link>
+        </div>
+      )}
+
       <FlavorSelectionDialog
         open={flavorDialogOpen}
         onOpenChange={setFlavorDialogOpen}
@@ -562,6 +712,18 @@ const Order = () => {
         onOpenChange={setMeatDialogOpen}
         onSelectMeat={handleMeatSelect}
         itemName={pendingMeat?.name || "Burrito"}
+      />
+
+      <TostadaSelectionDialog
+        open={tostadaDialogOpen}
+        onOpenChange={setTostadaDialogOpen}
+        onSelectMeat={handleTostadaMeatSelect}
+      />
+
+      <SmoothieSelectionDialog
+        open={smoothieDialogOpen}
+        onOpenChange={setSmoothieDialogOpen}
+        onSelect={handleSmoothieSelect}
       />
 
       {selectedMenuItem && (
