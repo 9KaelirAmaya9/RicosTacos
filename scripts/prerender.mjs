@@ -88,6 +88,47 @@ const routes = [
     ],
   },
   {
+    path: '/mexican-restaurant-brooklyn',
+    title: 'Mexican Restaurant Brooklyn — Ricos Tacos, Authentic Puebla Cuisine',
+    description: "Brooklyn's best authentic Mexican restaurant in Sunset Park. Street tacos from $3, birria, tortas, pozole, fajitas & 100+ dishes from Puebla. Open daily 9AM–2AM at 505 51st St. Order online.",
+    schemas: [
+      {
+        "@context": "https://schema.org",
+        "@type": ["Restaurant", "LocalBusiness"],
+        "name": "Ricos Tacos",
+        "description": "Authentic Mexican restaurant in Sunset Park, Brooklyn. Street tacos from $3, birria, tortas, burritos, soups, and full platillos. Recipes from Puebla, made fresh daily.",
+        "url": "https://losricostacos.com/mexican-restaurant-brooklyn",
+        "telephone": "+17186334816",
+        "servesCuisine": ["Mexican", "Street Food", "Tacos"],
+        "priceRange": "$",
+        "openingHours": "Mo-Su 09:00-02:00",
+        "address": { "@type": "PostalAddress", "streetAddress": "505 51st Street", "addressLocality": "Brooklyn", "addressRegion": "NY", "postalCode": "11220", "addressCountry": "US" },
+        "geo": { "@type": "GeoCoordinates", "latitude": "40.6526", "longitude": "-74.0137" },
+        "hasMap": "https://maps.google.com/?q=505+51st+Street+Brooklyn+NY+11220",
+        "potentialAction": { "@type": "OrderAction", "target": { "@type": "EntryPoint", "urlTemplate": "https://losricostacos.com/order", "actionPlatform": ["http://schema.org/DesktopWebPlatform", "http://schema.org/MobileWebPlatform"] } }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "What is the best Mexican restaurant in Brooklyn?", "acceptedAnswer": { "@type": "Answer", "text": "Ricos Tacos at 505 51st Street in Sunset Park, Brooklyn is widely recognized as one of Brooklyn's best authentic Mexican restaurants. We serve over 100 dishes — street tacos from $3, birria, tortas, burritos, soups, and full platillos — using traditional recipes from Puebla, Mexico. Open daily 9 AM to 2 AM." } },
+          { "@type": "Question", "name": "Where is Ricos Tacos located in Brooklyn?", "acceptedAnswer": { "@type": "Answer", "text": "Ricos Tacos is located at 505 51st Street in Sunset Park, Brooklyn, NY 11220 — a few blocks from the R/N subway trains at 53rd Street. We're open 7 days a week from 9 AM to 2 AM." } },
+          { "@type": "Question", "name": "What kind of food does Ricos Tacos serve?", "acceptedAnswer": { "@type": "Answer", "text": "We serve authentic Mexican food from Puebla: street tacos ($3), specialty tacos ($5), tostadas, tortas, burritos, quesadillas, pozole, birria, fajitas, mole, enchiladas, chilaquiles, and full platillos. Over 100 items, all made fresh daily." } },
+          { "@type": "Question", "name": "Do you offer delivery in Brooklyn?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Order at losricostacos.com/order for pickup or delivery within 20 minutes of Sunset Park. Available daily 9 AM to 2 AM. You can also call (718) 633-4816." } },
+          { "@type": "Question", "name": "What are Ricos Tacos hours?", "acceptedAnswer": { "@type": "Answer", "text": "We're open 7 days a week, 9 AM to 2 AM. Kitchen stays open until 2 AM every night including weekends." } }
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://losricostacos.com" },
+          { "@type": "ListItem", "position": 2, "name": "Mexican Restaurant Brooklyn", "item": "https://losricostacos.com/mexican-restaurant-brooklyn" }
+        ]
+      }
+    ],
+  },
+  {
     path: '/tacos-brooklyn',
     title: 'Tacos Brooklyn — Authentic Mexican Street Tacos at Ricos Tacos, Sunset Park',
     description: "Brooklyn's best street tacos from $3. Al pastor, birria, carnitas, suadero, carne asada & 20+ more. Handmade tortillas, open daily 9AM–2AM. Order online for pickup or delivery in Sunset Park.",
