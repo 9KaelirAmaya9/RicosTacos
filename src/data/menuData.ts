@@ -175,6 +175,7 @@ export interface MenuItem {
   hasSmoothieVariants?: boolean;
   hasStreetTacoVariants?: boolean;
   hasSpecialtyTacoVariants?: boolean;
+  hasTortaVariants?: boolean;
 }
 
 export const menuCategories = [
@@ -270,18 +271,19 @@ export const menuItems: MenuItem[] = [
   { id: "ts17", name: "Arabe", description: "Middle Eastern-inspired pork with unique spices", price: 5.00, category: "Tostadas", topCategory: "Tacos & Wraps", subcategory: "Tostadas", image: arabeTostada, isVariant: true },
 
   // Tortas (Mexican Sandwiches)
-  { id: "to1", name: "Birria", description: "Rich braised beef on toasted telera roll with all the fixings", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaBirria },
-  { id: "to2", name: "Milaneza de Res", description: "Crispy breaded beef cutlet with creamy avocado and beans", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaMilanezaRes },
-  { id: "to3", name: "Milaneza de Pollo", description: "Golden breaded chicken breast, perfectly crispy and juicy", price: 14.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaMilanezaPollo },
-  { id: "to4", name: "Pierna Adobada", description: "Marinated pork leg in adobo sauce, incredibly tender", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaPierna },
-  { id: "to5", name: "Pollo Asado", description: "Smoky grilled chicken with mayo, beans, and fresh veggies", price: 14.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaPollo },
-  { id: "to6", name: "Chuleta / Haumada", description: "Crispy fried pork chop, hearty and satisfying", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaChuleta },
-  { id: "to10", name: "Cubana", description: "Loaded sandwich with multiple meats, cheese, and everything", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaCubana },
-  { id: "to11", name: "Tinga", description: "Smoky chipotle chicken in tomato sauce, irresistible", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaTinga },
-  { id: "to12", name: "Cecina", description: "Thin-sliced salted beef, grilled to smoky perfection", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaCecina },
-  { id: "to13", name: "Arabe", description: "Middle Eastern-inspired spiced pork on soft roll", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaArabe },
-  { id: "to14", name: "Carnitas", description: "Crispy-tender pork with beans and fresh toppings", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaCarnitas },
-  { id: "to15", name: "Al Pastor", description: "Juicy pork with pineapple on toasted telera bread", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaPastor },
+  { id: "torta-combo", name: "Torta", description: "Toasted telera roll with beans, avocado, and fresh toppings. Choose your filling — 12 options.", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaBirria, bestSeller: true, hasTortaVariants: true },
+  { id: "to1", name: "Birria", description: "Rich braised beef on toasted telera roll with all the fixings", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaBirria, isVariant: true },
+  { id: "to2", name: "Milaneza de Res", description: "Crispy breaded beef cutlet with creamy avocado and beans", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaMilanezaRes, isVariant: true },
+  { id: "to3", name: "Milaneza de Pollo", description: "Golden breaded chicken breast, perfectly crispy and juicy", price: 14.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaMilanezaPollo, isVariant: true },
+  { id: "to4", name: "Pierna Adobada", description: "Marinated pork leg in adobo sauce, incredibly tender", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaPierna, isVariant: true },
+  { id: "to5", name: "Pollo Asado", description: "Smoky grilled chicken with mayo, beans, and fresh veggies", price: 14.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaPollo, isVariant: true },
+  { id: "to6", name: "Chuleta / Haumada", description: "Crispy fried pork chop, hearty and satisfying", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaChuleta, isVariant: true },
+  { id: "to10", name: "Cubana", description: "Loaded sandwich with multiple meats, cheese, and everything", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaCubana, isVariant: true },
+  { id: "to11", name: "Tinga", description: "Smoky chipotle chicken in tomato sauce, irresistible", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaTinga, isVariant: true },
+  { id: "to12", name: "Cecina", description: "Thin-sliced salted beef, grilled to smoky perfection", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaCecina, isVariant: true },
+  { id: "to13", name: "Arabe", description: "Middle Eastern-inspired spiced pork on soft roll", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaArabe, isVariant: true },
+  { id: "to14", name: "Carnitas", description: "Crispy-tender pork with beans and fresh toppings", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaCarnitas, isVariant: true },
+  { id: "to15", name: "Al Pastor", description: "Juicy pork with pineapple on toasted telera bread", price: 12.00, category: "Tortas", topCategory: "Tacos & Wraps", subcategory: "Tortas", image: tortaPastor, isVariant: true },
 
   // Burritos
   // Combined item shown in the Order page — individual variants kept for /menu

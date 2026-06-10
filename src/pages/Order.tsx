@@ -13,6 +13,7 @@ import { TostadaSelectionDialog } from "@/components/TostadaSelectionDialog";
 import { SmoothieSelectionDialog } from "@/components/SmoothieSelectionDialog";
 import { StreetTacoSelectionDialog } from "@/components/StreetTacoSelectionDialog";
 import { SpecialtyTacoSelectionDialog } from "@/components/SpecialtyTacoSelectionDialog";
+import { TortaSelectionDialog } from "@/components/TortaSelectionDialog";
 import { MenuItemModal } from "@/components/MenuItemModal";
 import { Plus, Minus, Star, Search, X, ShoppingCart } from "lucide-react";
 import { useState, useMemo, useRef, useCallback, memo, useDeferredValue, useEffect } from "react";
@@ -42,6 +43,7 @@ interface MenuItemData {
   hasSmoothieVariants?: boolean;
   hasStreetTacoVariants?: boolean;
   hasSpecialtyTacoVariants?: boolean;
+  hasTortaVariants?: boolean;
 }
 
 interface ItemCardProps {
@@ -279,6 +281,10 @@ const Order = () => {
   const [specialtyTacoDialogOpen, setSpecialtyTacoDialogOpen] = useState(false);
   const [pendingSpecialtyTaco, setPendingSpecialtyTaco] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
 
+  // Torta dialog
+  const [tortaDialogOpen, setTortaDialogOpen] = useState(false);
+  const [pendingTorta, setPendingTorta] = useState<{ id: string; name: string; price: number; image?: string } | null>(null);
+
   // Item detail modal
   const [menuItemModalOpen, setMenuItemModalOpen] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<any>(null);
@@ -394,6 +400,11 @@ const Order = () => {
       setSpecialtyTacoDialogOpen(true);
       return;
     }
+    if (menuItem?.hasTortaVariants) {
+      setPendingTorta(item);
+      setTortaDialogOpen(true);
+      return;
+    }
     addToCart(item);
   }, [addToCart]);
 
@@ -442,6 +453,12 @@ const Order = () => {
     if (!pendingSpecialtyTaco) return;
     addToCart({ ...pendingSpecialtyTaco, name: `${option} Taco` });
     setPendingSpecialtyTaco(null);
+  };
+
+  const handleTortaSelect = (filling: string, price: number) => {
+    if (!pendingTorta) return;
+    addToCart({ ...pendingTorta, name: `Torta de ${filling}`, price });
+    setPendingTorta(null);
   };
 
   return (
@@ -763,6 +780,12 @@ const Order = () => {
         open={specialtyTacoDialogOpen}
         onOpenChange={setSpecialtyTacoDialogOpen}
         onSelect={handleSpecialtyTacoSelect}
+      />
+
+      <TortaSelectionDialog
+        open={tortaDialogOpen}
+        onOpenChange={setTortaDialogOpen}
+        onSelect={handleTortaSelect}
       />
     </div>
     </>
