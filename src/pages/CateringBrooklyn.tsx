@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { SerapeStripe } from "@/components/SerapeStripe";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
@@ -360,6 +361,7 @@ const CateringBrooklyn = () => {
 
           </div>
         </div>
+        <SiteFooter />
         <SerapeStripe />
       </div>
     </>

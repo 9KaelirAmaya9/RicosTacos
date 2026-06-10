@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { SerapeStripe } from "@/components/SerapeStripe";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -193,6 +194,7 @@ const Catering = () => {
 
           </div>
         </div>
+        <SiteFooter />
         <SerapeStripe />
       </div>
     </>
