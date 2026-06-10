@@ -88,6 +88,46 @@ const routes = [
     ],
   },
   {
+    path: '/catering-brooklyn',
+    title: 'Catering Brooklyn — Authentic Mexican Food for Events | Ricos Tacos',
+    description: "Mexican catering in Brooklyn for weddings, quinceañeras, corporate events & parties. Birria, mole, carnitas, fajitas & more from Puebla. Call Josefina at (917) 370-0430. Serving all of Brooklyn.",
+    schemas: [
+      {
+        "@context": "https://schema.org",
+        "@type": ["FoodService", "LocalBusiness"],
+        "name": "Ricos Tacos Catering Brooklyn",
+        "description": "Authentic Mexican catering in Brooklyn for weddings, quinceañeras, corporate events, and private parties. Traditional Puebla recipes — birria, mole, carnitas, barbacoa, chiles rellenos. Call (917) 370-0430.",
+        "url": "https://losricostacos.com/catering-brooklyn",
+        "telephone": "+19173700430",
+        "priceRange": "$$",
+        "areaServed": [
+          { "@type": "City", "name": "Brooklyn, NY" },
+          { "@type": "City", "name": "New York, NY" }
+        ],
+        "address": { "@type": "PostalAddress", "streetAddress": "505 51st Street", "addressLocality": "Brooklyn", "addressRegion": "NY", "postalCode": "11220", "addressCountry": "US" }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Do you do catering in Brooklyn?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Ricos Tacos caters events throughout Brooklyn and greater NYC. We handle weddings, quinceañeras, corporate events, birthday parties, and private gatherings of any size. Call (917) 370-0430 to speak with Josefina." } },
+          { "@type": "Question", "name": "What kind of food do you serve for catering?", "acceptedAnswer": { "@type": "Answer", "text": "We serve authentic Puebla-style Mexican food: birria, mole poblano, carnitas, barbacoa, chiles rellenos, fajitas, tamales, tacos al pastor, pozole, and more. Custom menus available." } },
+          { "@type": "Question", "name": "How far in advance should I book catering?", "acceptedAnswer": { "@type": "Answer", "text": "For large events like weddings and quinceañeras, we recommend booking at least 2–4 weeks in advance. For smaller gatherings, a week's notice is often enough. Call (917) 370-0430 to check availability." } },
+          { "@type": "Question", "name": "Do you cater quinceañeras in Brooklyn?", "acceptedAnswer": { "@type": "Answer", "text": "Yes — quinceañeras are one of our most popular catering events. Traditional dishes like mole, birria, carnitas, and tamales are always a hit. Call (917) 370-0430." } },
+          { "@type": "Question", "name": "How do I get a catering quote?", "acceptedAnswer": { "@type": "Answer", "text": "Call or text (917) 370-0430 and ask for Josefina. Tell us your event date, estimated headcount, and any dish preferences, and we'll put together a custom quote." } }
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://losricostacos.com" },
+          { "@type": "ListItem", "position": 2, "name": "Catering Brooklyn", "item": "https://losricostacos.com/catering-brooklyn" }
+        ]
+      }
+    ],
+  },
+  {
     path: '/mexican-restaurant-brooklyn',
     title: 'Mexican Restaurant Brooklyn — Ricos Tacos, Authentic Puebla Cuisine',
     description: "Brooklyn's best authentic Mexican restaurant in Sunset Park. Street tacos from $3, birria, tortas, pozole, fajitas & 100+ dishes from Puebla. Open daily 9AM–2AM at 505 51st St. Order online.",

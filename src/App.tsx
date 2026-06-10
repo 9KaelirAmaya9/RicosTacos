@@ -43,6 +43,7 @@ const MenuCatalog = lazy(() => import("./pages/MenuCatalog"));
 const Birria = lazy(() => import("./pages/Birria"));
 const TacosBrooklyn = lazy(() => import("./pages/TacosBrooklyn"));
 const MexicanRestaurantBrooklyn = lazy(() => import("./pages/MexicanRestaurantBrooklyn"));
+const CateringBrooklyn = lazy(() => import("./pages/CateringBrooklyn"));
 const DebugAuth = lazy(() => import("./pages/DebugAuth"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 
@@ -113,6 +114,7 @@ const App = () => (
                     <Route path="/birria" element={<Birria />} />
                     <Route path="/tacos-brooklyn" element={<TacosBrooklyn />} />
                     <Route path="/mexican-restaurant-brooklyn" element={<MexicanRestaurantBrooklyn />} />
+                    <Route path="/catering-brooklyn" element={<CateringBrooklyn />} />
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/signin" element={<SignIn />} />
