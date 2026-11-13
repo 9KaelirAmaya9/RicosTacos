@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
         // Auto-convert all menu JPGs to WebP — menu images are displayed as thumbnails
         // (max ~300px wide on screen), so cap at 600px for 2× retina and compress at q=72.
         // Cuts payload from 13MB JPG → ~3MB WebP with no perceptible quality loss.
-        if (url.pathname.includes('/menu/') && /\.jpe?g$/i.test(url.pathname)) {
+        if (/\/menu(-nuevo)?\//.test(url.pathname) && /\.jpe?g$/i.test(url.pathname)) {
           return new URLSearchParams('format=webp&quality=72&w=600');
         }
         return new URLSearchParams();

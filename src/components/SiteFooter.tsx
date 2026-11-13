@@ -8,7 +8,6 @@ const exploreLinks = [
   { to: "/tacos-brooklyn", label: "Street Tacos Brooklyn" },
   { to: "/catering-brooklyn", label: "Catering Brooklyn" },
   { to: "/menu", label: "Full Menu" },
-  { to: "/order", label: "Order Online" },
   { to: "/location", label: "Hours & Location" },
   { to: "/catering", label: "Catering Info" },
 ];

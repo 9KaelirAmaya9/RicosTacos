@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { OrderLink } from "@/components/OrderLink";
 import { useState } from "react";
 import { Menu, X, ShoppingCart, User } from "lucide-react";
 import { Button } from "./ui/button";
@@ -42,7 +43,6 @@ export const Navigation = () => {
   const navLinks = [
     { to: "/", label: t("nav.home") },
     { to: "/menu", label: t("nav.fullMenu") },
-    { to: "/order", label: t("nav.orderOnline") },
     { to: "/location", label: t("nav.location") },
     { to: "/catering", label: t("nav.catering") },
   ];
@@ -184,6 +184,13 @@ export const Navigation = () => {
 
             <LanguageSwitch />
 
+            <Button size="sm" className="gap-2 bg-[#E31E24] hover:bg-[#E31E24]/90" asChild>
+              <OrderLink>
+                <ShoppingCart className="h-4 w-4" />
+                Order Now
+              </OrderLink>
+            </Button>
+
             {isAuthenticated ? (
               <Link to="/profile">
                 <Button variant="outline" size="icon" aria-label="Profile">
@@ -196,30 +203,12 @@ export const Navigation = () => {
               </Link>
             )}
 
-            <Link to="/cart">
-              <Button variant="outline" size="icon" className="relative" aria-label={`Cart (${cartCount} items)`}>
-                <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-[#E31E24] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold leading-none">
-                    {cartCount > 9 ? '9+' : cartCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
+            
           </div>
 
           {/* ── Mobile: cart badge + hamburger ── */}
           <div className="flex md:hidden items-center gap-2">
-            <Link to="/cart" aria-label={`Cart (${cartCount} items)`}>
-              <Button variant="ghost" size="icon" className="relative h-10 w-10">
-                <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-[#E31E24] text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold leading-none">
-                    {cartCount > 9 ? '9+' : cartCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
+            
 
             <button
               className="p-2 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -293,12 +282,12 @@ export const Navigation = () => {
               </nav>
 
               {/* Primary CTA */}
-              <Link to="/order" onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full mb-4 h-12 text-base font-semibold gap-2">
+              <Button className="w-full mb-4 h-12 text-base font-semibold gap-2" asChild>
+                <OrderLink onClick={() => setMobileMenuOpen(false)}>
                   <ShoppingCart className="h-5 w-5" />
                   Order Now
-                </Button>
-              </Link>
+                </OrderLink>
+              </Button>
 
               <div className="pt-3 border-t border-border flex items-center justify-between">
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">Language</span>

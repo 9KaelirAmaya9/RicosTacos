@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { OrderLink } from "@/components/OrderLink";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { SerapeStripe } from "@/components/SerapeStripe";
@@ -6,19 +7,19 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import alPastor from "@/assets/menu/al-pastor.jpg";
-import birriaTaco from "@/assets/menu/birria-taco.jpg";
-import birriaConsomme from "@/assets/menu/birria-consomme.jpg";
-import tortaBirria from "@/assets/menu/torta-birria.jpg";
-import pozole from "@/assets/menu/pozole.jpg";
-import nachos from "@/assets/menu/nachos.jpg";
-import fajitas from "@/assets/menu/fajitas.jpg";
+import alPastor from "@/assets/menu-nuevo/tacos.jpg";
+import birriaTaco from "@/assets/menu-nuevo/tacos.jpg";
+import birriaConsomme from "@/assets/menu-nuevo/pancita.jpg";
+import tortaBirria from "@/assets/menu-nuevo/tortas.jpg";
+import pozole from "@/assets/menu-nuevo/pozole.jpg";
+import nachos from "@/assets/menu-nuevo/nachos.jpg";
+import fajitas from "@/assets/menu-nuevo/fajitas.jpg";
 
 const restaurantSchema = {
   "@context": "https://schema.org",
   "@type": ["Restaurant", "LocalBusiness"],
   "name": "Ricos Tacos",
-  "description": "Authentic Mexican restaurant in Sunset Park, Brooklyn. Street tacos from $3, birria, tortas, burritos, soups, and full platillos. Recipes from Puebla, made fresh daily.",
+  "description": "Authentic Mexican restaurant in Sunset Park, Brooklyn. Tacos from $5, birria, tortas, burritos, soups, and full platillos. Recipes from Puebla, made fresh daily.",
   "url": "https://losricostacos.com/mexican-restaurant-brooklyn",
   "telephone": "+17186334816",
   "servesCuisine": ["Mexican", "Street Food", "Tacos"],
@@ -57,7 +58,7 @@ const faqSchema = {
       "name": "What is the best Mexican restaurant in Brooklyn?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Ricos Tacos at 505 51st Street in Sunset Park, Brooklyn is widely recognized as one of Brooklyn's best authentic Mexican restaurants. We serve over 100 dishes — street tacos from $3, birria, tortas, burritos, soups, and full platillos — using traditional recipes from Puebla, Mexico. Open daily 9 AM to 2 AM."
+        "text": "Ricos Tacos at 505 51st Street in Sunset Park, Brooklyn is widely recognized as one of Brooklyn's best authentic Mexican restaurants. We serve over 100 dishes — tacos from $5, birria, tortas, burritos, soups, and full platillos — using traditional recipes from Puebla, Mexico. Open daily 9 AM to 2 AM."
       }
     },
     {
@@ -73,7 +74,7 @@ const faqSchema = {
       "name": "What kind of food does Ricos Tacos serve?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "We serve authentic Mexican food from Puebla: street tacos ($3), specialty tacos ($5), tostadas, tortas, burritos, quesadillas, pozole, birria, fajitas, mole, enchiladas, chilaquiles, and full platillos. Over 100 items, all made fresh daily."
+        "text": "We serve authentic Mexican food from Puebla: tacos ($5), tostadas, tortas, burritos, quesadillas, pozole, birria, fajitas, mole, enchiladas, chilaquiles, and full platillos. Over 100 items, all made fresh daily."
       }
     },
     {
@@ -107,7 +108,7 @@ const breadcrumbSchema = {
 const highlights = [
   {
     name: "Al Pastor Taco",
-    price: "$3",
+    price: "$5",
     description: "Marinated pork slow-cooked on a vertical spit with pineapple — the taco that put Mexico City street food on the map.",
     image: alPastor,
     alt: "Al pastor taco at Ricos Tacos Mexican restaurant Brooklyn"
@@ -121,7 +122,7 @@ const highlights = [
   },
   {
     name: "Birria Consomé",
-    price: "$13.99",
+    price: "$17",
     description: "A full bowl of rich red chile beef broth with tender braised meat. Drink it, dip into it, pour it over everything.",
     image: birriaConsomme,
     alt: "Birria consomé soup at Ricos Tacos Brooklyn"
@@ -135,14 +136,14 @@ const highlights = [
   },
   {
     name: "Pozole",
-    price: "from $8",
+    price: "from $9",
     description: "Hearty hominy soup with tender pork in rich red chile broth. A full meal in a bowl.",
     image: pozole,
     alt: "Pozole soup at Ricos Tacos Mexican restaurant Sunset Park Brooklyn"
   },
   {
     name: "Fajitas",
-    price: "$25",
+    price: "$26",
     description: "Sizzling plate of grilled meat, peppers, and onions with rice, beans, guacamole, and fresh tortillas.",
     image: fajitas,
     alt: "Fajitas plate at Ricos Tacos Mexican restaurant Brooklyn"
@@ -177,7 +178,7 @@ const MexicanRestaurantBrooklyn = () => {
     <>
       <SEO
         title="Mexican Restaurant Brooklyn — Ricos Tacos, Authentic Puebla Cuisine"
-        description="Brooklyn's best authentic Mexican restaurant in Sunset Park. Street tacos from $3, birria, tortas, pozole, fajitas & 100+ dishes from Puebla. Open daily 9AM–2AM at 505 51st St. Order online."
+        description="Brooklyn's best authentic Mexican restaurant in Sunset Park. Tacos from $5, birria, tortas, pozole, fajitas & 100+ dishes from Puebla. Open daily 9AM–2AM at 505 51st St. Order online."
         canonicalPath="/mexican-restaurant-brooklyn"
       />
       <Helmet>
@@ -200,15 +201,15 @@ const MexicanRestaurantBrooklyn = () => {
                 Mexican Restaurant <span className="text-primary">Brooklyn</span>
               </h1>
               <p className="text-lg sm:text-xl text-muted-foreground mb-8">
-                100+ dishes from Puebla, Mexico. Street tacos from $3. Birria, tortas, pozole,
+                100+ dishes from Puebla, Mexico. Tacos from $5. Birria, tortas, pozole,
                 fajitas, and more — made fresh every day at 505 51st Street, Sunset Park.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/order">
-                  <Button size="lg" className="w-full sm:w-auto text-base px-8">
+                <Button size="lg" className="w-full sm:w-auto text-base px-8" asChild>
+                  <OrderLink>
                     Order Online
-                  </Button>
-                </Link>
+                  </OrderLink>
+                </Button>
                 <Link to="/menu">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto text-base px-8">
                     View Full Menu
@@ -236,7 +237,7 @@ const MexicanRestaurantBrooklyn = () => {
             <div className="max-w-3xl mx-auto mb-16 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
               {[
                 { stat: "100+", label: "Menu Items" },
-                { stat: "$3", label: "Street Tacos" },
+                { stat: "$5", label: "Tacos" },
                 { stat: "9AM–2AM", label: "Every Day" },
                 { stat: "1 Train", label: "From Manhattan" },
               ].map(({ stat, label }) => (
@@ -309,11 +310,11 @@ const MexicanRestaurantBrooklyn = () => {
                 505 51st Street, Sunset Park, Brooklyn NY 11220
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/order">
-                  <Button size="lg" className="bg-white text-foreground hover:bg-white/90 font-semibold w-full sm:w-auto">
+                <Button size="lg" className="bg-white text-foreground hover:bg-white/90 font-semibold w-full sm:w-auto" asChild>
+                  <OrderLink>
                     Order Online
-                  </Button>
-                </Link>
+                  </OrderLink>
+                </Button>
                 <a href="tel:7186334816">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 w-full sm:w-auto">
                     (718) 633-4816

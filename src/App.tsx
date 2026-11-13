@@ -18,10 +18,9 @@ import { lazy, Suspense } from "react";
 // and Google Core Web Vitals scores.
 const Index = lazy(() => import("./pages/Index"));
 const Menu = lazy(() => import("./pages/Menu"));
-const Order = lazy(() => import("./pages/Order"));
+const OrderRedirect = lazy(() => import("./pages/OrderRedirect"));
 const Location = lazy(() => import("./pages/Location"));
 const Catering = lazy(() => import("./pages/Catering"));
-const Cart = lazy(() => import("./pages/Cart"));
 const Auth = lazy(() => import("./pages/Auth"));
 const SignIn = lazy(() => import("./pages/SignIn"));
 const SignUp = lazy(() => import("./pages/SignUp"));
@@ -108,14 +107,14 @@ const App = () => (
                     <Route path="/" element={<Index />} />
                     <Route path="/menu" element={<Menu />} />
                     <Route path="/menu-catalog" element={<MenuCatalog />} />
-                    <Route path="/order" element={<Order />} />
+                    <Route path="/order" element={<OrderRedirect />} />
                     <Route path="/location" element={<Location />} />
                     <Route path="/catering" element={<Catering />} />
                     <Route path="/birria" element={<Birria />} />
                     <Route path="/tacos-brooklyn" element={<TacosBrooklyn />} />
                     <Route path="/mexican-restaurant-brooklyn" element={<MexicanRestaurantBrooklyn />} />
                     <Route path="/catering-brooklyn" element={<CateringBrooklyn />} />
-                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/cart" element={<OrderRedirect />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/signin" element={<SignIn />} />
                     <Route path="/signup" element={<SignUp />} />

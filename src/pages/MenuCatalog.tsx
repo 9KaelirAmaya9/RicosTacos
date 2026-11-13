@@ -2,25 +2,7 @@ import { menuItems } from "@/data/menuData";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
-
-// Category translations
-const categoryTranslations: Record<string, string> = {
-  "Desayunos Mexicanos": "Mexican Breakfasts",
-  "Tacos": "Tacos",
-  "Taquitos": "Small Tacos",
-  "Tostadas": "Tostadas",
-  "Tortas": "Mexican Sandwiches",
-  "Burritos": "Burritos",
-  "Sopas": "Soups",
-  "Platillos": "Main Dishes",
-  "Antojitos Mexicanos": "Mexican Snacks",
-  "Kids Menu": "Kids Menu",
-  "Side Orders": "Side Orders",
-  "Fines de Semana": "Weekend Specials",
-  "Quesadillas": "Quesadillas",
-  "Bebidas": "Drinks",
-  "Postres": "Desserts",
-};
+import { splitBilingual } from "@/lib/bilingual";
 
 export default function MenuCatalog() {
   const { language } = useLanguage();
@@ -66,7 +48,7 @@ export default function MenuCatalog() {
           <div key={category} className="mb-16 break-inside-avoid">
             {/* Category header */}
             <h2 className="text-3xl font-bold text-primary mb-8 pb-2 border-b-2 border-primary/30">
-              {language === "es" ? category : categoryTranslations[category] || category}
+              {splitBilingual(category, language).primary}
             </h2>
 
             {/* Items grid */}
@@ -81,7 +63,7 @@ export default function MenuCatalog() {
                     <div className="flex-shrink-0 w-32 h-32 overflow-hidden rounded-md bg-muted">
                       <img
                         src={item.image}
-                        alt={item.name}
+                        alt={splitBilingual(item.name, language).primary}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -91,7 +73,7 @@ export default function MenuCatalog() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <h3 className="text-xl font-semibold text-foreground">
-                        {item.name}
+                        {splitBilingual(item.name, language).primary}
                       </h3>
                       <span className="text-lg font-bold text-primary whitespace-nowrap">
                         ${item.price.toFixed(2)}
@@ -100,15 +82,21 @@ export default function MenuCatalog() {
                     
                     {item.description && (
                       <p className="text-sm text-muted-foreground line-clamp-3">
-                        {item.description}
+                        {splitBilingual(item.description, language).primary}
                       </p>
                     )}
 
-                    {item.bestSeller && (
-                      <span className="inline-block mt-2 px-2 py-1 text-xs font-semibold bg-primary/10 text-primary rounded">
-                        {language === "es" ? "Más Vendido" : "Best Seller"}
-                      </span>
-                    )}
+                    {item.groups.map((g) => (
+                      <p key={g.name} className="mt-1 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">
+                          {splitBilingual(g.name, language).primary}:
+                        </span>{" "}
+                        {g.options
+                          .map((o) => splitBilingual(o.name, language).primary + (o.price > 0 ? ` (+$${o.price.toFixed(2)})` : ""))
+                          .join(", ")}
+                      </p>
+                    ))}
+
                   </div>
                 </div>
               ))}
