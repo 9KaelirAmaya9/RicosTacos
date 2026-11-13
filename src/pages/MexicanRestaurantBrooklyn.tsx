@@ -7,12 +7,12 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
+import heroMesa from "@/assets/hero-mesa.jpg";
 import alPastor from "@/assets/menu-nuevo/tacos.jpg";
 import birriaTaco from "@/assets/menu-nuevo/tacos.jpg";
 import birriaConsomme from "@/assets/menu-nuevo/pancita.jpg";
 import tortaBirria from "@/assets/menu-nuevo/tortas.jpg";
 import pozole from "@/assets/menu-nuevo/pozole.jpg";
-import nachos from "@/assets/menu-nuevo/nachos.jpg";
 import fajitas from "@/assets/menu-nuevo/fajitas.jpg";
 
 const restaurantSchema = {
@@ -221,7 +221,7 @@ const MexicanRestaurantBrooklyn = () => {
             {/* Hero image */}
             <div className="relative rounded-2xl overflow-hidden mb-16 max-w-4xl mx-auto aspect-[16/7]">
               <img
-                src={nachos}
+                src={heroMesa}
                 alt="Authentic Mexican food at Ricos Tacos restaurant in Sunset Park Brooklyn"
                 className="w-full h-full object-cover"
                 loading="eager"

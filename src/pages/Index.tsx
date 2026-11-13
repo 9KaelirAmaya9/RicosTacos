@@ -12,8 +12,8 @@ import { ArrowRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useEffect, useRef } from "react";
-import heroImage from "@/assets/hero-tacos.jpg";
-import interiorImage from "@/assets/puebla-traditional.jpg";
+import heroImage from "@/assets/hero-mesa.jpg";
+import interiorImage from "@/assets/taco-al-pastor.jpg";
 
 const Index = () => {
   const { t } = useLanguage();
@@ -71,7 +71,7 @@ const Index = () => {
         <div className="absolute inset-0">
           <img
             src={heroImage}
-            alt="Authentic Mexican street tacos with fresh cilantro, onions, and lime on traditional corn tortillas at Ricos Tacos Brooklyn"
+            alt="Table full of Ricos Tacos Brooklyn dishes: tacos, fried mojarra, mole, chiles rellenos, nachos, chilaquiles and aguas frescas"
             className="w-full h-full object-cover"
             fetchPriority="high"
             width="1920"
@@ -143,7 +143,7 @@ const Index = () => {
               <div className="absolute inset-0 serape-border-flow opacity-0 group-hover:opacity-30 transition-opacity duration-500 z-10 pointer-events-none"></div>
               <img 
                 src={interiorImage} 
-                alt="Traditional Puebla-style Mexican restaurant interior with authentic decor at Ricos Tacos Brooklyn" 
+                alt="Al pastor taco with pineapple, onion and cilantro on a corn tortilla at Ricos Tacos Brooklyn" 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 loading="lazy"
                 width="800"
