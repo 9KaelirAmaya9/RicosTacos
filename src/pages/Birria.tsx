@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { OrderLink } from "@/components/OrderLink";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { SerapeStripe } from "@/components/SerapeStripe";
@@ -6,12 +7,12 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import birriaTaco from "@/assets/menu/birria-taco.jpg";
-import birriaConsomme from "@/assets/menu/birria-consomme.jpg";
-import birriaPlatillo from "@/assets/menu/birria-platillo.jpg";
-import birriaTostada from "@/assets/menu/birria-tostada.jpg";
-import tortaBirria from "@/assets/menu/torta-birria.jpg";
-import burritoBirria from "@/assets/menu/burrito-birria.jpg";
+import birriaTaco from "@/assets/menu-nuevo/tacos.jpg";
+import birriaConsomme from "@/assets/menu-nuevo/pancita.jpg";
+import birriaPlatillo from "@/assets/menu-nuevo/carne-con-consome.jpg";
+import birriaTostada from "@/assets/menu-nuevo/tostadas.jpg";
+import tortaBirria from "@/assets/menu-nuevo/tortas.jpg";
+import burritoBirria from "@/assets/menu-nuevo/burritos.jpg";
 
 const birriaSchema = {
   "@context": "https://schema.org",
@@ -188,11 +189,11 @@ const Birria = () => {
                 The way birria was meant to be — made fresh every day at 505 51st Street.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/order">
+                <OrderLink>
                   <Button size="lg" className="w-full sm:w-auto text-base px-8">
                     Order Birria Online
                   </Button>
-                </Link>
+                </OrderLink>
                 <Link to="/menu">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto text-base px-8">
                     Full Menu
@@ -270,11 +271,11 @@ const Birria = () => {
                 505 51st Street, Sunset Park, Brooklyn
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/order">
+                <OrderLink>
                   <Button size="lg" className="bg-white text-foreground hover:bg-white/90 font-semibold w-full sm:w-auto">
                     Order Online
                   </Button>
-                </Link>
+                </OrderLink>
                 <a href="tel:9173700430">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 w-full sm:w-auto">
                     (917) 370-0430

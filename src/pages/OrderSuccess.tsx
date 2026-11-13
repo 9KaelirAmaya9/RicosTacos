@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { OrderLink } from "@/components/OrderLink";
 import { SEO } from "@/components/SEO";
 import { useSearchParams, Link } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
@@ -382,9 +383,9 @@ const OrderSuccess = () => {
                     Back to Home
                   </Button>
                 </Link>
-                <Link to="/order" className="flex-1">
+                <OrderLink className="flex-1">
                   <Button size="lg" className="w-full gap-2">Order Again</Button>
-                </Link>
+                </OrderLink>
               </div>
 
             </div>

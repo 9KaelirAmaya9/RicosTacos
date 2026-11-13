@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { OrderLink } from "@/components/OrderLink";
 import { Helmet } from "react-helmet-async";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
@@ -90,12 +91,12 @@ const Index = () => {
               {t("home.hero.subtitle")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 justify-center px-4 animate-fade-in" style={{ animationDelay: "0.4s" }}>
-              <Link to="/order" className="w-full sm:w-auto">
+              <OrderLink className="w-full sm:w-auto">
                 <Button variant="pulse" size="lg" className="text-base font-semibold w-full sm:min-w-[200px] pulse-glow-btn">
                   {t("home.hero.orderNow")}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-              </Link>
+              </OrderLink>
               <Link to="/menu" className="w-full sm:w-auto">
                 <Button variant="glow" size="lg" className="text-base font-medium w-full sm:min-w-[200px]">
                   {t("home.hero.viewMenu")}
@@ -235,12 +236,12 @@ const Index = () => {
           <p className="text-base sm:text-lg md:text-xl mb-8 sm:mb-12 text-white/95 max-w-2xl mx-auto drop-shadow-md px-4">
             {t("home.cta.subtitle")}
           </p>
-          <Link to="/order">
+          <OrderLink>
             <Button size="lg" className="bg-white text-foreground hover:bg-white/90 text-base font-semibold shadow-2xl hover:shadow-3xl hover:scale-105 transition-all w-full sm:w-auto sm:min-w-[200px]">
               {t("home.cta.startOrder")}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-          </Link>
+          </OrderLink>
         </div>
       </section>
 

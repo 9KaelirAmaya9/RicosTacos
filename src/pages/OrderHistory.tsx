@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { OrderLink } from "@/components/OrderLink";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -104,12 +105,12 @@ const OrderHistory = () => {
               <p className="text-muted-foreground">
                 You haven't placed any orders yet. Start ordering to see your history here!
               </p>
-              <Link to="/order">
+              <OrderLink>
                 <Button variant="outline" className="mt-4 gap-2">
                   <ArrowRight className="h-4 w-4" />
                   Browse the Menu
                 </Button>
-              </Link>
+              </OrderLink>
             </Card>
           ) : (
             <div className="space-y-4">

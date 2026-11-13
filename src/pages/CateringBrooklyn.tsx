@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { Phone } from "lucide-react";
-import parrilladas from "@/assets/menu/parrilladas.jpg";
-import molePoblano from "@/assets/menu/mole-poblano.jpg";
-import birriaPlatillo from "@/assets/menu/birria-platillo.jpg";
-import fajitas from "@/assets/menu/fajitas.jpg";
-import chilesRellenos from "@/assets/menu/chiles-rellenos.jpg";
-import pozole from "@/assets/menu/pozole.jpg";
+import parrilladas from "@/assets/menu-nuevo/molcajete.jpg";
+import molePoblano from "@/assets/menu-nuevo/mole-poblano.jpg";
+import birriaPlatillo from "@/assets/menu-nuevo/carne-con-consome.jpg";
+import fajitas from "@/assets/menu-nuevo/fajitas.jpg";
+import chilesRellenos from "@/assets/menu-nuevo/chiles-rellenos.jpg";
+import pozole from "@/assets/menu-nuevo/pozole.jpg";
 
 const cateringSchema = {
   "@context": "https://schema.org",

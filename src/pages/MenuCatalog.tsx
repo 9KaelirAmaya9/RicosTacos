@@ -104,11 +104,6 @@ export default function MenuCatalog() {
                       </p>
                     )}
 
-                    {item.bestSeller && (
-                      <span className="inline-block mt-2 px-2 py-1 text-xs font-semibold bg-primary/10 text-primary rounded">
-                        {language === "es" ? "Más Vendido" : "Best Seller"}
-                      </span>
-                    )}
                   </div>
                 </div>
               ))}

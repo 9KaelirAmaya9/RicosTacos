@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { OrderLink } from "@/components/OrderLink";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { SerapeStripe } from "@/components/SerapeStripe";
@@ -6,13 +7,13 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import alPastor from "@/assets/menu/al-pastor.jpg";
-import birriaTaco from "@/assets/menu/birria-taco.jpg";
-import birriaConsomme from "@/assets/menu/birria-consomme.jpg";
-import tortaBirria from "@/assets/menu/torta-birria.jpg";
-import pozole from "@/assets/menu/pozole.jpg";
-import nachos from "@/assets/menu/nachos.jpg";
-import fajitas from "@/assets/menu/fajitas.jpg";
+import alPastor from "@/assets/menu-nuevo/tacos.jpg";
+import birriaTaco from "@/assets/menu-nuevo/tacos.jpg";
+import birriaConsomme from "@/assets/menu-nuevo/pancita.jpg";
+import tortaBirria from "@/assets/menu-nuevo/tortas.jpg";
+import pozole from "@/assets/menu-nuevo/pozole.jpg";
+import nachos from "@/assets/menu-nuevo/nachos.jpg";
+import fajitas from "@/assets/menu-nuevo/fajitas.jpg";
 
 const restaurantSchema = {
   "@context": "https://schema.org",
@@ -204,11 +205,11 @@ const MexicanRestaurantBrooklyn = () => {
                 fajitas, and more — made fresh every day at 505 51st Street, Sunset Park.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/order">
+                <OrderLink>
                   <Button size="lg" className="w-full sm:w-auto text-base px-8">
                     Order Online
                   </Button>
-                </Link>
+                </OrderLink>
                 <Link to="/menu">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto text-base px-8">
                     View Full Menu
@@ -309,11 +310,11 @@ const MexicanRestaurantBrooklyn = () => {
                 505 51st Street, Sunset Park, Brooklyn NY 11220
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/order">
+                <OrderLink>
                   <Button size="lg" className="bg-white text-foreground hover:bg-white/90 font-semibold w-full sm:w-auto">
                     Order Online
                   </Button>
-                </Link>
+                </OrderLink>
                 <a href="tel:7186334816">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 w-full sm:w-auto">
                     (718) 633-4816
