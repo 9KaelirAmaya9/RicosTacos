@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { Phone } from "lucide-react";
 import parrilladas from "@/assets/menu-nuevo/molcajete.jpg";
+import heroMesa from "@/assets/hero-mesa.jpg";
 import molePoblano from "@/assets/menu-nuevo/mole-poblano.jpg";
 import birriaPlatillo from "@/assets/menu-nuevo/carne-con-consome.jpg";
 import fajitas from "@/assets/menu-nuevo/fajitas.jpg";
@@ -205,8 +206,8 @@ const CateringBrooklyn = () => {
             {/* Hero image */}
             <div className="relative rounded-2xl overflow-hidden mb-16 max-w-4xl mx-auto aspect-[16/7]">
               <img
-                src={parrilladas}
-                alt="Mexican catering spread at Ricos Tacos Brooklyn — parrillada mixed grill"
+                src={heroMesa}
+                alt="Mexican catering spread at Ricos Tacos Brooklyn"
                 className="w-full h-full object-cover"
                 loading="eager"
               />

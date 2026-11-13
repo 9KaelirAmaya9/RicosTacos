@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Phone, UtensilsCrossed, Users, Star } from "lucide-react";
+import heroMesa from "@/assets/hero-mesa.jpg";
 
 const cateringSchema = {
   "@context": "https://schema.org",
@@ -87,6 +88,22 @@ const Catering = () => {
               <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
                 Authentic Puebla-style Mexican food for your event — made fresh, served with pride. From intimate gatherings to large celebrations.
               </p>
+            </div>
+
+            {/* Foto del catering */}
+            <div className="relative rounded-2xl overflow-hidden mb-12 max-w-4xl mx-auto aspect-[16/9] sm:aspect-[16/8] shadow-elegant">
+              <img
+                src={heroMesa}
+                alt="Ricos Tacos catering spread with tacos, fried mojarra, mole, chiles rellenos, nachos and aguas frescas"
+                className="w-full h-full object-cover"
+                loading="eager"
+                width="1920"
+                height="1071"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 text-white">
+                <p className="font-serif text-xl sm:text-2xl font-bold">Fresh. Made from scratch. From Puebla.</p>
+              </div>
             </div>
 
             {/* CTA Card */}

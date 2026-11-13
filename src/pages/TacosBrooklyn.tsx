@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import alPastor from "@/assets/menu-nuevo/tacos.jpg";
+import tacoAlPastorHero from "@/assets/taco-al-pastor.jpg";
 import carnitasTaco from "@/assets/menu-nuevo/tacos-placeros.jpg";
 import suaderoTaco from "@/assets/menu-nuevo/tacos-arabes.jpg";
 import cochinita from "@/assets/menu-nuevo/tacos.jpg";
@@ -243,7 +244,7 @@ const TacosBrooklyn = () => {
             {/* Hero image */}
             <div className="relative rounded-2xl overflow-hidden mb-16 max-w-4xl mx-auto aspect-[16/7]">
               <img
-                src={alPastor}
+                src={tacoAlPastorHero}
                 alt="Authentic al pastor tacos at Ricos Tacos in Sunset Park Brooklyn"
                 className="w-full h-full object-cover"
                 loading="eager"
