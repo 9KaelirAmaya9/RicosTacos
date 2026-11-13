@@ -1,5 +1,4 @@
 import { Link, useLocation } from "react-router-dom";
-import { ORDER_ONLINE_URL } from "@/config/ordering";
 import { OrderLink } from "@/components/OrderLink";
 import { useState } from "react";
 import { Menu, X, ShoppingCart, User } from "lucide-react";
@@ -44,7 +43,6 @@ export const Navigation = () => {
   const navLinks = [
     { to: "/", label: t("nav.home") },
     { to: "/menu", label: t("nav.fullMenu") },
-    { to: ORDER_ONLINE_URL, label: t("nav.orderOnline") },
     { to: "/location", label: t("nav.location") },
     { to: "/catering", label: t("nav.catering") },
   ];
@@ -185,6 +183,13 @@ export const Navigation = () => {
             </NavigationMenu>
 
             <LanguageSwitch />
+
+            <OrderLink>
+              <Button size="sm" className="gap-2 bg-[#E31E24] hover:bg-[#E31E24]/90">
+                <ShoppingCart className="h-4 w-4" />
+                Order Now
+              </Button>
+            </OrderLink>
 
             {isAuthenticated ? (
               <Link to="/profile">

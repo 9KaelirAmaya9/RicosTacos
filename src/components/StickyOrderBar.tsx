@@ -20,7 +20,7 @@ export const StickyOrderBar = () => {
         <OrderLink className="flex items-center justify-center gap-3 w-full">
           <ShoppingBag className="h-5 w-5 text-white flex-shrink-0" />
           <span className="text-white font-bold text-base tracking-wide">
-            Order Now — Pickup or Delivery
+            Order Now
           </span>
         </OrderLink>
       </div>

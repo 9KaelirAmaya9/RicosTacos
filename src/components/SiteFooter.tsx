@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { ORDER_ONLINE_URL } from "@/config/ordering";
 import { useLanguage } from "@/contexts/LanguageContext";
 import logo from "@/assets/logo-illustration.webp";
 
@@ -9,7 +8,6 @@ const exploreLinks = [
   { to: "/tacos-brooklyn", label: "Street Tacos Brooklyn" },
   { to: "/catering-brooklyn", label: "Catering Brooklyn" },
   { to: "/menu", label: "Full Menu" },
-  { to: ORDER_ONLINE_URL, label: "Order Online" },
   { to: "/location", label: "Hours & Location" },
   { to: "/catering", label: "Catering Info" },
 ];

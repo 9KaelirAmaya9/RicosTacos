@@ -90,16 +90,10 @@ const MenuCard = ({ item, language, t }: { item: MenuItem; language: "en" | "es"
           </details>
         )}
 
-        <div className="mt-auto flex flex-wrap gap-2 items-center justify-between pt-4 border-t border-serape-red/20">
+        <div className="mt-auto pt-4 border-t border-serape-red/20">
           <span className="text-2xl font-semibold bg-gradient-to-r from-serape-red via-serape-pink to-serape-purple bg-clip-text text-transparent">
             {formatPrice(item.price)}
           </span>
-          <OrderLink>
-            <Button size="sm" className="gap-2 bg-gradient-to-r from-serape-red to-serape-pink hover:from-serape-pink hover:to-serape-purple shadow-elegant">
-              <ShoppingBag className="h-4 w-4" />
-              {t("menu.order")}
-            </Button>
-          </OrderLink>
         </div>
       </div>
     </Card>
