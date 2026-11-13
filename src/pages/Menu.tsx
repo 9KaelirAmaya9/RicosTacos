@@ -11,6 +11,7 @@ import { ShoppingBag, Filter, ChevronDown } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useMenuAvailability } from "@/hooks/useMenuAvailability";
+import { splitBilingual } from "@/lib/bilingual";
 import {
   Select,
   SelectContent,
@@ -18,15 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-/** "Español / English" → texto en el idioma activo (y el otro como secundario). */
-const splitBilingual = (text: string, language: "en" | "es") => {
-  const idx = text.indexOf(" / ");
-  if (idx < 0) return { primary: text, secondary: undefined };
-  const es = text.slice(0, idx).trim();
-  const en = text.slice(idx + 3).trim();
-  return language === "es" ? { primary: es, secondary: en } : { primary: en, secondary: es };
-};
 
 const formatPrice = (n: number) => `$${n.toFixed(2)}`;
 
@@ -176,12 +168,12 @@ const Menu = () => {
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4 mb-6">
               {t("menu.subtitle")}
             </p>
-            <OrderLink>
-              <Button size="lg" className="gap-2">
+            <Button size="lg" className="gap-2" asChild>
+              <OrderLink>
                 <ShoppingBag className="h-5 w-5" />
                 {t("nav.orderOnline")}
-              </Button>
-            </OrderLink>
+              </OrderLink>
+            </Button>
           </div>
 
           <div className="sticky top-20 sm:top-24 z-30 bg-background/95 backdrop-blur-sm py-4 mb-8 -mx-4 px-4 border-y border-border shadow-sm">

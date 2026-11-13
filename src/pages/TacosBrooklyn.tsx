@@ -8,10 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import alPastor from "@/assets/menu-nuevo/tacos.jpg";
-import birriaTaco from "@/assets/menu-nuevo/tacos.jpg";
-import carnitasTaco from "@/assets/menu-nuevo/taquitos.jpg";
+import carnitasTaco from "@/assets/menu-nuevo/tacos-placeros.jpg";
 import suaderoTaco from "@/assets/menu-nuevo/tacos-arabes.jpg";
-import cochinita from "@/assets/menu-nuevo/tacos-orientales.jpg";
+import cochinita from "@/assets/menu-nuevo/tacos.jpg";
 import carneAsadaTaco from "@/assets/menu-nuevo/tacos-placeros.jpg";
 
 const tacosSchema = {
@@ -37,7 +36,7 @@ const tacosSchema = {
       "@type": "MenuItem",
       "name": "Al Pastor Taco",
       "description": "Marinated pork with pineapple on a handmade corn tortilla with cilantro and onion",
-      "offers": { "@type": "Offer", "price": "3.00", "priceCurrency": "USD" }
+      "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" }
     },
     {
       "@type": "MenuItem",
@@ -49,13 +48,13 @@ const tacosSchema = {
       "@type": "MenuItem",
       "name": "Carnitas Taco",
       "description": "Crispy-edged slow-fried pork on a handmade corn tortilla",
-      "offers": { "@type": "Offer", "price": "3.00", "priceCurrency": "USD" }
+      "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" }
     },
     {
       "@type": "MenuItem",
       "name": "Suadero Taco",
       "description": "Tender beef brisket slow-cooked until it falls apart",
-      "offers": { "@type": "Offer", "price": "3.00", "priceCurrency": "USD" }
+      "offers": { "@type": "Offer", "price": "5.00", "priceCurrency": "USD" }
     },
     {
       "@type": "MenuItem",
@@ -81,7 +80,7 @@ const faqSchema = {
       "name": "Where can I get tacos in Brooklyn?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Ricos Tacos at 505 51st Street in Sunset Park, Brooklyn serves authentic Mexican street tacos daily from 9 AM to 2 AM. Street tacos start at $3. Order in person, online for pickup, or get delivery."
+        "text": "Ricos Tacos at 505 51st Street in Sunset Park, Brooklyn serves authentic Mexican street tacos daily from 9 AM to 2 AM. Tacos are $5 each. Order in person, online for pickup, or get delivery."
       }
     },
     {
@@ -97,7 +96,7 @@ const faqSchema = {
       "name": "How much do tacos cost at Ricos Tacos Brooklyn?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Street tacos (al pastor, carnitas, suadero, and others) are $3 each. Specialty tacos (birria, cochinita pibil, carne asada, tacos árabes) are $5 each."
+        "text": "Tacos are $5 each — al pastor, carnitas, suadero, birria, cochinita pibil, carne asada and more. Tacos árabes and tacos orientales are also $5."
       }
     },
     {
@@ -131,7 +130,7 @@ const breadcrumbSchema = {
 const menuItems = [
   {
     name: "Al Pastor",
-    price: "$3",
+    price: "$5",
     description: "Marinated pork slow-cooked on a vertical spit with pineapple. Cilantro, onion, lime — the taco that built a culture.",
     image: alPastor,
     alt: "Al pastor taco at Ricos Tacos Sunset Park Brooklyn"
@@ -140,19 +139,19 @@ const menuItems = [
     name: "Birria",
     price: "$5",
     description: "Slow-braised beef in rich guajillo chile broth. Dipped in consomé before griddling — crispy edges, deep red color.",
-    image: birriaTaco,
+    image: alPastor,
     alt: "Birria taco with consomé at Ricos Tacos Brooklyn"
   },
   {
     name: "Carnitas",
-    price: "$3",
+    price: "$5",
     description: "Pork slow-fried in its own fat until the edges crisp. Melt-in-your-mouth center, golden crunch on the outside.",
     image: carnitasTaco,
     alt: "Carnitas taco at Ricos Tacos Brooklyn"
   },
   {
     name: "Suadero",
-    price: "$3",
+    price: "$5",
     description: "Beef brisket braised low and slow until it falls apart. One of Mexico City's most beloved street taco meats.",
     image: suaderoTaco,
     alt: "Suadero taco at Ricos Tacos Sunset Park Brooklyn"
@@ -176,7 +175,7 @@ const menuItems = [
 const faqs = [
   {
     q: "What kinds of tacos do you serve?",
-    a: "Over 20 varieties. Street tacos ($3): al pastor, carnitas, suadero, enchilada, longaniza, buche, bistec, cueritos, pollo, cecina. Specialty tacos ($5): birria, cochinita pibil, carne asada, tacos árabes, barbacoa, and fish (chillo). All on handmade corn tortillas with cilantro, onion, and salsa."
+    a: "Over 20 varieties. Tacos ($5): al pastor, carnitas, suadero, enchilada, longaniza, buche, bistec, cueritos, pollo, cecina. Also $5: birria, cochinita pibil, carne asada, tacos árabes, barbacoa, and fish (chillo). All on handmade corn tortillas with cilantro, onion, and salsa."
   },
   {
     q: "Where are you in Brooklyn?",
@@ -184,7 +183,7 @@ const faqs = [
   },
   {
     q: "How much are tacos?",
-    a: "Street tacos are $3 each. Specialty tacos (birria, cochinita pibil, carne asada, tacos árabes) are $5 each. No minimums."
+    a: "Tacos are $5 each, any meat (lengua, cabeza and tripa +$2). No minimums."
   },
   {
     q: "Do you offer delivery?",
@@ -201,7 +200,7 @@ const TacosBrooklyn = () => {
     <>
       <SEO
         title="Tacos Brooklyn — Authentic Mexican Street Tacos at Ricos Tacos, Sunset Park"
-        description="Brooklyn's best street tacos from $3. Al pastor, birria, carnitas, suadero, carne asada & 20+ more. Handmade tortillas, open daily 9AM–2AM. Order online for pickup or delivery in Sunset Park."
+        description="Brooklyn's best street tacos for $5. Al pastor, birria, carnitas, suadero, carne asada & 20+ more. Handmade tortillas, open daily 9AM–2AM. Order online for pickup or delivery in Sunset Park."
         canonicalPath="/tacos-brooklyn"
       />
       <Helmet>
@@ -224,15 +223,15 @@ const TacosBrooklyn = () => {
                 Tacos <span className="text-primary">Brooklyn</span>
               </h1>
               <p className="text-lg sm:text-xl text-muted-foreground mb-8">
-                Over 20 varieties. Handmade corn tortillas. Street tacos from $3.
+                Over 20 varieties. Handmade corn tortillas. Tacos $5.
                 Made the way they're made in Mexico — every day at 505 51st Street.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <OrderLink>
-                  <Button size="lg" className="w-full sm:w-auto text-base px-8">
+                <Button size="lg" className="w-full sm:w-auto text-base px-8" asChild>
+                  <OrderLink>
                     Order Tacos Online
-                  </Button>
-                </OrderLink>
+                  </OrderLink>
+                </Button>
                 <Link to="/menu">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto text-base px-8">
                     Full Menu
@@ -251,7 +250,7 @@ const TacosBrooklyn = () => {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               <div className="absolute bottom-6 left-6 text-white">
-                <p className="font-serif text-2xl font-bold">Al Pastor · $3</p>
+                <p className="font-serif text-2xl font-bold">Al Pastor · $5</p>
                 <p className="text-white/80 text-sm">505 51st St, Sunset Park, Brooklyn</p>
               </div>
             </div>
@@ -276,7 +275,7 @@ const TacosBrooklyn = () => {
             {/* Price callout */}
             <div className="max-w-2xl mx-auto mb-16 grid sm:grid-cols-2 gap-4 text-center">
               <div className="rounded-2xl border-2 border-primary/20 bg-card p-6">
-                <p className="text-4xl font-bold text-primary mb-1">$3</p>
+                <p className="text-4xl font-bold text-primary mb-1">$5</p>
                 <p className="font-semibold text-lg mb-2">Street Tacos</p>
                 <p className="text-sm text-muted-foreground">Al pastor, carnitas, suadero, enchilada, longaniza, buche, bistec, and more</p>
               </div>
@@ -325,11 +324,11 @@ const TacosBrooklyn = () => {
                 505 51st Street, Sunset Park, Brooklyn
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <OrderLink>
-                  <Button size="lg" className="bg-white text-foreground hover:bg-white/90 font-semibold w-full sm:w-auto">
+                <Button size="lg" className="bg-white text-foreground hover:bg-white/90 font-semibold w-full sm:w-auto" asChild>
+                  <OrderLink>
                     Order Online
-                  </Button>
-                </OrderLink>
+                  </OrderLink>
+                </Button>
                 <a href="tel:9173700430">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 w-full sm:w-auto">
                     (917) 370-0430

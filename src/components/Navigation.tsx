@@ -184,12 +184,12 @@ export const Navigation = () => {
 
             <LanguageSwitch />
 
-            <OrderLink>
-              <Button size="sm" className="gap-2 bg-[#E31E24] hover:bg-[#E31E24]/90">
+            <Button size="sm" className="gap-2 bg-[#E31E24] hover:bg-[#E31E24]/90" asChild>
+              <OrderLink>
                 <ShoppingCart className="h-4 w-4" />
                 Order Now
-              </Button>
-            </OrderLink>
+              </OrderLink>
+            </Button>
 
             {isAuthenticated ? (
               <Link to="/profile">
@@ -282,12 +282,12 @@ export const Navigation = () => {
               </nav>
 
               {/* Primary CTA */}
-              <OrderLink onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full mb-4 h-12 text-base font-semibold gap-2">
+              <Button className="w-full mb-4 h-12 text-base font-semibold gap-2" asChild>
+                <OrderLink onClick={() => setMobileMenuOpen(false)}>
                   <ShoppingCart className="h-5 w-5" />
                   Order Now
-                </Button>
-              </OrderLink>
+                </OrderLink>
+              </Button>
 
               <div className="pt-3 border-t border-border flex items-center justify-between">
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">Language</span>

@@ -105,12 +105,12 @@ const OrderHistory = () => {
               <p className="text-muted-foreground">
                 You haven't placed any orders yet. Start ordering to see your history here!
               </p>
-              <OrderLink>
-                <Button variant="outline" className="mt-4 gap-2">
+              <Button variant="outline" className="mt-4 gap-2" asChild>
+                <OrderLink>
                   <ArrowRight className="h-4 w-4" />
                   Browse the Menu
-                </Button>
-              </OrderLink>
+                </OrderLink>
+              </Button>
             </Card>
           ) : (
             <div className="space-y-4">

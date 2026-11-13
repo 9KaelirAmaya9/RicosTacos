@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import birriaTaco from "@/assets/menu-nuevo/tacos.jpg";
-import birriaConsomme from "@/assets/menu-nuevo/pancita.jpg";
+import birriaConsomme from "@/assets/menu-nuevo/carne-con-consome.jpg";
 import birriaPlatillo from "@/assets/menu-nuevo/carne-con-consome.jpg";
 import birriaTostada from "@/assets/menu-nuevo/tostadas.jpg";
 import tortaBirria from "@/assets/menu-nuevo/tortas.jpg";
@@ -58,13 +58,13 @@ const birriaSchema = {
       "@type": "MenuItem",
       "name": "Birria de Res (Consomé)",
       "description": "Rich beef consommé with tender meat, for dipping",
-      "offers": { "@type": "Offer", "price": "13.99", "priceCurrency": "USD" }
+      "offers": { "@type": "Offer", "price": "17.00", "priceCurrency": "USD" }
     },
     {
       "@type": "MenuItem",
       "name": "Birria Platillo",
       "description": "Traditional slow-braised beef in rich chile broth with handmade tortillas",
-      "offers": { "@type": "Offer", "price": "13.99", "priceCurrency": "USD" }
+      "offers": { "@type": "Offer", "price": "17.00", "priceCurrency": "USD" }
     }
   ]
 };
@@ -94,7 +94,7 @@ const faqSchema = {
       "name": "Does Ricos Tacos serve birria consomé?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. Our Birria de Res Consomé ($13.99) is a full bowl of rich beef broth with tender meat — perfect for dipping your tacos. It's also served alongside our Birria Platillo."
+        "text": "Yes. Our Birria de Res Consomé ($17) is a full bowl of rich beef broth with tender meat — perfect for dipping your tacos. It's also served alongside our Birria Platillo."
       }
     },
     {
@@ -110,7 +110,7 @@ const faqSchema = {
       "name": "How much do birria tacos cost at Ricos Tacos?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Birria tacos are $5 each. Birria tostadas are $4. Birria torta $12, birria burrito $16, birria consomé $13.99, and birria platillo $13.99."
+        "text": "Birria tacos are $5 each. Birria tostadas are $5. Birria torta $12, birria burrito $16, birria consomé $17, and birria platillo $17."
       }
     }
   ]
@@ -130,8 +130,8 @@ const menuItems = [
   { name: "Birria Tostada", price: "$5", description: "Crispy tortilla piled with braised beef, fresh toppings, and a drizzle of salsa.", image: birriaTostada, alt: "Birria tostada at Ricos Tacos Sunset Park Brooklyn" },
   { name: "Birria Torta", price: "$12", description: "Toasted telera roll stuffed with birria beef, beans, avocado, and all the fixings.", image: tortaBirria, alt: "Birria torta at Ricos Tacos Brooklyn" },
   { name: "Birria Burrito", price: "$16", description: "Birria beef, Mexican rice, black beans, and melted cheese in a warm flour tortilla.", image: burritoBirria, alt: "Birria burrito at Ricos Tacos Sunset Park" },
-  { name: "Birria de Res (Consomé)", price: "$13.99", description: "A full bowl of rich red chile beef broth with tender braised meat. The real deal.", image: birriaConsomme, alt: "Birria consomé at Ricos Tacos Brooklyn" },
-  { name: "Birria Platillo", price: "$13.99", description: "Full plate — slow-braised beef, handmade tortillas, rice, beans, and consomé.", image: birriaPlatillo, alt: "Birria platillo full plate at Ricos Tacos Brooklyn" },
+  { name: "Birria de Res (Consomé)", price: "$17", description: "A full bowl of rich red chile beef broth with tender braised meat. The real deal.", image: birriaConsomme, alt: "Birria consomé at Ricos Tacos Brooklyn" },
+  { name: "Birria Platillo", price: "$17", description: "Full plate — slow-braised beef, handmade tortillas, rice, beans, and consomé.", image: birriaPlatillo, alt: "Birria platillo full plate at Ricos Tacos Brooklyn" },
 ];
 
 const faqs = [
@@ -145,7 +145,7 @@ const faqs = [
   },
   {
     q: "Do you serve birria consomé for dipping?",
-    a: "Yes. Every birria order comes with consomé. We also serve it as a full bowl — Birria de Res Consomé ($13.99) — with tender meat floating in that rich red broth."
+    a: "Yes. Every birria order comes with consomé. We also serve it as a full bowl — Birria de Res Consomé ($17) — with tender meat floating in that rich red broth."
   },
   {
     q: "Can I order birria online?",
@@ -153,7 +153,7 @@ const faqs = [
   },
   {
     q: "How much do birria tacos cost?",
-    a: "Birria tacos are $5 each. Tostadas $5. Torta $12. Burrito $16. Consomé $13.99. Platillo $13.99."
+    a: "Birria tacos are $5 each. Tostadas $5. Torta $12. Burrito $16. Consomé $17. Platillo $17."
   },
 ];
 
@@ -189,11 +189,11 @@ const Birria = () => {
                 The way birria was meant to be — made fresh every day at 505 51st Street.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <OrderLink>
-                  <Button size="lg" className="w-full sm:w-auto text-base px-8">
+                <Button size="lg" className="w-full sm:w-auto text-base px-8" asChild>
+                  <OrderLink>
                     Order Birria Online
-                  </Button>
-                </OrderLink>
+                  </OrderLink>
+                </Button>
                 <Link to="/menu">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto text-base px-8">
                     Full Menu
@@ -271,11 +271,11 @@ const Birria = () => {
                 505 51st Street, Sunset Park, Brooklyn
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <OrderLink>
-                  <Button size="lg" className="bg-white text-foreground hover:bg-white/90 font-semibold w-full sm:w-auto">
+                <Button size="lg" className="bg-white text-foreground hover:bg-white/90 font-semibold w-full sm:w-auto" asChild>
+                  <OrderLink>
                     Order Online
-                  </Button>
-                </OrderLink>
+                  </OrderLink>
+                </Button>
                 <a href="tel:9173700430">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 w-full sm:w-auto">
                     (917) 370-0430

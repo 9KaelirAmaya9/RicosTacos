@@ -383,9 +383,9 @@ const OrderSuccess = () => {
                     Back to Home
                   </Button>
                 </Link>
-                <OrderLink className="flex-1">
-                  <Button size="lg" className="w-full gap-2">Order Again</Button>
-                </OrderLink>
+                <Button size="lg" className="w-full gap-2" asChild>
+                  <OrderLink className="flex-1">Order Again</OrderLink>
+                </Button>
               </div>
 
             </div>
